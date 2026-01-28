@@ -12,4 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for adk-redis package."""
+"""Tests for version information."""
+
+
+def test_version_exists():
+  """Test that version is defined."""
+  from adk_redis import __version__
+
+  assert __version__ is not None
+  assert isinstance(__version__, str)
+
+
+def test_version_format():
+  """Test that version follows semver format."""
+  from adk_redis import __version__
+
+  parts = __version__.split(".")
+  assert len(parts) >= 2
+  # First two parts should be numeric
+  assert parts[0].isdigit()
+  assert parts[1].isdigit()
