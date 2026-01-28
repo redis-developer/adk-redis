@@ -11,9 +11,35 @@ Redis integrations for Google's Agent Development Kit (ADK).
 
 `adk-redis` provides Redis-based implementations of ADK services and tools:
 
-- **Memory Services**: Long-term agent memory using Redis Agent Memory Server
-- **Session Services**: Working memory session management
-- **Search Tools**: Vector, hybrid, range, and text search tools using RedisVL
+- **Memory Services**: Long-term agent memory with semantic search and automatic memory extraction
+- **Session Services**: Working memory session management with auto-summarization
+- **Search Tools**: Vector, hybrid, range, and text search tools for RAG applications
+
+## Key Technologies
+
+### Redis Agent Memory Server
+
+The memory and session services integrate with the
+[Redis Agent Memory Server](https://github.com/redis/agent-memory-server), an open-source
+memory layer for AI agents that provides:
+
+- **Two-Tier Memory Architecture**: Working memory (session-scoped) for current conversation
+  context, and long-term memory (persistent) for facts, preferences, and knowledge
+- **Automatic Memory Extraction**: LLM-based extraction of facts, preferences, and episodic
+  memories from conversations
+- **Semantic Search**: Vector-based similarity search with recency boosting
+- **Auto-Summarization**: Automatic summarization when context window limits are exceeded
+- **Background Processing**: Non-blocking memory promotion and indexing
+
+### RedisVL (Redis Vector Library)
+
+The search tools are built on [RedisVL](https://docs.redisvl.com/), the AI-native Python
+client for Redis that provides:
+
+- **Index Management**: Define and manage vector search indices with YAML or Python
+- **Advanced Vector Search**: KNN and range-based vector queries with filtering
+- **Hybrid Search**: Combine vector similarity with full-text search
+- **Multiple Vectorizers**: Support for OpenAI, HuggingFace, Cohere, and more
 
 ## Installation
 
@@ -33,82 +59,92 @@ pip install adk-redis[all]
 
 ## Quick Start
 
-### Memory Service
+### Two-Tier Memory Architecture (Recommended)
+
+The recommended setup uses both `RedisWorkingMemorySessionService` and
+`RedisLongTermMemoryService` together for complete memory capabilities:
 
 ```python
-from adk_redis import RedisLongTermMemoryService, RedisLongTermMemoryServiceConfig
 from google.adk import Agent
+from google.adk.runners import Runner
 
-# Configure the memory service
-config = RedisLongTermMemoryServiceConfig(
-    redis_url="redis://localhost:6379",
-    session_id="my-session",
+from adk_redis.memory import RedisLongTermMemoryService, RedisLongTermMemoryServiceConfig
+from adk_redis.sessions import (
+    RedisWorkingMemorySessionService,
+    RedisWorkingMemorySessionServiceConfig,
 )
 
-# Create the memory service
-memory_service = RedisLongTermMemoryService(config=config)
+# Configure session service (Tier 1: Working Memory)
+session_config = RedisWorkingMemorySessionServiceConfig(
+    api_base_url="http://localhost:8000",  # Agent Memory Server URL
+    default_namespace="my_app",
+    model_name="gpt-4o",  # Model for auto-summarization
+    context_window_max=8000,  # Trigger summarization at this token count
+)
+session_service = RedisWorkingMemorySessionService(config=session_config)
 
-# Use with an ADK agent
+# Configure memory service (Tier 2: Long-Term Memory)
+memory_config = RedisLongTermMemoryServiceConfig(
+    api_base_url="http://localhost:8000",
+    default_namespace="my_app",
+    extraction_strategy="discrete",  # Extract individual facts
+    recency_boost=True,  # Prioritize recent memories in search
+)
+memory_service = RedisLongTermMemoryService(config=memory_config)
+
+# Create agent
 agent = Agent(
-    name="my_agent",
+    name="memory_agent",
     model="gemini-2.0-flash",
+    instruction="You are a helpful assistant with long-term memory.",
+)
+
+# Create runner with both services
+runner = Runner(
+    agent=agent,
+    app_name="my_app",
+    session_service=session_service,
     memory_service=memory_service,
 )
 ```
 
-### Session Service
+**How it works:**
 
-```python
-from adk_redis import RedisWorkingMemorySessionService, RedisWorkingMemorySessionServiceConfig
-
-# Configure the session service
-config = RedisWorkingMemorySessionServiceConfig(
-    redis_url="redis://localhost:6379",
-)
-
-# Create the session service
-session_service = RedisWorkingMemorySessionService(config=config)
-
-# Use with ADK Runner
-from google.adk import Runner
-
-runner = Runner(
-    agent=agent,
-    session_service=session_service,
-)
-```
+1. **Working Memory** stores session messages, state, and handles auto-summarization
+2. **Background extraction** automatically promotes important information to long-term memory
+3. **Long-Term Memory** provides semantic search across all sessions for relevant context
 
 ### Search Tools
 
 ```python
-from adk_redis import RedisVectorSearchTool, RedisVectorQueryConfig
+from google.adk import Agent
 from redisvl.index import SearchIndex
 from redisvl.utils.vectorize import HFTextVectorizer
 
-# Create a vectorizer
+from adk_redis.tools import RedisVectorSearchTool, RedisVectorQueryConfig
+
+# Create a vectorizer (HuggingFace, OpenAI, Cohere, etc.)
 vectorizer = HFTextVectorizer(model="sentence-transformers/all-MiniLM-L6-v2")
 
-# Create a search index (assumes index already exists in Redis)
-index = SearchIndex.from_existing("my_index", redis_url="redis://localhost:6379")
-
-# Configure the search tool
-config = RedisVectorQueryConfig(
-    index=index,
-    vector_field_name="embedding",
-    return_fields=["title", "content"],
-    num_results=5,
-)
+# Connect to existing search index
+index = SearchIndex.from_existing("products", redis_url="redis://localhost:6379")
 
 # Create the search tool
 search_tool = RedisVectorSearchTool(
-    config=config,
+    index=index,
     vectorizer=vectorizer,
+    config=RedisVectorQueryConfig(
+        vector_field_name="embedding",
+        return_fields=["name", "description", "price"],
+        num_results=5,
+    ),
 )
 
 # Use with an ADK agent
 agent = Agent(
     name="search_agent",
     model="gemini-2.0-flash",
+    instruction="Help users find products using semantic search.",
     tools=[search_tool],
 )
 ```
@@ -119,28 +155,36 @@ agent = Agent(
 
 | Service | Description |
 |---------|-------------|
-| `RedisLongTermMemoryService` | Long-term memory using Redis Agent Memory Server with automatic summarization |
+| `RedisLongTermMemoryService` | Implements ADK's `BaseMemoryService` for persistent long-term memory. Provides semantic search across all sessions with recency boosting, automatic memory extraction (facts, preferences, episodic), and cross-session knowledge retrieval. |
 
 ### Session Services
 
 | Service | Description |
 |---------|-------------|
-| `RedisWorkingMemorySessionService` | Session management using Redis Working Memory API |
+| `RedisWorkingMemorySessionService` | Implements ADK's `BaseSessionService` for session management. Stores conversation messages and session state, provides automatic summarization when context limits are exceeded, and triggers background memory extraction to long-term storage. |
 
 ### Search Tools
 
 | Tool | Description |
 |------|-------------|
-| `RedisVectorSearchTool` | Vector similarity search |
-| `RedisHybridSearchTool` | Combined vector + text search |
-| `RedisRangeSearchTool` | Range-based vector search |
-| `RedisTextSearchTool` | Full-text search |
+| `RedisVectorSearchTool` | Semantic similarity search using vector embeddings. Best for finding conceptually similar content. |
+| `RedisHybridSearchTool` | Combines vector similarity with full-text search for improved recall. Supports both native Redis 8.4+ hybrid queries and aggregation-based fallback. |
+| `RedisRangeSearchTool` | Range-based vector search with distance threshold. Returns all results within a similarity radius. |
+| `RedisTextSearchTool` | Full-text search using Redis Search. Best for keyword-based queries without embeddings. |
 
 ## Requirements
 
 - Python 3.10+
-- Redis Stack (for search tools) or Redis Agent Memory Server (for memory/session services)
+- For memory/session services: [Redis Agent Memory Server](https://github.com/redis/agent-memory-server)
+- For search tools: [Redis Stack](https://redis.io/docs/stack/) (Redis with Search module)
 - Google ADK 1.0.0+
+
+## Examples
+
+See the [`examples/`](examples/) directory for complete working examples:
+
+- **[redis_memory](examples/redis_memory/)**: Two-tier memory architecture with ADK web runner
+- **[redis_search_tools](examples/redis_search_tools/)**: Vector, text, and range search tools
 
 ## Development
 
@@ -175,6 +219,6 @@ Apache 2.0 - See [LICENSE](LICENSE) for details.
 ## Links
 
 - [GitHub Repository](https://github.com/redis-applied-ai/adk-redis)
-- [Redis Agent Memory Server](https://redis.io/docs/latest/develop/ai/agent-memory-server/)
+- [Redis Agent Memory Server](https://github.com/redis/agent-memory-server)
 - [RedisVL Documentation](https://docs.redisvl.com/)
 - [Google ADK](https://github.com/google/adk-python)
