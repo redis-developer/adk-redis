@@ -1,164 +1,180 @@
-# RedisVL ADK Integration
+# ADK-Redis
 
-Redis Vector Library integration for Google Agent Development Kit (ADK) - providing memory, sessions, and semantic tools for AI agents.
+Redis integrations for Google's Agent Development Kit (ADK).
 
-[![CI](https://github.com/redis-applied-ai/redisvl-adk-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/redis-applied-ai/redisvl-adk-agents/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/adk-redis.svg)](https://badge.fury.io/py/adk-redis)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/redis-applied-ai/adk-redis/workflows/CI/badge.svg)](https://github.com/redis-applied-ai/adk-redis/actions)
 
-## Features
+## Overview
 
-- **RedisVLMemoryService**: Semantic memory service using vector search
-- **Vector Search Tool**: RAG-style document retrieval
-- **Semantic Cache Tool**: LLM response caching with semantic similarity
-- **Semantic Router Tool**: Intent-based routing for multi-agent systems
-- **RedisVLSessionService** (Optional): Enhanced session service with semantic search
+`adk-redis` provides Redis-based implementations of ADK services and tools:
+
+- **Memory Services**: Long-term agent memory using Redis Agent Memory Server
+- **Session Services**: Working memory session management
+- **Search Tools**: Vector, hybrid, range, and text search tools using RedisVL
 
 ## Installation
 
 ```bash
-pip install redisvl-adk
-```
+# Install base package
+pip install adk-redis
 
-### With Optional Dependencies
+# Install with memory service support (Redis Agent Memory Server)
+pip install adk-redis[memory]
 
-```bash
-# For OpenAI embeddings
-pip install redisvl-adk[openai]
+# Install with search tools support (RedisVL)
+pip install adk-redis[search]
 
-# For Cohere embeddings
-pip install redisvl-adk[cohere]
-
-# For HuggingFace embeddings
-pip install redisvl-adk[huggingface]
-
-# For development
-pip install redisvl-adk[dev]
+# Install all features
+pip install adk-redis[all]
 ```
 
 ## Quick Start
 
-### 1. RAG Chatbot with Memory
+### Memory Service
 
 ```python
-from google.adk.agents import LlmAgent
-from google.adk.runners import Runner
-from redisvl_adk.memory import RedisVLMemoryService
-from redisvl_adk.tools import create_vector_search_tool
-from redisvl.utils.vectorize import OpenAITextVectorizer
+from adk_redis import RedisLongTermMemoryService, RedisLongTermMemoryServiceConfig
+from google.adk import Agent
 
-# Initialize memory service
-memory_service = RedisVLMemoryService(
+# Configure the memory service
+config = RedisLongTermMemoryServiceConfig(
     redis_url="redis://localhost:6379",
-    vectorizer=OpenAITextVectorizer(api_key="your-api-key")
+    session_id="my-session",
 )
 
-# Create vector search tool
-vector_search = create_vector_search_tool(
-    index=your_document_index,
-    vectorizer=OpenAITextVectorizer(api_key="your-api-key")
-)
+# Create the memory service
+memory_service = RedisLongTermMemoryService(config=config)
 
-# Create agent
-agent = LlmAgent(
-    model="gemini-2.0-flash-exp",
-    tools=[vector_search]
-)
-
-# Run with memory
-runner = Runner(agent=agent, memory_service=memory_service)
-response = await runner.run(
-    app_name="my_app",
-    user_id="user123",
-    user_message="What are the benefits of Redis?"
+# Use with an ADK agent
+agent = Agent(
+    name="my_agent",
+    model="gemini-2.0-flash",
+    memory_service=memory_service,
 )
 ```
 
-### 2. Semantic Cache for Cost Optimization
+### Session Service
 
 ```python
-from redisvl.extensions.llmcache import SemanticCache
-from redisvl_adk.tools import create_semantic_cache_tool
+from adk_redis import RedisWorkingMemorySessionService, RedisWorkingMemorySessionServiceConfig
 
-# Initialize cache
-cache = SemanticCache(
-    name="llm_cache",
-    redis_url="redis://localhost:6379"
+# Configure the session service
+config = RedisWorkingMemorySessionServiceConfig(
+    redis_url="redis://localhost:6379",
 )
 
-# Create cache tools
-cache_tools = create_semantic_cache_tool(cache)
+# Create the session service
+session_service = RedisWorkingMemorySessionService(config=config)
 
-# Use in agent
-agent = LlmAgent(
-    model="gemini-2.0-flash-exp",
-    tools=cache_tools
+# Use with ADK Runner
+from google.adk import Runner
+
+runner = Runner(
+    agent=agent,
+    session_service=session_service,
 )
 ```
 
-### 3. Multi-Agent Routing
+### Search Tools
 
 ```python
-from redisvl.extensions.router import SemanticRouter, Route
-from redisvl_adk.tools import create_semantic_router_tool
+from adk_redis import RedisVectorSearchTool, RedisVectorQueryConfig
+from redisvl.index import SearchIndex
+from redisvl.utils.vectorize import HFTextVectorizer
 
-# Define routes
-routes = [
-    Route(name="support", utterances=["help", "issue", "problem"]),
-    Route(name="sales", utterances=["pricing", "demo", "purchase"])
-]
+# Create a vectorizer
+vectorizer = HFTextVectorizer(model="sentence-transformers/all-MiniLM-L6-v2")
 
-# Create router
-router = SemanticRouter(
-    name="agent_router",
-    routes=routes,
-    redis_url="redis://localhost:6379"
+# Create a search index (assumes index already exists in Redis)
+index = SearchIndex.from_existing("my_index", redis_url="redis://localhost:6379")
+
+# Configure the search tool
+config = RedisVectorQueryConfig(
+    index=index,
+    vector_field_name="embedding",
+    return_fields=["title", "content"],
+    num_results=5,
 )
 
-# Create routing tool
-router_tool = create_semantic_router_tool(router)
+# Create the search tool
+search_tool = RedisVectorSearchTool(
+    config=config,
+    vectorizer=vectorizer,
+)
+
+# Use with an ADK agent
+agent = Agent(
+    name="search_agent",
+    model="gemini-2.0-flash",
+    tools=[search_tool],
+)
 ```
+
+## Features
+
+### Memory Services
+
+| Service | Description |
+|---------|-------------|
+| `RedisLongTermMemoryService` | Long-term memory using Redis Agent Memory Server with automatic summarization |
+
+### Session Services
+
+| Service | Description |
+|---------|-------------|
+| `RedisWorkingMemorySessionService` | Session management using Redis Working Memory API |
+
+### Search Tools
+
+| Tool | Description |
+|------|-------------|
+| `RedisVectorSearchTool` | Vector similarity search |
+| `RedisHybridSearchTool` | Combined vector + text search |
+| `RedisRangeSearchTool` | Range-based vector search |
+| `RedisTextSearchTool` | Full-text search |
 
 ## Requirements
 
-- Python 3.9+
-- Redis Stack 7.2+ (for vector search)
-- Google ADK
-- RedisVL
+- Python 3.10+
+- Redis Stack (for search tools) or Redis Agent Memory Server (for memory/session services)
+- Google ADK 1.0.0+
 
-## Documentation
+## Development
 
-- [Installation Guide](docs/installation.md)
-- [Quick Start](docs/quickstart.md)
-- [API Reference](docs/api/)
-- [Examples](redisvl_adk/examples/)
-- [Migration Guide](docs/migration_guide.md)
+This project follows [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
+conventions, matching the [ADK-Python core](https://github.com/google/adk-python) project.
 
-## Examples
+```bash
+# Clone the repository
+git clone https://github.com/redis-applied-ai/adk-redis.git
+cd adk-redis
 
-See the [examples directory](redisvl_adk/examples/) for complete working examples:
+# Install development dependencies
+make dev
 
-- [RAG Chatbot](redisvl_adk/examples/rag_chatbot.py)
-- [Semantic Cache Agent](redisvl_adk/examples/semantic_cache_agent.py)
-- [Multi-Agent Router](redisvl_adk/examples/multi_agent_router.py)
+# Run all checks (format, lint, type-check, test)
+make check
 
-## Contributing
+# Individual commands
+make format      # Format code with pyink and isort
+make lint        # Run ruff linter
+make type-check  # Run mypy type checker
+make test        # Run pytest test suite
+```
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed coding style guidelines,
+type hint conventions, and contribution process.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+Apache 2.0 - See [LICENSE](LICENSE) for details.
 
 ## Links
 
-- [RedisVL Documentation](https://docs.redisvl.com)
-- [Google ADK Documentation](https://google.github.io/adk-docs/)
-- [Redis Stack](https://redis.io/docs/stack/)
-- [GitHub Repository](https://github.com/redis-applied-ai/redisvl-adk-agents)
-
-## Support
-
-- [GitHub Issues](https://github.com/redis-applied-ai/redisvl-adk-agents/issues)
-- [Redis Discord](https://discord.gg/redis)
-- [Redis Community](https://redis.io/community/)
+- [GitHub Repository](https://github.com/redis-applied-ai/adk-redis)
+- [Redis Agent Memory Server](https://redis.io/docs/latest/develop/ai/agent-memory-server/)
+- [RedisVL Documentation](https://docs.redisvl.com/)
+- [Google ADK](https://github.com/google/adk-python)
