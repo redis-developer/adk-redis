@@ -1,80 +1,120 @@
 [build-system]
-requires = ["setuptools>=65.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
-name = "redisvl-adk"
-version = "0.1.0"
-description = "Redis Vector Library integration for Google Agent Development Kit (ADK)"
+name = "adk-redis"
+dynamic = ["version"]
+description = "Redis integrations for Google's Agent Development Kit (ADK)"
 readme = "README.md"
-requires-python = ">=3.9"
-license = {text = "MIT"}
+license = "Apache-2.0"
+requires-python = ">=3.10"
 authors = [
-    {name = "Redis Inc.", email = "redis@redis.com"}
+    { name = "Redis Applied AI", email = "applied.ai@redis.com" },
 ]
-keywords = ["redis", "vector", "search", "adk", "agent", "ai", "llm"]
+keywords = [
+    "redis",
+    "adk",
+    "agent",
+    "llm",
+    "vector-search",
+    "memory",
+    "sessions",
+]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
 dependencies = [
-    "redisvl>=0.3.0",
-    "google-adk>=0.1.0",
-    "redis>=5.0.0",
+    "google-adk>=1.0.0",
     "pydantic>=2.0.0",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.0.0",
-    "black>=23.0.0",
-    "isort>=5.12.0",
-    "mypy>=1.0.0",
-    "ruff>=0.1.0",
+# Redis Agent Memory Server integration (long-term memory + working memory sessions)
+memory = [
+    "agent-memory-client>=0.2.0",
 ]
 
-openai = ["openai>=1.0.0"]
-cohere = ["cohere>=4.0.0"]
-huggingface = ["sentence-transformers>=2.0.0"]
+# RedisVL-based search tools
+search = [
+    "redisvl>=0.5.0",
+]
+
+# All Redis integrations
+all = [
+    "adk-redis[memory,search]",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "mypy>=1.8.0",
+    "ruff>=0.3.0",
+    "pyink>=24.3.0",
+    "isort>=5.13.0",
+    "pre-commit>=3.6.0",
+    "fakeredis>=2.20.0",
+]
 
 [project.urls]
-Homepage = "https://github.com/redis-applied-ai/redisvl-adk-agents"
-Documentation = "https://github.com/redis-applied-ai/redisvl-adk-agents/tree/main/docs"
-Repository = "https://github.com/redis-applied-ai/redisvl-adk-agents"
-Issues = "https://github.com/redis-applied-ai/redisvl-adk-agents/issues"
+Homepage = "https://github.com/redis-applied-ai/adk-redis"
+Documentation = "https://github.com/redis-applied-ai/adk-redis#readme"
+Repository = "https://github.com/redis-applied-ai/adk-redis"
+Issues = "https://github.com/redis-applied-ai/adk-redis/issues"
+Changelog = "https://github.com/redis-applied-ai/adk-redis/blob/main/CHANGELOG.md"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["redisvl_adk*"]
+[tool.hatch.version]
+path = "src/adk_redis/_version.py"
 
-[tool.black]
-line-length = 88
-target-version = ['py39', 'py310', 'py311', 'py312']
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+]
 
-[tool.isort]
-profile = "black"
-line_length = 88
-
-[tool.mypy]
-python_version = "3.9"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
+[tool.hatch.build.targets.wheel]
+packages = ["src/adk_redis"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-v --tb=short"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+disable_error_code = ["import-not-found", "import-untyped", "unused-ignore"]
+plugins = ["pydantic.mypy"]
+
+[tool.pyink]
+line-length = 80
+target-version = ["py310", "py311", "py312"]
+pyink-indentation = 2
+pyink-use-majority-quotes = true
+
+[tool.isort]
+profile = "google"
+line_length = 80
+force_single_line = true
+single_line_exclusions = ["typing"]
+skip_glob = ["*/__init__.py"]
+
+[tool.ruff]
+line-length = 80
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501", "E111", "E114", "E117"]
