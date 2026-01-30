@@ -83,3 +83,7 @@ Thumbs.db
 
 # Personal documentation
 nitin_docs/
+
+# Example-specific ignores
+examples/travel_agent_memory/debug/
+examples/travel_agent_memory/docs/

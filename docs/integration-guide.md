@@ -164,7 +164,7 @@ runner = Runner(
 ### Memory Example
 
 ```bash
-cd examples/redis_memory
+cd examples/simple_redis_memory
 pip install "adk-redis[web]"
 
 # Set environment

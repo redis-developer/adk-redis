@@ -258,10 +258,11 @@ Four specialized search tools for different RAG use cases:
 
 Complete working examples with ADK web runner integration:
 
-| Example | Description | Features |
-|---------|-------------|----------|
-| **[redis_memory](examples/redis_memory/)** | Two-tier memory architecture | Working memory, long-term memory, auto-summarization, semantic search |
-| **[redis_search_tools](examples/redis_search_tools/)** | RAG with search tools | Vector search, hybrid search, range search, text search |
+| Example | Description                             | Features |
+|---------|-----------------------------------------|----------|
+| **[redis_memory](examples/simple_redis_memory/)** | Agent with two-tier memory architecture | Working memory, long-term memory, auto-summarization, semantic search |
+| **[redis_search_tools](examples/redis_search_tools/)** | RAG with search tools                   | Vector search, hybrid search, range search, text search |
+| **[travel_agent_memory](examples/travel_agent_memory/)** | Travel agent with websearch and memory  | Hybrid memory (tools + callbacks), web search with caching, calendar export, itinerary planning, multi-user support |
 
 Each example includes:
 - Complete runnable code
