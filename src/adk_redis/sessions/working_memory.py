@@ -112,9 +112,13 @@ class RedisWorkingMemorySessionService(BaseSessionService):
     """
     self._config = config or RedisWorkingMemorySessionServiceConfig()
 
-  @cached_property
-  def _client(self) -> Any:
-    """Lazily initialize and return the MemoryAPIClient."""
+  def _get_client(self) -> Any:
+    """Get a MemoryAPIClient instance.
+
+    Note: We create a new client for each call instead of caching it because
+    the ADK Runner creates a new event loop for each run() call, and cached
+    async clients get tied to the first event loop and fail when it closes.
+    """
     try:
       from agent_memory_client import MemoryAPIClient
       from agent_memory_client import MemoryClientConfig
@@ -225,7 +229,8 @@ class RedisWorkingMemorySessionService(BaseSessionService):
     )
 
     # Use get_or_create to prevent accidental overwrites
-    created, working_memory = await self._client.get_or_create_working_memory(
+    client = self._get_client()
+    created, working_memory = await client.get_or_create_working_memory(
         session_id=session_id,
         namespace=namespace,
         user_id=user_id,
@@ -249,7 +254,7 @@ class RedisWorkingMemorySessionService(BaseSessionService):
         working_memory.data = state
       if self._config.session_ttl_seconds:
         working_memory.ttl_seconds = self._config.session_ttl_seconds
-      await self._client.put_working_memory(
+      await client.put_working_memory(
           session_id=session_id,
           memory=working_memory,
           user_id=user_id,
@@ -281,6 +286,11 @@ class RedisWorkingMemorySessionService(BaseSessionService):
     to determine if it exists. Passes model_name and context_window_max to
     enable automatic context summarization when token limit is exceeded.
 
+    NOTE: For ADK Runner compatibility, this method now returns the session
+    even if it was just created. The Runner expects get_session to either
+    return an existing session OR return a newly created empty session.
+    Returning None causes the Runner to fail with "Session not found".
+
     Args:
         app_name: Application name.
         user_id: User identifier.
@@ -288,14 +298,15 @@ class RedisWorkingMemorySessionService(BaseSessionService):
         config: Optional configuration for filtering events.
 
     Returns:
-        The Session if found, None otherwise.
+        The Session (existing or newly created).
     """
     from agent_memory_client.exceptions import MemoryNotFoundError
 
     try:
       namespace = self._get_namespace(app_name)
       # Use get_or_create to avoid deprecated get_working_memory
-      created, response = await self._client.get_or_create_working_memory(
+      client = self._get_client()
+      created, response = await client.get_or_create_working_memory(
           session_id=session_id,
           namespace=namespace,
           user_id=user_id,
@@ -303,16 +314,8 @@ class RedisWorkingMemorySessionService(BaseSessionService):
           context_window_max=self._config.context_window_max,
       )
 
-      # If session was just created, it means it didn't exist before
-      # Delete it and return None to maintain get_session semantics
-      if created:
-        await self._client.delete_working_memory(
-            session_id=session_id,
-            namespace=namespace,
-            user_id=user_id,
-        )
-        return None
-
+      # Return the session whether it was just created or already existed
+      # This is required for ADK Runner compatibility
       session = self._working_memory_response_to_session(
           response, app_name, user_id
       )
@@ -358,7 +361,8 @@ class RedisWorkingMemorySessionService(BaseSessionService):
 
       # SDK method: list_sessions returns SessionListResponse
       # with sessions: list[str] (session IDs only)
-      response = await self._client.list_sessions(
+      client = self._get_client()
+      response = await client.list_sessions(
           namespace=namespace,
           user_id=user_id,
       )
@@ -394,7 +398,8 @@ class RedisWorkingMemorySessionService(BaseSessionService):
     """
     try:
       namespace = self._get_namespace(app_name)
-      await self._client.delete_working_memory(
+      client = self._get_client()
+      await client.delete_working_memory(
           session_id=session_id,
           namespace=namespace,
           user_id=user_id,
@@ -424,7 +429,8 @@ class RedisWorkingMemorySessionService(BaseSessionService):
       message = self._event_to_message(event)
       if message:
         namespace = self._get_namespace(session.app_name)
-        await self._client.append_messages_to_working_memory(
+        client = self._get_client()
+        await client.append_messages_to_working_memory(
             session_id=session.id,
             messages=[message],
             namespace=namespace,
@@ -438,8 +444,5 @@ class RedisWorkingMemorySessionService(BaseSessionService):
 
   async def close(self) -> None:
     """Close the session service and cleanup resources."""
-    if "_client" in self.__dict__:
-      # Check for initialized client without triggering cached_property
-      await self._client.close()
-      # Clear the cached property
-      del self._client
+    # No longer caching client, so nothing to close
+    pass

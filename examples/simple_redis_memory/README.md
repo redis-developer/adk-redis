@@ -83,7 +83,7 @@ REDIS_MEMORY_RECENCY_BOOST=true
 ## Usage
 
 ```bash
-cd examples/redis_memory
+cd examples/simple_redis_memory.py
 python main.py
 ```
 

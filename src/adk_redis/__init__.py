@@ -28,6 +28,13 @@ Search Tools:
     - RedisRangeSearchTool: Distance threshold search
     - RedisTextSearchTool: Full-text BM25 search
 
+Memory Tools:
+    - MemoryPromptTool: Enrich prompts with relevant memories
+    - SearchMemoryTool: Search long-term memories
+    - CreateMemoryTool: Store new memories
+    - DeleteMemoryTool: Delete memories by ID
+    - UpdateMemoryTool: Update existing memories
+
 Example:
     ```python
     from adk_redis import (
@@ -70,6 +77,13 @@ from adk_redis.tools import RedisTextSearchTool
 from adk_redis.tools import RedisVectorQueryConfig
 from adk_redis.tools import RedisVectorSearchTool
 from adk_redis.tools import VectorizedSearchTool
+# Memory tools
+from adk_redis.tools import CreateMemoryTool
+from adk_redis.tools import DeleteMemoryTool
+from adk_redis.tools import MemoryPromptTool
+from adk_redis.tools import MemoryToolConfig
+from adk_redis.tools import SearchMemoryTool
+from adk_redis.tools import UpdateMemoryTool
 
 __all__ = [
     # Version
@@ -94,4 +108,11 @@ __all__ = [
     "RedisAggregatedHybridQueryConfig",
     "RedisRangeQueryConfig",
     "RedisTextQueryConfig",
+    # Memory tools
+    "MemoryPromptTool",
+    "SearchMemoryTool",
+    "CreateMemoryTool",
+    "DeleteMemoryTool",
+    "UpdateMemoryTool",
+    "MemoryToolConfig",
 ]

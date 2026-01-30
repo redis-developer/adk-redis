@@ -14,6 +14,12 @@
 
 """Redis tools for ADK."""
 
+from adk_redis.tools.memory import CreateMemoryTool
+from adk_redis.tools.memory import DeleteMemoryTool
+from adk_redis.tools.memory import MemoryPromptTool
+from adk_redis.tools.memory import MemoryToolConfig
+from adk_redis.tools.memory import SearchMemoryTool
+from adk_redis.tools.memory import UpdateMemoryTool
 from adk_redis.tools.search import BaseRedisSearchTool
 from adk_redis.tools.search import RedisAggregatedHybridQueryConfig
 from adk_redis.tools.search import RedisHybridQueryConfig
@@ -35,10 +41,17 @@ __all__ = [
     "RedisHybridSearchTool",
     "RedisRangeSearchTool",
     "RedisTextSearchTool",
+    # Memory tools
+    "MemoryPromptTool",
+    "SearchMemoryTool",
+    "CreateMemoryTool",
+    "DeleteMemoryTool",
+    "UpdateMemoryTool",
     # Config classes
     "RedisVectorQueryConfig",
     "RedisHybridQueryConfig",
     "RedisAggregatedHybridQueryConfig",
     "RedisRangeQueryConfig",
     "RedisTextQueryConfig",
+    "MemoryToolConfig",
 ]
