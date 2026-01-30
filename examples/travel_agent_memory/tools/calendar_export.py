@@ -29,7 +29,7 @@ from google.adk.tools import BaseTool
 
 class CalendarExportTool(BaseTool):
     """Tool for exporting travel itineraries to ICS calendar format.
-    
+
     Generates ICS files that can be imported into:
     - Google Calendar
     - Microsoft Outlook
@@ -39,7 +39,7 @@ class CalendarExportTool(BaseTool):
 
     def __init__(self, **kwargs: Any):
         """Initialize the calendar export tool.
-        
+
         Args:
             **kwargs: Additional keyword arguments passed to BaseTool
         """
@@ -99,17 +99,17 @@ class CalendarExportTool(BaseTool):
 
     async def run(self, events: list[dict[str, str]]) -> dict[str, Any]:
         """Generate ICS calendar file from travel events.
-        
+
         Args:
             events: List of event dictionaries with title, start_date, end_date, location, description
-            
+
         Returns:
             Dictionary with success status and ICS file content
         """
         try:
             # Generate ICS content
             ics_content = self._generate_ics(events)
-            
+
             return {
                 "success": True,
                 "ics_content": ics_content,
@@ -130,10 +130,10 @@ class CalendarExportTool(BaseTool):
 
     def _generate_ics(self, events: list[dict[str, str]]) -> str:
         """Generate ICS file content from events.
-        
+
         Args:
             events: List of event dictionaries
-            
+
         Returns:
             ICS file content as string
         """
@@ -144,11 +144,91 @@ class CalendarExportTool(BaseTool):
             "CALSCALE:GREGORIAN",
             "METHOD:PUBLISH",
         ]
-        
+
         for event in events:
             lines.extend(self._generate_event(event))
-        
+
         lines.append("END:VCALENDAR")
-        
+
         return "\n".join(lines)
+
+    def _generate_event(self, event: dict[str, str]) -> list[str]:
+        """Generate ICS VEVENT block for a single event.
+
+        Args:
+            event: Event dictionary with title, start_date, end_date, location, description
+
+        Returns:
+            List of ICS lines for this event
+        """
+        # Generate unique ID for this event
+        uid = str(uuid4())
+
+        # Parse dates and convert to ICS format (YYYYMMDDTHHMMSS)
+        start_dt = self._parse_datetime(event["start_date"])
+        end_dt = self._parse_datetime(event["end_date"])
+
+        # Current timestamp for DTSTAMP
+        now = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+
+        lines = [
+            "BEGIN:VEVENT",
+            f"UID:{uid}",
+            f"DTSTAMP:{now}",
+            f"DTSTART:{start_dt}",
+            f"DTEND:{end_dt}",
+            f"SUMMARY:{self._escape_text(event['title'])}",
+        ]
+
+        # Add optional fields
+        if event.get("location"):
+            lines.append(f"LOCATION:{self._escape_text(event['location'])}")
+
+        if event.get("description"):
+            lines.append(f"DESCRIPTION:{self._escape_text(event['description'])}")
+
+        lines.append("END:VEVENT")
+
+        return lines
+
+    def _parse_datetime(self, dt_string: str) -> str:
+        """Parse ISO 8601 datetime string to ICS format.
+
+        Args:
+            dt_string: ISO 8601 datetime string (e.g., '2026-03-15T10:00:00')
+
+        Returns:
+            ICS formatted datetime (e.g., '20260315T100000')
+        """
+        # Try parsing with timezone info first
+        for fmt in [
+            "%Y-%m-%dT%H:%M:%S%z",  # With timezone
+            "%Y-%m-%dT%H:%M:%S",     # Without timezone
+            "%Y-%m-%d",              # Date only
+        ]:
+            try:
+                dt = datetime.strptime(dt_string, fmt)
+                return dt.strftime("%Y%m%dT%H%M%S")
+            except ValueError:
+                continue
+
+        # Fallback: return as-is if parsing fails
+        return dt_string.replace("-", "").replace(":", "")
+
+    def _escape_text(self, text: str) -> str:
+        """Escape special characters for ICS format.
+
+        Args:
+            text: Text to escape
+
+        Returns:
+            Escaped text safe for ICS format
+        """
+        # ICS requires escaping of special characters
+        text = text.replace("\\", "\\\\")  # Backslash
+        text = text.replace(";", "\\;")    # Semicolon
+        text = text.replace(",", "\\,")    # Comma
+        text = text.replace("\n", "\\n")   # Newline
+
+        return text
 

@@ -1,0 +1,178 @@
+{
+  "eval_set_id": "travel_agent_basic_functionality",
+  "name": "Travel Agent Basic Functionality Tests",
+  "description": "Unit tests for core travel agent capabilities: memory, web search, and calendar export",
+  "eval_cases": [
+    {
+      "eval_id": "test_memory_creation",
+      "conversation": [
+        {
+          "invocation_id": "mem-001",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Hi, I'm Sarah. I prefer vegetarian food and mid-range hotels."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Nice to meet you, Sarah! I've noted your preferences for vegetarian food and mid-range hotels. I'll remember these for future trip planning. How can I help you plan your next trip?"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "create_memory",
+                "args": {
+                  "text": "User prefers vegetarian food"
+                }
+              },
+              {
+                "name": "create_memory",
+                "args": {
+                  "text": "User prefers mid-range hotels (3-4 star)"
+                }
+              }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "travel_agent",
+        "user_id": "sarah_test",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "test_memory_recall",
+      "conversation": [
+        {
+          "invocation_id": "mem-002-setup",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Hi, I'm John. I love luxury hotels and business class flights."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Welcome, John! I've saved your preferences for luxury hotels and business class flights."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "create_memory",
+                "args": {
+                  "text": "User prefers luxury hotels"
+                }
+              },
+              {
+                "name": "create_memory",
+                "args": {
+                  "text": "User prefers business class flights"
+                }
+              }
+            ],
+            "intermediate_responses": []
+          }
+        },
+        {
+          "invocation_id": "mem-002-recall",
+          "user_content": {
+            "parts": [
+              {
+                "text": "I want to plan a trip to Paris."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Great choice! Based on your preferences, I'll look for luxury hotels in Paris and business class flight options. Let me help you plan this trip."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "search_memory",
+                "args": {
+                  "query": "user travel preferences"
+                }
+              }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "travel_agent",
+        "user_id": "john_test",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "test_calendar_export",
+      "conversation": [
+        {
+          "invocation_id": "cal-001",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Create a calendar event for my flight to Tokyo on March 15, 2026 at 10:00 AM, arriving at 2:00 PM."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "I've created a calendar event for your Tokyo flight. Here's the ICS content you can import into your calendar app"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "export_to_calendar",
+                "args": {
+                  "events": [
+                    {
+                      "title": "Flight to Tokyo",
+                      "start_date": "2026-03-15T10:00:00",
+                      "end_date": "2026-03-15T14:00:00",
+                      "location": "Tokyo",
+                      "description": "Flight to Tokyo"
+                    }
+                  ]
+                }
+              }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "travel_agent",
+        "user_id": "calendar_test",
+        "state": {}
+      }
+    }
+  ]
+}
+

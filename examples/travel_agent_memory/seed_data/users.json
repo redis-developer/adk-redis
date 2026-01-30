@@ -1,12 +1,26 @@
 {
+   "nitin": {
+    "name": "Nitin",
+    "preferences": [
+      "Comfort travel - middle tier (not luxury, not budget)",
+      "Vegetarian diet - needs vegetarian restaurant options",
+      "Extra leg room on flights (premium economy or exit row)",
+      "Prefers hotels with good amenities",
+      "Enjoys technology and innovation hubs",
+      "Interested in local food markets and sports",
+      "Interested in hiking, outdoor activities, and nature",
+      "Prefers destinations with good public transportation",
+      "Likes hotels with fitness centers and healthy breakfast options",
+      "Enjoys traveling to new places"
+    ]
+  },
   "tyler": {
-    "name": "Tyler Chen",
+    "name": "Tyler",
     "preferences": [
       "Prefers luxury hotels with spa facilities",
       "Business class flights preferred",
       "Enjoys fine dining and Michelin-starred restaurants",
       "Interested in art museums and cultural experiences",
-      "Budget: $5000-10000 per trip",
       "Frequent traveler to Europe and Asia",
       "Prefers direct flights when possible",
       "Enjoys wine tasting and culinary tours",
@@ -14,31 +28,14 @@
       "Appreciates concierge services and personalized attention"
     ]
   },
-  "nitin": {
-    "name": "Nitin Kanukolanu",
-    "preferences": [
-      "Comfort travel - middle tier (not luxury, not budget)",
-      "Vegetarian diet - needs vegetarian restaurant options",
-      "Extra leg room on flights (premium economy or exit row)",
-      "Prefers 3-4 star hotels with good amenities",
-      "Budget: $2500-4000 per trip",
-      "Enjoys technology and innovation hubs",
-      "Interested in local food markets and cooking classes",
-      "Prefers destinations with good public transportation",
-      "Likes hotels with fitness centers and healthy breakfast options",
-      "Appreciates destinations with vegetarian-friendly cuisine (India, Thailand, Mediterranean)"
-    ]
-  },
-  "arsene": {
-    "name": "Arsene Wenger",
+  "vishal": {
+    "name": "Arsene Vishal Wenger",
     "preferences": [
       "Budget-conscious traveler",
-      "Economy class flights",
       "Prefers hostels or budget hotels (2-3 star)",
       "Budget: $800-1500 per trip",
-      "Enjoys backpacking and adventure travel",
-      "Interested in hiking, outdoor activities, and nature",
-      "Prefers street food and local eateries over restaurants",
+      "Enjoys adventure travel",
+      "Prefers only expensive restaurants",
       "Likes destinations in Southeast Asia and South America",
       "Enjoys meeting other travelers in hostel common areas",
       "Prefers overnight buses/trains to save on accommodation",

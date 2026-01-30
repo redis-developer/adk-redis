@@ -1,159 +1,477 @@
-# Travel Agent Memory Comparison Examples
+# Travel Agent with Memory
 
-This directory contains two implementations of a travel planning agent that demonstrate different approaches to memory management with Redis Agent Memory Server and ADK.
+A comprehensive travel planning agent demonstrating ADK-Redis integration with Redis Agent Memory Server.
 
 ## Overview
 
-Both examples implement the same travel agent functionality but use different memory approaches:
+This example showcases a production-ready travel agent with:
+- **Two-tier memory architecture** - Working memory + long-term memory via Agent Memory Server
+- **Hybrid memory approach** - Both explicit tools (user-controlled) and automatic callbacks (framework-controlled)
+- **Web search with caching** - Tavily search with Redis-backed result caching
+- **Calendar integration** - Export itineraries to ICS format
+- **Multi-day trip planning** - Structured itinerary generation
+- **Multi-user support** - Memory isolation per user
 
-1. **WITH Tools** (`travel_agent_with_tools.py`) - Explicit LLM-controlled memory operations
-2. **WITHOUT Tools** (`travel_agent_without_tools.py`) - Automatic service-based memory operations
-
-## Examples
-
-### 1. Travel Agent WITH Memory Tools (Explicit Control)
-
-**File:** `travel_agent_with_tools.py`
-
-The LLM explicitly controls memory operations through tool calls:
-- `MemoryPromptTool` - Enrich prompts with relevant memories
-- `SearchMemoryTool` - Search for stored preferences
-- `CreateMemoryTool` - Store new preferences
-- `UpdateMemoryTool` - Modify existing preferences
-- `DeleteMemoryTool` - Remove preferences
-
-**Characteristics:**
-- User has direct control ("remember this", "forget that")
-- Agent explicitly tells user when storing/updating/deleting
-- More transparent - user knows what's being remembered
-- Better for privacy-sensitive applications
-- Requires more LLM reasoning
-
-**Example interaction:**
-```
-USER: I prefer window seats on flights.
-AGENT: I'll remember that you prefer window seats. ✓ Stored your seating preference.
-
-USER: What do you remember about me?
-AGENT: Let me check... You prefer window seats on flights and you're vegetarian.
-```
-
-### 2. Travel Agent WITHOUT Memory Tools (Automatic)
-
-**File:** `travel_agent_without_tools.py`
-
-Memory operations happen automatically via ADK framework callbacks:
-- `RedisLongTermMemoryService` - Automatic memory extraction and retrieval
-- `RedisWorkingMemorySessionService` - Session management
-- `before_agent_callback` - Retrieves relevant memories before processing
-- `after_agent_callback` - Extracts and stores memories after processing
-
-**Characteristics:**
-- Seamless - no explicit memory commands needed
-- Natural conversation flow
-- Agent focuses on conversation, not memory management
-- Better for chatbots and customer service
-- Less user control over memory
-
-**Example interaction:**
-```
-USER: I prefer window seats on flights.
-AGENT: Got it! I'll keep that in mind for future flight recommendations.
-
-USER: What do you remember about me?
-AGENT: Based on our conversation, you prefer window seats and you're vegetarian.
-```
-
-## Running the Examples
+## Quick Start
 
 ### Prerequisites
 
-1. **Start Redis Agent Memory Server:**
+1. **Start Agent Memory Server:**
    ```bash
-   docker run -p 8000:8000 -p 6379:6379 redis/agent-memory-server:latest
+   docker run -p 8088:8088 -p 6379:6379 redis/agent-memory-server:latest
    ```
 
-2. **Set environment variables:**
+2. **Set up environment variables:**
    ```bash
-   export MEMORY_SERVER_URL="http://localhost:8000"
-   export GOOGLE_API_KEY="your-api-key"
+   cd examples/travel_agent_memory
+   cp .env.example .env
+   # Edit .env and add your GOOGLE_API_KEY and TAVILY_API_KEY
    ```
 
-### Run Individual Examples
+3. **(Optional) Seed demo user profiles:**
+   ```bash
+   uv run python seed_data/seed_script.py
+   ```
 
-**WITH Tools:**
+   This creates 3 demo users:
+   - **tyler** - Luxury traveler (business class, 5-star hotels, $5k-10k budget)
+   - **nitin** - Comfort traveler (premium economy, 3-4 star hotels, vegetarian, $2.5k-4k budget)
+   - **arsene** - Budget traveler (economy class, hostels, $800-1.5k budget)
+
+### Running the Agent
+
+**Option 1: ADK Web Runner (Recommended)**
+
 ```bash
-python travel_agent_with_tools.py
+# From the repository root
+cd examples/travel_agent_memory
+uv run adk web .
 ```
 
-**WITHOUT Tools:**
+Or specify the directory directly:
 ```bash
-python travel_agent_without_tools.py
+# From anywhere
+uv run adk web examples/travel_agent_memory
 ```
 
-### Run Comparison
+Then open **http://localhost:8000** in your browser.
 
-Run both examples and see side-by-side comparison:
-```bash
-python compare_journey.py
+**Web UI Features:**
+- Chat interface with message history
+- Events panel to inspect function calls
+- Trace button for latency visualization
+- Hot reload on code changes
+
+**Option 2: Programmatic Usage**
+
+```python
+from travel_agent import root_agent
+from google.adk.runners import Runner
+
+runner = Runner(agent=root_agent)
+
+# Run a conversation
+response = runner.run("Hi, I need help planning a trip to Tokyo")
+print(response.text)
 ```
 
-This will:
-- Run both approaches with the same conversation
-- Show side-by-side responses
-- Highlight key differences
-- Generate detailed logs (`comparison_with_tools.json`, `comparison_without_tools.json`)
+---
 
-## Conversation Journey
+## Features
 
-The examples follow a realistic travel planning journey:
+### 1. Hybrid Memory Architecture
 
-1. **Initial Preferences** - User shares seat, dietary, hotel preferences
-2. **Memory Recall** - User asks what the agent remembers
-3. **Preference Update** - User changes seating preference
-4. **Additional Preferences** - User adds TSA PreCheck, flight preferences
-5. **Personalized Recommendations** - Agent suggests flights/hotels using memories
-6. **Memory Deletion** - User asks to forget TSA PreCheck
-7. **Complex Planning** - Multi-city trip planning with memory context
+This agent uses **both** explicit and automatic memory approaches:
 
-## Key Differences
+**Explicit Memory Tools (User-Controlled):**
+- `search_memory` - Search for stored preferences
+- `create_memory` - Store new preferences
+- `update_memory` - Modify existing preferences
+- `delete_memory` - Remove preferences
 
-| Aspect | WITH Tools | WITHOUT Tools |
-|--------|-----------|---------------|
-| **Control** | Explicit user control | Automatic framework control |
-| **Transparency** | Agent tells user about memory ops | Memory ops are invisible |
-| **User Experience** | "Remember this", "Forget that" | Natural conversation |
-| **Privacy** | User manages their data | Framework manages data |
-| **Complexity** | More LLM reasoning required | Simpler agent logic |
-| **Best For** | Personal assistants, note-taking | Chatbots, customer service |
+**Automatic Memory Callbacks (Framework-Controlled):**
+- `load_memory` - Automatically loads relevant context before processing
+- `preload_memory` - Enriches responses with user history
+- `after_agent` callback - Extracts and stores memories after each turn
 
-## When to Use Each Approach
+**Why both?**
+- Explicit tools give users control ("remember this", "forget that")
+- Automatic callbacks ensure nothing is missed
+- Best of both worlds: transparency + seamlessness
 
-### Use WITH Tools (Explicit) when:
-- Users need direct control over what's remembered
-- Transparency is important (GDPR, privacy concerns)
-- Memory operations are part of the user experience
-- Building personal assistants, note-taking apps
-- Users explicitly manage their data
+### 2. Web Search with Redis Caching
 
-### Use WITHOUT Tools (Automatic) when:
-- Memory should be seamless and invisible
-- Natural conversation flow is priority
-- Building chatbots, customer service agents
-- Memory is a background feature
-- Simplicity over control
+- Tavily search integration for real-time travel information
+- Results cached in Redis (1 hour TTL)
+- Reduces API calls and improves response time
+- Automatically disabled if `TAVILY_API_KEY` not set
 
-## Files
+### 3. Calendar Export & Itinerary Planning
 
-- `travel_scenarios.py` - Shared conversation scenarios
-- `travel_agent_with_tools.py` - Tool-based implementation
-- `travel_agent_without_tools.py` - Service-based implementation
-- `compare_journey.py` - Comparison script
-- `README.md` - This file
+- `plan_itinerary` - Create structured multi-day trip plans
+- `export_to_calendar` - Generate ICS files for calendar import
+- Organized by day and time with emoji categories
+- Compatible with Google Calendar, Outlook, Apple Calendar
+
+### 4. Multi-User Support
+
+- Memory isolated per user via `user_id`
+- Demo users: tyler (luxury), nitin (comfort), arsene (budget)
+- Persistent preferences across sessions
+
+---
+
+## How It Works
+
+### First Interaction
+
+The agent will ask for your name/user_id on first interaction:
+
+```
+USER: "Hi, I need help planning a trip"
+
+AGENT: "Hello! I'd be happy to help you plan your trip. To provide
+       personalized recommendations and remember your preferences for
+       future conversations, may I ask your name or a preferred identifier?"
+
+USER: "I'm Sarah"
+
+AGENT: "Great to meet you, Sarah! Let me search my memory to see if
+       we've talked before... I don't have any previous conversations
+       with you. How can I help you plan your trip today?"
+```
+
+### Using Demo Users
+
+If you seeded the demo users, you can use their profiles:
+
+```
+USER: "Hi, I'm Nitin"
+
+AGENT: "Welcome back, Nitin! I remember you prefer premium economy flights,
+       3-4 star hotels, and vegetarian meals. How can I help you today?"
+```
+
+### Memory Persistence
+
+All preferences are stored in Agent Memory Server and persist across sessions:
+
+```
+# Session 1
+USER: "I'm vegetarian"
+AGENT: "I'll remember that you're vegetarian for future recommendations."
+
+# Session 2 (days later)
+USER: "Recommend restaurants in Bangkok"
+AGENT: "Based on your vegetarian diet, I recommend..."
+```
+
+---
+
+## Example Interactions
+
+### 1. Memory Management (Explicit Tools)
+
+```
+USER: "I'm vegetarian and prefer window seats"
+
+AGENT: "I'll remember that! ✓ Stored your dietary preference (vegetarian)
+       ✓ Stored your seating preference (window seats)"
+
+USER: "What do you remember about me?"
+
+AGENT: "Let me check... You're vegetarian and prefer window seats on flights."
+
+USER: "Actually, forget the seating preference"
+
+AGENT: "✓ Deleted your seating preference. I'll no longer remember that."
+```
+
+### 2. Web Search with Redis Caching
+
+```
+USER: "What are the best vegetarian restaurants in Bangkok?"
+
+AGENT: [Uses web_search tool - first time]
+       "Searching the web for current recommendations...
+
+       Based on recent reviews, here are top vegetarian restaurants in Bangkok:
+       1. Broccoli Revolution - Modern plant-based cuisine
+       2. May Veggie Home - Traditional Thai vegetarian
+       3. Veganerie Concept - Vegan comfort food
+
+       [Result cached for 1 hour]"
+
+USER: "What about vegetarian restaurants in Bangkok?" [Asked 10 minutes later]
+
+AGENT: [Uses cached result - instant response]
+       "From my recent search: Broccoli Revolution, May Veggie Home,
+       and Veganerie Concept are highly rated..."
+```
+
+### 3. Multi-Day Itinerary Planning
+
+```
+USER: "Plan a 3-day trip to Paris"
+
+AGENT: [Uses plan_itinerary tool]
+       "Here's your 3-day Paris itinerary:
+
+       Day 1: Arrival & Eiffel Tower
+       • 10:00 AM - Eiffel Tower visit
+       • 1:00 PM - Lunch at Le Jules Verne (vegetarian options available)
+       • 3:00 PM - Seine River cruise
+
+       Day 2: Museums & Culture
+       • 9:00 AM - Louvre Museum
+       • 12:30 PM - Lunch at Wild & The Moon (plant-based)
+       • 3:00 PM - Musée d'Orsay
+
+       Day 3: Montmartre & Departure
+       • 10:00 AM - Sacré-Cœur Basilica
+       • 12:00 PM - Lunch at Hank Vegan Burger
+       • 2:00 PM - Shopping at Le Marais
+
+       Would you like me to export this to your calendar?"
+```
+
+### 4. Calendar Export (ICS Format)
+
+```
+USER: "Yes, export it to my calendar"
+
+AGENT: [Uses export_to_calendar tool]
+       "✓ Calendar export created with 9 events!
+
+       Here's the ICS content (copy and save as .ics file):
+
+       BEGIN:VCALENDAR
+       VERSION:2.0
+       PRODID:-//ADK-Redis Travel Agent//EN
+       BEGIN:VEVENT
+       SUMMARY:Eiffel Tower visit
+       DTSTART:20260215T100000
+       DTEND:20260215T120000
+       LOCATION:Eiffel Tower, Paris
+       ...
+       END:VEVENT
+       ...
+       END:VCALENDAR
+
+       To import:
+       • Google Calendar: Settings → Import & Export → Import
+       • Outlook: File → Open & Export → Import/Export
+       • Apple Calendar: File → Import"
+```
+
+### 5. Multi-User Support
+
+```
+# User: nitin (vegetarian, premium economy, $2.5k-4k budget)
+USER: "Hi, I'm Nitin"
+AGENT: "Welcome back, Nitin! I remember you prefer premium economy flights,
+       3-4 star hotels, and vegetarian meals. How can I help you today?"
+
+# User: tyler (luxury, business class, $5k-10k budget)
+USER: "Hi, I'm tyler"
+AGENT: "Welcome back, Tyler! I remember you prefer business class flights,
+       5-star hotels with spa facilities. Planning another luxury trip?"
+
+# User: arsene (budget, economy, $800-1.5k budget)
+USER: "Hi, I'm arsene"
+AGENT: "Hey Arsene! I know you're into budget travel, hostels, and backpacking.
+       What adventure are you planning next?"
+```
+
+### 6. Hybrid Memory (Automatic + Explicit)
+
+```
+# Automatic memory (via callbacks)
+USER: "I'm planning a trip to Tokyo in March"
+
+AGENT: "Tokyo in March is beautiful with cherry blossoms! What would you like to know?"
+       [after_agent callback automatically stores: trip to Tokyo, March timing]
+
+# Later session - automatic recall
+USER: "What was I planning?"
+
+AGENT: [preload_memory callback loads context]
+       "You were planning a trip to Tokyo in March. Have you made any decisions?"
+
+# Explicit memory management
+USER: "Remember I need wheelchair accessible hotels"
+
+AGENT: [Uses create_memory tool explicitly]
+       "✓ Stored: Requires wheelchair accessible accommodations.
+       I'll keep this in mind for all future hotel recommendations."
+```
+
+---
+
+## Architecture
+
+### Memory Flow
+
+```
+User Message
+    ↓
+[preload_memory] ← Loads relevant memories from Agent Memory Server
+    ↓
+[Agent Processing] ← Uses explicit memory tools if needed
+    ↓
+Agent Response
+    ↓
+[after_agent callback] ← Extracts and stores new memories
+```
+
+### Tools Available
+
+**Memory Tools (8 total):**
+1. `search_memory` - Search stored preferences
+2. `create_memory` - Store new information
+3. `update_memory` - Modify existing memories
+4. `delete_memory` - Remove memories
+5. `preload_memory` - Auto-load context (framework)
+6. `load_memory` - Load specific memories (framework)
+7. `export_to_calendar` - Generate ICS files
+8. `plan_itinerary` - Create structured trip plans
+
+**Optional:**
+9. `web_search` - Tavily search (if TAVILY_API_KEY set)
+
+### File Structure
+
+```
+examples/travel_agent_memory/
+├── README.md                    # This file (comprehensive guide)
+│
+├── travel_agent/                # Main agent package
+│   ├── __init__.py              # Exports root_agent
+│   └── agent.py                 # Agent definition with all tools
+│
+├── tools/                       # Custom tools
+│   ├── __init__.py
+│   ├── tavily_search.py         # Web search with Redis caching
+│   ├── calendar_export.py       # ICS calendar generation
+│   └── itinerary_planner.py     # Multi-day trip planning
+│
+├── seed_data/                   # Demo user profiles
+│   ├── users.json               # Tyler, Nitin, Arsene profiles
+│   └── seed_script.py           # Script to populate Agent Memory Server
+│
+├── evaluation/                  # Testing framework
+│   ├── travel_agent_eval.test.json  # Test cases
+│   ├── test_config.json             # Scoring config
+│   └── README.md                    # Eval documentation
+│
+├── .env.example                 # Environment template
+└── .env                         # Your local environment (gitignored)
+```
+
+---
+
+## Testing & Evaluation
+
+### Run Evaluations
+
+**Via Web UI:**
+1. Start `uv run adk web .`
+2. Navigate to "Evaluate" tab
+3. Select test file and run
+
+**Via CLI:**
+```bash
+uv run adk eval evaluation/travel_agent_eval.test.json
+```
+
+**Via pytest:**
+```bash
+uv run pytest evaluation/travel_agent_eval.test.json -v
+```
+
+The evaluation framework includes test cases for:
+- Memory management (create, search, update, delete)
+- Trip planning with itinerary generation
+- Calendar export functionality
+
+---
+
+## Demo Users
+
+If you run the seed script, you get 3 pre-configured users:
+
+| User | Style | Preferences | Budget |
+|------|-------|-------------|--------|
+| **tyler** | Luxury | Business class, 5-star hotels, spa | $5k-10k |
+| **nitin** | Comfort | Premium economy, 3-4 star, vegetarian | $2.5k-4k |
+| **arsene** | Budget | Economy, hostels, backpacking | $800-1.5k |
+
+Try: "Hi, I'm Nitin" to see personalized responses based on stored preferences.
+
+---
+
+## Troubleshooting
+
+### Agent Memory Server not running
+
+```
+Error: Connection refused to http://localhost:8088
+```
+
+**Solution:** Start Agent Memory Server:
+```bash
+docker run -p 8088:8088 -p 6379:6379 redis/agent-memory-server:latest
+```
+
+### Web search disabled
+
+```
+ℹ️  Web search disabled (TAVILY_API_KEY not set)
+```
+
+**Solution:** Add TAVILY_API_KEY to your .env file. The agent will still work with memory only.
+
+### Module not found errors
+
+```
+ModuleNotFoundError: No module named 'adk_redis'
+```
+
+**Solution:** Use `uv run` to run commands:
+```bash
+uv run python your_script.py
+# or
+uv run adk web .
+```
+
+### Seed script fails with 404 errors
+
+**Solution:** Make sure Agent Memory Server is running on port 8088. The seed script was recently updated to use the correct API endpoint (`/v1/long-term-memory/`).
+
+---
+
+## Key Concepts Demonstrated
+
+1. **Two-tier memory** - Working memory (session) + long-term memory (Agent Memory Server)
+2. **Hybrid approach** - Explicit tools + automatic callbacks
+3. **Redis caching** - Web search results cached for performance
+4. **Multi-user isolation** - Each user has separate memory namespace
+5. **Tool composition** - Memory + search + calendar + planning
+6. **ADK evaluation** - Test cases with scoring criteria
+
+---
 
 ## Learn More
 
-- [ADK Redis Documentation](../../README.md)
-- [Redis Agent Memory Server](https://github.com/redis/agent-memory-server)
-- [ADK Documentation](https://github.com/google/adk)
+- [ADK-Redis Documentation](../../README.md) - Main project documentation
+- [Redis Agent Memory Server](https://github.com/redis/agent-memory-server) - Memory server documentation
+- [Google ADK](https://github.com/google/adk) - ADK framework documentation
+
+---
+
+## License
+
+Copyright 2025 Google LLC and Redis, Inc.
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](../../LICENSE) for details.
 

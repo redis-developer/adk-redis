@@ -36,6 +36,8 @@ from adk_redis.tools.memory import (
     UpdateMemoryTool,
     MemoryToolConfig,
 )
+from tools.calendar_export import CalendarExportTool
+from tools.itinerary_planner import ItineraryPlannerTool
 from tools.tavily_search import TavilySearchTool
 
 
@@ -46,7 +48,7 @@ NAMESPACE = os.getenv("NAMESPACE", "travel_agent")
 
 async def after_agent(callback_context: CallbackContext):
     """Store session to long-term memory after agent completes.
-    
+
     This callback automatically extracts important facts and preferences
     from the conversation and stores them in long-term memory.
     """
@@ -68,10 +70,14 @@ tools = [
     CreateMemoryTool(config=memory_config),
     UpdateMemoryTool(config=memory_config),
     DeleteMemoryTool(config=memory_config),
-    
+
     # Automatic memory tools (framework-controlled)
     preload_memory,
     load_memory,
+
+    # Calendar export and itinerary planning tools
+    CalendarExportTool(),
+    ItineraryPlannerTool(),
 ]
 
 # Add Tavily web search tool if API key is available
@@ -126,7 +132,20 @@ Once you have their user_id, use it in ALL memory tool calls (search_memory, cre
 - Results are cached in Redis to avoid rate limiting
 - Use for real-time data that changes frequently
 
-### 3. Personalization
+### 3. Itinerary Planning
+- **plan_itinerary**: Create structured multi-day travel itineraries
+- Organizes activities, meals, and logistics by day and time
+- Returns formatted itinerary with summary and calendar-ready events
+- Use when planning trips with multiple days or activities
+
+### 4. Calendar Export
+- **export_to_calendar**: Export travel itinerary to ICS calendar format
+- Creates calendar events for flights, hotels, activities
+- Returns ICS content that can be imported into Google Calendar, Outlook, Apple Calendar
+- Use when user asks to "add to calendar" or "export itinerary"
+- Can be used with output from plan_itinerary tool
+
+### 5. Personalization
 - Always search memories BEFORE making recommendations
 - Reference past preferences when relevant
 - Ask clarifying questions to learn more about the user

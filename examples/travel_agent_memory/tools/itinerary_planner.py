@@ -12,7 +12,7 @@ from google.adk.tools import BaseTool
 class ItineraryPlannerTool(BaseTool):
     """
     Tool for creating structured multi-day travel itineraries.
-    
+
     Organizes activities, meals, and logistics into a day-by-day format
     that can be easily exported to calendar or shared with users.
     """

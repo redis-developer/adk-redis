@@ -15,7 +15,9 @@
 
 """Custom tools for the travel agent."""
 
+from tools.calendar_export import CalendarExportTool
+from tools.itinerary_planner import ItineraryPlannerTool
 from tools.tavily_search import TavilySearchTool
 
-__all__ = ["TavilySearchTool"]
+__all__ = ["TavilySearchTool", "CalendarExportTool", "ItineraryPlannerTool"]
 

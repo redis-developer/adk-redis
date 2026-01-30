@@ -42,7 +42,7 @@ async def seed_user_memories(
     base_url: str = "http://localhost:8088",
 ):
     """Seed memories for a user.
-    
+
     Args:
         user_id: User identifier
         preferences: List of preference strings to store
@@ -52,30 +52,40 @@ async def seed_user_memories(
     async with httpx.AsyncClient() as client:
         success_count = 0
         fail_count = 0
-        
-        for pref in preferences:
-            payload = {
-                "text": pref,
-                "metadata": {"source": "seed_data", "user_id": user_id},
+
+        for idx, pref in enumerate(preferences):
+            # Create memory record with required fields
+            memory_record = {
+                "id": f"{user_id}_pref_{idx}",  # Required: unique ID for deduplication
+                "text": pref,  # Required: the actual memory text
+                "user_id": user_id,  # Optional: for user isolation
+                "namespace": namespace,  # Optional: for namespace isolation
             }
-            
+
+            # Wrap in the expected payload format
+            payload = {
+                "memories": [memory_record],
+                "deduplicate": True,
+            }
+
             try:
                 response = await client.post(
-                    f"{base_url}/v1/namespaces/{namespace}/users/{user_id}/memories",
+                    f"{base_url}/v1/long-term-memory/",
                     json=payload,
                     timeout=10.0,
                 )
-                
+
                 if response.status_code in (200, 201):
                     print(f"  ✅ {pref}")
                     success_count += 1
                 else:
                     print(f"  ❌ Failed ({response.status_code}): {pref}")
+                    print(f"     Response: {response.text}")
                     fail_count += 1
             except Exception as e:
                 print(f"  ❌ Error: {pref} - {e}")
                 fail_count += 1
-        
+
         return success_count, fail_count
 
 
@@ -84,17 +94,17 @@ async def main():
     # Get configuration
     base_url = os.getenv("MEMORY_SERVER_URL", "http://localhost:8088")
     namespace = "travel_agent"
-    
+
     # Load users file
     users_file = Path(__file__).parent / "users.json"
-    
+
     if not users_file.exists():
         print(f"❌ Error: {users_file} not found")
         return
-    
+
     with open(users_file) as f:
         users = json.load(f)
-    
+
     # Display header
     print("=" * 80)
     print("SEEDING DEMO USERS TO AGENT MEMORY SERVER")
@@ -104,26 +114,26 @@ async def main():
     print(f"Users to seed: {len(users)}")
     print("=" * 80)
     print()
-    
+
     # Seed each user
     total_success = 0
     total_fail = 0
-    
+
     for user_id, data in users.items():
         print(f"👤 Seeding user: {data['name']} ({user_id})")
         print(f"   Preferences: {len(data['preferences'])}")
-        
+
         success, fail = await seed_user_memories(
             user_id=user_id,
             preferences=data["preferences"],
             namespace=namespace,
             base_url=base_url,
         )
-        
+
         total_success += success
         total_fail += fail
         print()
-    
+
     # Display summary
     print("=" * 80)
     print("SEEDING COMPLETE")

@@ -71,7 +71,7 @@ class TavilySearchTool(BaseTool):
         ),
     ):
         super().__init__(name=name, description=description)
-        
+
         # Get API key
         self.tavily_api_key = tavily_api_key or os.getenv("TAVILY_API_KEY")
         if not self.tavily_api_key:
@@ -79,7 +79,7 @@ class TavilySearchTool(BaseTool):
                 "Tavily API key required. Set TAVILY_API_KEY environment variable "
                 "or pass tavily_api_key parameter."
             )
-        
+
         # Check dependencies
         if Redis is None:
             raise ImportError(
@@ -91,7 +91,7 @@ class TavilySearchTool(BaseTool):
                 "httpx package required for TavilySearchTool. "
                 "Install with: pip install httpx"
             )
-        
+
         # Setup Redis client for caching
         redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379")
         try:
@@ -102,11 +102,11 @@ class TavilySearchTool(BaseTool):
             print(f"Warning: Redis caching disabled - {e}")
             self.redis_client = None
             self.cache_enabled = False
-        
+
         self.max_results = max_results
         self.cache_ttl = cache_ttl
         self.tavily_api_url = "https://api.tavily.com/search"
-    
+
     def _get_declaration(self) -> types.FunctionDeclaration:
         """Return the tool declaration for ADK."""
         return types.FunctionDeclaration(
@@ -123,26 +123,26 @@ class TavilySearchTool(BaseTool):
                 required=["query"],
             ),
         )
-    
+
     async def run_async(self, **kwargs: Any) -> dict[str, Any]:
         """Execute web search with caching.
-        
+
         Args:
             **kwargs: Tool parameters (ADK passes in kwargs['args'])
-        
+
         Returns:
             dict with search results
         """
         # ADK passes parameters in kwargs['args']
         args = kwargs.get("args", kwargs)
         query = args.get("query")
-        
+
         if not query:
             return {
                 "success": False,
                 "error": "Search query is required",
             }
-        
+
         # Check cache first
         if self.cache_enabled:
             cache_key = f"tavily_search:{query}"
@@ -154,4 +154,55 @@ class TavilySearchTool(BaseTool):
                     "results": json.loads(cached_result),
                     "cached": True,
                 }
+
+        # Perform search via Tavily API
+        print(f"🔍 Web search (live): {query}")
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    self.tavily_api_url,
+                    json={
+                        "api_key": self.tavily_api_key,
+                        "query": query,
+                        "max_results": self.max_results,
+                    },
+                    timeout=30.0,
+                )
+                response.raise_for_status()
+                data = response.json()
+
+            # Extract and format results
+            results = []
+            for item in data.get("results", []):
+                results.append({
+                    "title": item.get("title", "No title"),
+                    "content": item.get("content", "No content"),
+                    "url": item.get("url", ""),
+                })
+
+            # Cache the results
+            if self.cache_enabled and results:
+                cache_key = f"tavily_search:{query}"
+                self.redis_client.set(  # type: ignore
+                    cache_key,
+                    json.dumps(results),
+                    ex=self.cache_ttl,
+                )
+
+            return {
+                "success": True,
+                "results": results,
+                "cached": False,
+            }
+
+        except httpx.HTTPError as e:
+            return {
+                "success": False,
+                "error": f"HTTP error during web search: {str(e)}",
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Error performing web search: {str(e)}",
+            }
 
