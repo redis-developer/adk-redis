@@ -35,13 +35,14 @@ load_dotenv()
 
 def create_cached_agent() -> tuple[Agent, LLMResponseCache]:
   """Create an agent with semantic caching enabled."""
-  # Import vectorizer (requires redisvl with OpenAI support)
-  from redisvl.utils.vectorize import OpenAITextVectorizer
+  # Import vectorizer - using Redis's LangCache embedding model
+  # Note: RedisVL supports many vectorizers (OpenAI, Cohere, HuggingFace, etc.)
+  # See: https://docs.redisvl.com/en/latest/user_guide/vectorizers.html
+  from redisvl.utils.vectorize import HFTextVectorizer
 
-  # Create vectorizer for semantic similarity
-  vectorizer = OpenAITextVectorizer(
-      model="text-embedding-3-small",
-      api_config={"api_key": os.getenv("OPENAI_API_KEY")},
+  # Create vectorizer for semantic similarity using Redis's optimized model
+  vectorizer = HFTextVectorizer(
+      model="redis/langcache-embed-v1"  # Runs locally, no API key needed
   )
 
   # Create cache provider

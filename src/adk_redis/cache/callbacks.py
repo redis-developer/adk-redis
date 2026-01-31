@@ -24,7 +24,7 @@ from google.adk.models.llm_response import LlmResponse
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.tool_context import ToolContext
 
-from .llm_response_cache import LLMResponseCache
+from .llm_cache import LLMResponseCache
 from .tool_cache import ToolCache
 
 # Type aliases for callback signatures

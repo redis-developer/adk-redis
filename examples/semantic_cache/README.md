@@ -8,15 +8,15 @@ them for semantically similar queries, reducing latency and API costs.
 
 - Python 3.9+ (Python 3.11+ recommended)
 - Redis server (local or cloud)
-- ADK and ADK Community installed
-- OpenAI API key (for embeddings)
+- ADK and adk-redis installed
+- Google API key (for the LLM)
 
 ## Setup
 
 ### 1. Install Dependencies
 
 ```bash
-pip install google-adk "adk-redis"
+pip install google-adk adk-redis
 ```
 
 ### 2. Start Redis
@@ -30,18 +30,17 @@ Or install Redis locally following the [Redis documentation](https://redis.io/do
 
 ### 3. Configure Environment Variables
 
-Create a `.env` file in this directory:
+Create a `.env` file in this directory (or copy from `.env.example`):
 
 ```bash
 # Required: Google API key for the agent
 GOOGLE_API_KEY=your-google-api-key
 
-# Required: OpenAI API key for embeddings
-OPENAI_API_KEY=your-openai-api-key
-
 # Optional: Redis URL (defaults to redis://localhost:6379)
 REDIS_URL=redis://localhost:6379
 ```
+
+**Note**: This example uses the `redis/langcache-embed-v1` embedding model which runs locally and doesn't require an API key. RedisVL supports many other vectorizers including OpenAI, Cohere, HuggingFace, Mistral, and more. See the [RedisVL Vectorizers documentation](https://docs.redisvl.com/en/latest/user_guide/vectorizers.html) for all options.
 
 ## Usage
 

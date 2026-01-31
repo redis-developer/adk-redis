@@ -99,6 +99,7 @@ class RedisVLCacheProvider(BaseCacheProvider):
         ttl=config.ttl,
         distance_threshold=config.distance_threshold,
         vectorizer=vectorizer,
+        overwrite=True,  # Overwrite existing index if schema doesn't match
     )
 
   async def check(self, prompt: str, **kwargs: Any) -> Optional[CacheEntry]:
