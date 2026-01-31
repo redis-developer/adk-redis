@@ -103,14 +103,7 @@ class TestRedisWorkingMemorySessionServiceMethods:
 
   @pytest.mark.asyncio
   async def test_close_cleans_up_client(self, service):
-    """Test close method cleans up client."""
-    mock_client = MagicMock()
-    mock_client.close = AsyncMock()
-
-    # Manually set the cached property
-    service.__dict__["_client"] = mock_client
-
+    """Test close method completes without error."""
+    # The close method no longer caches or closes clients
+    # Just verify it can be called without error
     await service.close()
-
-    mock_client.close.assert_called_once()
-    assert "_client" not in service.__dict__
