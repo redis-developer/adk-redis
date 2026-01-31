@@ -79,15 +79,15 @@ pip install git+https://github.com/redis-applied-ai/adk-redis.git@main
 
 **For memory/session services:**
 - [Redis Agent Memory Server](https://github.com/redis/agent-memory-server) (port 8000)
-- Redis Stack or Redis Cloud (backend for Agent Memory Server)
+- Redis 8.4+ or Redis Cloud (backend for Agent Memory Server)
 
 **For search tools:**
-- [Redis Stack](https://redis.io/docs/stack/) or Redis Cloud with Search capability
+- Redis 8.4+ or Redis Cloud with Search capability
 
 **Quick start:**
 ```bash
-# Start Redis Stack
-docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
+# Start Redis 8.4 (with Search, JSON, and vector capabilities)
+docker run -d --name redis -p 6379:6379 redis:8.4-alpine
 
 # Start Agent Memory Server (for memory services)
 docker run -d --name agent-memory-server -p 8000:8000 \
@@ -178,7 +178,7 @@ vectorizer = HFTextVectorizer(model="sentence-transformers/all-MiniLM-L6-v2")
 # Connect to existing search index
 index = SearchIndex.from_existing("products", redis_url="redis://localhost:6379")
 
-# Create the search tool
+# Create the search tool with custom name and description
 search_tool = RedisVectorSearchTool(
     index=index,
     vectorizer=vectorizer,
@@ -187,6 +187,9 @@ search_tool = RedisVectorSearchTool(
         return_fields=["name", "description", "price"],
         num_results=5,
     ),
+    # Customize the tool name and description for your domain
+    name="search_product_catalog",
+    description="Search to find relevant products in the product catalog by description semantic similarity",
 )
 
 # Use with an ADK agent
@@ -197,6 +200,39 @@ agent = Agent(
     tools=[search_tool],
 )
 ```
+
+**Customizing Tool Prompts:**
+
+All search tools (`RedisVectorSearchTool`, `RedisHybridSearchTool`, `RedisTextSearchTool`, `RedisRangeSearchTool`) support custom `name` and `description` parameters to make them domain-specific:
+
+```python
+# Example: Medical knowledge base
+medical_search = RedisVectorSearchTool(
+    index=medical_index,
+    vectorizer=vectorizer,
+    name="search_medical_knowledge",
+    description="Search medical literature and clinical guidelines for relevant information",
+)
+
+# Example: Customer support FAQ
+faq_search = RedisTextSearchTool(
+    index=faq_index,
+    name="search_support_articles",
+    description="Search customer support articles and FAQs by keywords",
+)
+
+# Example: Legal document search
+legal_search = RedisHybridSearchTool(
+    index=legal_index,
+    vectorizer=vectorizer,
+    name="search_legal_documents",
+    description="Search legal documents using both semantic similarity and keyword matching",
+)
+```
+
+> **Note:** RedisVL supports many vectorizers including OpenAI, HuggingFace, Cohere, Mistral, Voyage AI, and more. See [RedisVL documentation](https://docs.redisvl.com/) for the full list.
+
+> **Future Enhancement:** We plan to add native support for ADK embeddings classes through a union type or wrapper, allowing seamless integration with ADK's embedding infrastructure alongside RedisVL vectorizers.
 
 ---
 
@@ -250,7 +286,7 @@ Four specialized search tools for different RAG use cases:
 - **Python** 3.10, 3.11, 3.12, or 3.13
 - **Google ADK** 1.0.0+
 - **For memory/session services:** [Redis Agent Memory Server](https://github.com/redis/agent-memory-server)
-- **For search tools:** [Redis Stack](https://redis.io/docs/stack/) or Redis with Search module
+- **For search tools:** Redis 8.4+ or Redis Cloud with Search capability
 
 ---
 
@@ -337,7 +373,7 @@ Apache 2.0 - See [LICENSE](LICENSE) for details.
 - **[Google ADK](https://github.com/google/adk-python)** - Agent Development Kit framework
 - **[Redis Agent Memory Server](https://github.com/redis/agent-memory-server)** - Memory layer for AI agents
 - **[RedisVL](https://docs.redisvl.com/)** - Redis Vector Library documentation
-- **[Redis Stack](https://redis.io/docs/stack/)** - Redis with Search, JSON, and more
+- **[Redis](https://redis.io/)** - Redis 8.4+ with Search, JSON, and vector capabilities
 
 ---
 

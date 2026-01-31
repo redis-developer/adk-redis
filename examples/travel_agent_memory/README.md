@@ -16,27 +16,55 @@ This example showcases a production-ready travel agent with:
 
 ### Prerequisites
 
-1. **Start Agent Memory Server:**
-   ```bash
-   docker run -p 8088:8088 -p 6379:6379 redis/agent-memory-server:latest
-   ```
+#### Option 1: Docker Compose (Recommended)
 
-2. **Set up environment variables:**
-   ```bash
-   cd examples/travel_agent_memory
-   cp .env.example .env
-   # Edit .env and add your GOOGLE_API_KEY and TAVILY_API_KEY
-   ```
+The easiest way to get started is using Docker Compose to run both Redis and Agent Memory Server:
 
-3. **(Optional) Seed demo user profiles:**
-   ```bash
-   uv run python seed_data/seed_script.py
-   ```
+```bash
+cd examples/travel_agent_memory
+docker compose up -d
+```
 
-   This creates 3 demo users:
-   - **tyler** - Luxury traveler (business class, 5-star hotels, $5k-10k budget)
-   - **nitin** - Comfort traveler (premium economy, 3-4 star hotels, vegetarian, $2.5k-4k budget)
-   - **vishal** - Budget traveler (economy class, hostels, $800-1.5k budget)
+This starts:
+- **Redis 8.4** on port 6379
+- **Agent Memory Server** on port 8088
+
+#### Option 2: Manual Docker Setup
+
+If you prefer to run containers manually:
+
+```bash
+# 1. Start Redis 8.4
+docker run -d --name redis -p 6379:6379 redis:8.4-alpine
+
+# 2. Start Agent Memory Server
+docker run -d --name agent-memory-server -p 8088:8088 \
+  -e REDIS_URL=redis://host.docker.internal:6379 \
+  -e OPENAI_API_KEY=your-openai-key \
+  redislabs/agent-memory-server:latest \
+  agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
+```
+
+> **Note:** Replace `your-openai-key` with your actual OpenAI API key. The Agent Memory Server uses OpenAI for memory extraction and summarization.
+
+### Setup Environment Variables
+
+```bash
+cd examples/travel_agent_memory
+cp .env.example .env
+# Edit .env and add your GOOGLE_API_KEY and TAVILY_API_KEY
+```
+
+### (Optional) Seed Demo User Profiles
+
+```bash
+uv run python seed_data/seed_script.py
+```
+
+This creates 3 demo users:
+- **tyler** - Luxury traveler (business class, 5-star hotels, $5k-10k budget)
+- **nitin** - Comfort traveler (premium economy, 3-4 star hotels, vegetarian, $2.5k-4k budget)
+- **vishal** - Budget traveler (economy class, hostels, $800-1.5k budget)
 
 ### Running the Agent
 
@@ -418,9 +446,23 @@ Try: "Hi, I'm Nitin" to see personalized responses based on stored preferences.
 Error: Connection refused to http://localhost:8088
 ```
 
-**Solution:** Start Agent Memory Server:
+**Solution:** Start the services using Docker Compose:
 ```bash
-docker run -p 8088:8088 -p 6379:6379 redis/agent-memory-server:latest
+cd examples/travel_agent_memory
+docker compose up -d
+```
+
+Or manually:
+```bash
+# Start Redis
+docker run -d --name redis -p 6379:6379 redis:8.4-alpine
+
+# Start Agent Memory Server
+docker run -d --name agent-memory-server -p 8088:8088 \
+  -e REDIS_URL=redis://host.docker.internal:6379 \
+  -e OPENAI_API_KEY=your-openai-key \
+  redislabs/agent-memory-server:latest \
+  agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
 ```
 
 ### Web search disabled
