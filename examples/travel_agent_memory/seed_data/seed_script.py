@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# Copyright 2025 Google LLC
 # Copyright 2025 Redis, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

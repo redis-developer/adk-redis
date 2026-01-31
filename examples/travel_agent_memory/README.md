@@ -36,7 +36,7 @@ This example showcases a production-ready travel agent with:
    This creates 3 demo users:
    - **tyler** - Luxury traveler (business class, 5-star hotels, $5k-10k budget)
    - **nitin** - Comfort traveler (premium economy, 3-4 star hotels, vegetarian, $2.5k-4k budget)
-   - **arsene** - Budget traveler (economy class, hostels, $800-1.5k budget)
+   - **vishal** - Budget traveler (economy class, hostels, $800-1.5k budget)
 
 ### Running the Agent
 
@@ -116,7 +116,7 @@ This agent uses **both** explicit and automatic memory approaches:
 ### 4. Multi-User Support
 
 - Memory isolated per user via `user_id`
-- Demo users: tyler (luxury), nitin (comfort), arsene (budget)
+- Demo users: tyler (luxury), nitin (comfort), vishal (budget)
 - Persistent preferences across sessions
 
 ---
@@ -278,8 +278,8 @@ AGENT: "Welcome back, Tyler! I remember you prefer business class flights,
        5-star hotels with spa facilities. Planning another luxury trip?"
 
 # User: arsene (budget, economy, $800-1.5k budget)
-USER: "Hi, I'm arsene"
-AGENT: "Hey Arsene! I know you're into budget travel, hostels, and backpacking.
+USER: "Hi, I'm Vishal"
+AGENT: "Hey Vishal! I know you're into budget travel, hostels, and backpacking.
        What adventure are you planning next?"
 ```
 
@@ -356,7 +356,7 @@ examples/travel_agent_memory/
 │   └── itinerary_planner.py     # Multi-day trip planning
 │
 ├── seed_data/                   # Demo user profiles
-│   ├── users.json               # Tyler, Nitin, Arsene profiles
+│   ├── users.json               # Tyler, Nitin, Vishal profiles
 │   └── seed_script.py           # Script to populate Agent Memory Server
 │
 ├── evaluation/                  # Testing framework
@@ -400,11 +400,11 @@ The evaluation framework includes test cases for:
 
 If you run the seed script, you get 3 pre-configured users:
 
-| User | Style | Preferences | Budget |
-|------|-------|-------------|--------|
-| **tyler** | Luxury | Business class, 5-star hotels, spa | $5k-10k |
-| **nitin** | Comfort | Premium economy, 3-4 star, vegetarian | $2.5k-4k |
-| **arsene** | Budget | Economy, hostels, backpacking | $800-1.5k |
+| User       | Style | Preferences | Budget |
+|------------|-------|-------------|--------|
+| **tyler**  | Luxury | Business class, 5-star hotels, spa | $5k-10k |
+| **nitin**  | Comfort | Premium economy, 3-4 star, vegetarian | $2.5k-4k |
+| **vishal** | Budget | Economy, hostels, backpacking | $800-1.5k |
 
 Try: "Hi, I'm Nitin" to see personalized responses based on stored preferences.
 
