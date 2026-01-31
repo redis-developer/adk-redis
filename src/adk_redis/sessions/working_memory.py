@@ -22,7 +22,6 @@ memory extraction.
 
 from __future__ import annotations
 
-from functools import cached_property
 import logging
 import time
 from typing import Any, Literal

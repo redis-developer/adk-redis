@@ -1,4 +1,4 @@
-.PHONY: install dev test lint format type-check clean build publish check
+.PHONY: install dev test lint lint-fix format type-check clean build publish check
 
 # Install package
 install:
@@ -19,6 +19,10 @@ test-cov:
 # Run linting
 lint:
 	uv run ruff check src tests examples
+
+# Fix linting errors automatically
+lint-fix:
+	uv run ruff check --fix --unsafe-fixes src tests examples
 
 # Format code (Google ADK-Python style: pyink + isort)
 format:

@@ -116,8 +116,8 @@ class DeleteMemoryTool(BaseMemoryTool):
     args = kwargs.get("args", kwargs)
 
     memory_ids = args.get("memory_ids", [])
-    namespace = self._get_namespace(args.get("namespace"))
-    user_id = self._get_user_id(args.get("user_id"))
+    self._get_namespace(args.get("namespace"))
+    self._get_user_id(args.get("user_id"))
 
     if not memory_ids:
       return {"status": "error", "message": "memory_ids is required"}

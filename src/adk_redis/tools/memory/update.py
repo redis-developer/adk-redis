@@ -128,8 +128,8 @@ class UpdateMemoryTool(BaseMemoryTool):
     memory_id = args.get("memory_id")
     content = args.get("content")
     topics = args.get("topics")
-    namespace = self._get_namespace(args.get("namespace"))
-    user_id = self._get_user_id(args.get("user_id"))
+    self._get_namespace(args.get("namespace"))
+    self._get_user_id(args.get("user_id"))
 
     if not memory_id:
       return {"status": "error", "message": "memory_id is required"}

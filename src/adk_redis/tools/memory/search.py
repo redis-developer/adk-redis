@@ -123,7 +123,7 @@ class SearchMemoryTool(BaseMemoryTool):
 
     query = args.get("query")
     limit = args.get("limit", self._config.search_top_k)
-    namespace = self._get_namespace(args.get("namespace"))
+    self._get_namespace(args.get("namespace"))
     user_id = self._get_user_id(args.get("user_id"))
 
     if not query:
