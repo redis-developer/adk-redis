@@ -51,11 +51,31 @@ uv pip install "adk-redis[all]"
 
 ### 2. Start Redis 8.4
 
+**Option A: Automated setup (recommended)**
+
+```bash
+# Run from the repository root
+./scripts/start-redis.sh
+```
+
+This script will automatically start Redis 8.4 with health checks and verify it's running correctly.
+
+**Option B: Manual setup**
+
 ```bash
 docker run -d --name redis -p 6379:6379 redis:8.4-alpine
 ```
 
-> **Note**: Redis 8.4 includes the Redis Query Engine (evolved from RediSearch) with native support for vector search, full-text search, and JSON operations.
+**Verify Redis is running:**
+
+```bash
+docker ps | grep redis
+# Or test the connection
+docker exec redis redis-cli ping
+# Should return: PONG
+```
+
+> **Note**: Redis 8.4 includes the Redis Query Engine (evolved from RediSearch) with native support for vector search, full-text search, and JSON operations. Docker will automatically download the image (~40MB) on first run.
 
 ### 3. Build and Start Agent Memory Server
 

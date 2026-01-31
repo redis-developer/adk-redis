@@ -15,38 +15,69 @@ access to a Redis-based knowledge base with multiple search capabilities.
 ## Prerequisites
 
 1. **Redis 8.4** running locally (or Redis Cloud with Search capability)
-   ```bash
-   # Using Docker
-   docker run -d --name redis -p 6379:6379 redis:8.4-alpine
-   ```
-
-   > **Note**: Redis 8.4 includes the Redis Query Engine (evolved from RediSearch) with native support for vector search, full-text search, and JSON operations.
 
 2. **No API keys needed for embeddings** - uses Redis' open-source
    `redis/langcache-embed-v2` model (768 dimensions)
 
 ## Setup
 
-1. Install [uv](https://docs.astral.sh/uv/) if you haven't already:
-   ```bash
-   # macOS/Linux
-   curl -LsSf https://astral.sh/uv/install.sh | sh
+### 1. Install uv
 
-   # Or with pip
-   pip install uv
-   ```
+Install [uv](https://docs.astral.sh/uv/) if you haven't already:
 
-2. Install dependencies:
-   ```bash
-   uv pip install "adk-redis[all]"
-   ```
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-3. Download NLTK stopwords (required for keyword search):
-   ```bash
-   python -c "import nltk; nltk.download('stopwords')"
-   ```
+# Or with pip
+pip install uv
+```
 
-4. Set environment variables (or create a `.env` file):
+### 2. Install dependencies
+
+```bash
+uv pip install "adk-redis[all]"
+```
+
+### 3. Start Redis 8.4
+
+**Option A: Automated setup (recommended)**
+
+```bash
+# Run from the repository root
+./scripts/start-redis.sh
+```
+
+This script will automatically start Redis 8.4 with health checks and verify it's running correctly.
+
+**Option B: Manual setup**
+
+```bash
+docker run -d --name redis -p 6379:6379 redis:8.4-alpine
+```
+
+**Verify Redis is running:**
+
+```bash
+docker ps | grep redis
+# Or test the connection
+docker exec redis redis-cli ping
+# Should return: PONG
+```
+
+> **Note**: Redis 8.4 includes the Redis Query Engine (evolved from RediSearch) with native support for vector search, full-text search, and JSON operations. Docker will automatically download the image (~40MB) on first run.
+
+### 4. Download NLTK stopwords
+
+Required for keyword search:
+
+```bash
+python -c "import nltk; nltk.download('stopwords')"
+```
+
+### 5. Set environment variables
+
+Create a `.env` file in this directory:
    ```bash
    export REDIS_URL=redis://localhost:6379
    export GOOGLE_API_KEY=your-google-api-key  # For Gemini LLM

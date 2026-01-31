@@ -31,16 +31,33 @@ Then install the package:
 uv pip install "adk-redis[all]"
 ```
 
-### 2. Start Redis
+### 2. Start Redis 8.4
 
-Using Docker:
+**Option A: Automated setup (recommended)**
+
+```bash
+# Run from the repository root
+./scripts/start-redis.sh
+```
+
+This script will automatically start Redis 8.4 with health checks and verify it's running correctly.
+
+**Option B: Manual setup**
+
 ```bash
 docker run -d --name redis -p 6379:6379 redis:8.4-alpine
 ```
 
-Or install Redis locally following the [Redis documentation](https://redis.io/docs/getting-started/).
+**Verify Redis is running:**
 
-> **Note**: Redis 8.4 includes the Redis Query Engine with native support for vector search and JSON operations.
+```bash
+docker ps | grep redis
+# Or test the connection
+docker exec redis redis-cli ping
+# Should return: PONG
+```
+
+> **Note**: Redis 8.4 includes the Redis Query Engine (evolved from RediSearch) with native support for vector search, full-text search, and JSON operations. Docker will automatically download the image (~40MB) on first run.
 
 ### 3. Configure Environment Variables
 

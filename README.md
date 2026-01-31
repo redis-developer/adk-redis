@@ -103,11 +103,67 @@ uv pip install git+https://github.com/redis-applied-ai/adk-redis.git@main
 
 #### 1. Start Redis 8.4
 
+Redis is required for all examples in this repository. Choose one of the following options:
+
+**Option A: Automated setup (recommended)**
+
+```bash
+# Run from the repository root
+./scripts/start-redis.sh
+```
+
+This script will:
+- Check if Docker is installed and running
+- Check if Redis is already running on port 6379
+- Start Redis 8.4 in a Docker container with health checks
+- Verify the Redis container is healthy and accepting connections
+- Provide helpful commands for managing Redis
+
+**Option B: Manual setup**
+
 ```bash
 docker run -d --name redis -p 6379:6379 redis:8.4-alpine
 ```
 
-> **Note**: Redis 8.4 includes the Redis Query Engine (evolved from RediSearch) with native support for vector search, full-text search, and JSON operations.
+> **Note**: Redis 8.4 includes the Redis Query Engine (evolved from RediSearch) with native support for vector search, full-text search, and JSON operations. Docker will automatically download the image (~40MB) on first run.
+
+**Verify Redis is running:**
+
+```bash
+# Check container status
+docker ps | grep redis
+
+# Test connection
+docker exec redis redis-cli ping
+# Should return: PONG
+
+# Or if you have redis-cli installed locally
+redis-cli -p 6379 ping
+```
+
+**Common Redis commands:**
+
+```bash
+# View logs
+docker logs redis
+docker logs -f redis  # Follow logs in real-time
+
+# Stop Redis
+docker stop redis
+
+# Restart Redis
+docker restart redis
+
+# Remove Redis (stops and deletes container)
+docker rm -f redis
+```
+
+**Troubleshooting:**
+
+- **Port 6379 already in use**: Another process is using the port. Find it with `lsof -i :6379` or use a different port: `docker run -d --name redis -p 6380:6379 redis:8.4-alpine`
+- **Docker not running**: Start Docker Desktop or the Docker daemon
+- **Permission denied**: Run with `sudo` or add your user to the docker group
+- **Container won't start**: Check logs with `docker logs redis`
 
 #### 2. Build and Start Agent Memory Server
 

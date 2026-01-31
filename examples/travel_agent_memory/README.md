@@ -58,8 +58,10 @@ docker compose up -d
 > **How it works**: The `docker-compose.yml` file is configured to use the locally built image `agent-memory-server:latest-fix`. Docker Compose will look for this image on your local machine (which you built in Step 1) and use it to start the container.
 
 **What's running:**
-- **Redis 8.4** on port 6379
+- **Redis 8.4** on port 6379 (automatically started by Docker Compose)
 - **Agent Memory Server** on port 8088 (using Gemini with `EXTRACTION_DEBOUNCE_SECONDS=5`)
+
+> **Note**: Docker Compose automatically downloads and starts Redis 8.4. You don't need to start Redis manually for this example. Redis 8.4 includes the Redis Query Engine with native support for vector search, full-text search, and JSON operations.
 
 > **Configuration**: The docker-compose.yml is pre-configured with Gemini. To use a different provider, edit the environment variables in `docker-compose.yml`:
 > ```yaml
