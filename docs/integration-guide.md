@@ -31,9 +31,10 @@ Complete guide for integrating Redis Agent Memory Server with adk-redis.
               │    Redis Protocol          │
               ▼                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                         Redis Stack                             │
+│                         Redis 8.4+                              │
 │  - JSON storage                                                 │
-│  - Vector search (RediSearch)                                   │
+│  - Vector search (Redis Query Engine)                           │
+│  - Full-text search                                             │
 │  - Persistence                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -46,7 +47,7 @@ Complete guide for integrating Redis Agent Memory Server with adk-redis.
 | **adk-redis Session Service** | Implements ADK's `BaseSessionService` interface |
 | **adk-redis Memory Service** | Implements ADK's `BaseMemoryService` interface |
 | **Agent Memory Server** | Memory extraction, summarization, vector search |
-| **Redis Stack** | Data storage, vector indexing, persistence |
+| **Redis 8.4+** | Data storage, vector indexing, full-text search, persistence |
 
 ---
 
@@ -54,25 +55,53 @@ Complete guide for integrating Redis Agent Memory Server with adk-redis.
 
 ### 1. Start Infrastructure
 
+> **Important**: A recent bug fix for non-OpenAI provider support is available in the latest GitHub commit but not yet in a release. Build Agent Memory Server from source first.
+
+**Build Agent Memory Server from source:**
+
+**Option A: Automated setup (recommended)**
+
 ```bash
-# Start Redis Stack
-docker run -d --name redis-stack \
-  -p 6379:6379 \
-  -p 8001:8001 \
-  redis/redis-stack:latest
+# Run the setup script from the repository root
+./scripts/setup-agent-memory-server.sh
+```
+
+This script will automatically clone, build, and verify the Agent Memory Server image.
+
+**Option B: Manual setup**
+
+```bash
+# Clone the repository
+git clone https://github.com/redis/agent-memory-server.git /tmp/agent-memory-server
+cd /tmp/agent-memory-server
+
+# Build Docker image
+docker build -t agent-memory-server:latest-fix .
+```
+
+**Start the infrastructure:**
+
+```bash
+# Start Redis 8.4
+docker run -d --name redis -p 6379:6379 redis:8.4-alpine
 
 # Start Agent Memory Server
 docker run -d --name agent-memory-server \
   -p 8000:8000 \
   -e REDIS_URL=redis://host.docker.internal:6379 \
-  -e OPENAI_API_KEY=your-openai-key \
+  -e GEMINI_API_KEY=your-gemini-api-key \
+  -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
+  -e EMBEDDING_MODEL=gemini/text-embedding-004 \
+  -e EXTRACTION_DEBOUNCE_SECONDS=30 \
   -e DISABLE_AUTH=true \
-  redislabs/agent-memory-server:latest \
+  agent-memory-server:latest-fix \
   agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
 
 # Verify
-curl http://localhost:8000/health
+curl http://localhost:8000/v1/health
 ```
+
+> **Note**: Redis 8.4 includes the Redis Query Engine (evolved from RediSearch) with native support for vector search, full-text search, and JSON operations. Redis Stack is no longer needed.
 
 **Note:** On Linux, replace `host.docker.internal` with `172.17.0.1` or use `--network host` mode.
 
@@ -250,7 +279,7 @@ adk web redis_search_tools_agent
 **Solution:**
 ```bash
 docker ps | grep agent-memory-server
-curl http://localhost:8000/health
+curl http://localhost:8000/v1/health
 ```
 
 ### Import errors

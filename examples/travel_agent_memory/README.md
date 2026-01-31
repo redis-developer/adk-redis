@@ -18,20 +18,84 @@ This example showcases a production-ready travel agent with:
 
 #### Option 1: Docker Compose (Recommended)
 
-The easiest way to get started is using Docker Compose to run both Redis and Agent Memory Server:
+> **Important**: A recent bug fix for non-OpenAI provider support is available in the latest GitHub commit but not yet in a release. You must build Agent Memory Server from source before running Docker Compose.
+
+**Step 1: Build Agent Memory Server from source**
+
+**Option A: Automated setup (recommended)**
+
+```bash
+# Run the setup script from the repository root
+./scripts/setup-agent-memory-server.sh
+```
+
+This script will automatically clone, build, and verify the Agent Memory Server image.
+
+**Option B: Manual setup**
+
+```bash
+# Clone the repository
+git clone https://github.com/redis/agent-memory-server.git /tmp/agent-memory-server
+cd /tmp/agent-memory-server
+
+# Build Docker image with tag 'agent-memory-server:latest-fix'
+docker build -t agent-memory-server:latest-fix .
+
+# Verify the image was built
+docker images | grep agent-memory-server
+# Should show: agent-memory-server   latest-fix   ...
+```
+
+**Step 2: Start the services with Docker Compose**
 
 ```bash
 cd examples/travel_agent_memory
 docker compose up -d
 ```
 
-This starts:
+> **Tip**: If you used the automated setup script, it will show you the exact next steps after completion.
+
+> **How it works**: The `docker-compose.yml` file is configured to use the locally built image `agent-memory-server:latest-fix`. Docker Compose will look for this image on your local machine (which you built in Step 1) and use it to start the container.
+
+**What's running:**
 - **Redis 8.4** on port 6379
-- **Agent Memory Server** on port 8088
+- **Agent Memory Server** on port 8088 (using Gemini with `EXTRACTION_DEBOUNCE_SECONDS=30`)
+
+> **Configuration**: The docker-compose.yml is pre-configured with Gemini. To use a different provider, edit the environment variables in `docker-compose.yml`:
+> ```yaml
+> environment:
+>   - GEMINI_API_KEY=${GEMINI_API_KEY}  # Change to your provider's API key
+>   - GENERATION_MODEL=gemini/gemini-2.0-flash-exp  # Change to your model
+>   - EMBEDDING_MODEL=gemini/text-embedding-004  # Change to your embedding model
+>   - EXTRACTION_DEBOUNCE_SECONDS=30  # Optional: 30 for demos, 300 for production
+> ```
+
+> **After the next release**: Once Agent Memory Server releases a new version with the bug fix, you can switch to the official image by setting the environment variable:
+> ```bash
+> export AGENT_MEMORY_SERVER_IMAGE=redislabs/agent-memory-server:latest
+> docker compose up -d
+> ```
+
+
 
 #### Option 2: Manual Docker Setup
 
 If you prefer to run containers manually:
+
+> **Important**: A recent bug fix for non-OpenAI provider support is available in the latest GitHub commit but not yet in a release. Build from source to use the fix.
+
+**Build Agent Memory Server from source:**
+
+```bash
+# Clone the repository
+git clone https://github.com/redis/agent-memory-server.git /tmp/agent-memory-server
+cd /tmp/agent-memory-server
+
+# Build Docker image
+docker build -t agent-memory-server:latest-fix .
+```
+
+**Start the containers:**
 
 ```bash
 # 1. Start Redis 8.4
@@ -40,12 +104,20 @@ docker run -d --name redis -p 6379:6379 redis:8.4-alpine
 # 2. Start Agent Memory Server
 docker run -d --name agent-memory-server -p 8088:8088 \
   -e REDIS_URL=redis://host.docker.internal:6379 \
-  -e OPENAI_API_KEY=your-openai-key \
-  redislabs/agent-memory-server:latest \
+  -e GEMINI_API_KEY=your-gemini-api-key \
+  -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
+  -e EMBEDDING_MODEL=gemini/text-embedding-004 \
+  -e EXTRACTION_DEBOUNCE_SECONDS=30 \
+  agent-memory-server:latest-fix \
   agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
 ```
 
-> **Note:** Replace `your-openai-key` with your actual OpenAI API key. The Agent Memory Server uses OpenAI for memory extraction and summarization.
+> **Configuration Options:**
+> - **LLM Provider**: Agent Memory Server uses [LiteLLM](https://docs.litellm.ai/) and supports 100+ providers (OpenAI, Gemini, Anthropic, AWS Bedrock, Ollama, etc.). Set the appropriate environment variables for your provider (e.g., `GEMINI_API_KEY`, `GENERATION_MODEL=gemini/gemini-2.0-flash-exp`). See the [Agent Memory Server LLM Providers docs](https://redis.github.io/agent-memory-server/llm-providers/) for details.
+> - **Memory Extraction Debounce**: `EXTRACTION_DEBOUNCE_SECONDS` controls how long to wait before extracting memories from a conversation (default: 300 seconds / 5 minutes). Set to `30` for faster memory extraction in demos, or keep the default `300` for production to reduce API calls.
+> - **Embedding Models**: Agent Memory Server also uses LiteLLM for embeddings. For local/offline embeddings, use Ollama (e.g., `EMBEDDING_MODEL=ollama/nomic-embed-text`, `REDISVL_VECTOR_DIMENSIONS=768`). Note: The `redis/langcache-embed-v1` model used in the semantic_cache example is not supported by Agent Memory Server (it's RedisVL-specific). See [Embedding Providers docs](https://redis.github.io/agent-memory-server/embedding-providers/) for all options.
+>
+> **Using the official release**: Once the next version is released, you can use `redislabs/agent-memory-server:latest` instead of building from source.
 
 ### Setup Environment Variables
 
@@ -464,6 +536,8 @@ docker run -d --name agent-memory-server -p 8088:8088 \
   redislabs/agent-memory-server:latest \
   agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
 ```
+
+> **Note**: Agent Memory Server supports multiple LLM providers via LiteLLM. See the note in the Quick Start section above for configuration details.
 
 ### Web search disabled
 

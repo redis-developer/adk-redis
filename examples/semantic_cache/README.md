@@ -23,10 +23,12 @@ pip install google-adk adk-redis
 
 Using Docker:
 ```bash
-docker run -d --name redis -p 6379:6379 redis/redis-stack:latest
+docker run -d --name redis -p 6379:6379 redis:8.4-alpine
 ```
 
 Or install Redis locally following the [Redis documentation](https://redis.io/docs/getting-started/).
+
+> **Note**: Redis 8.4 includes the Redis Query Engine with native support for vector search and JSON operations.
 
 ### 3. Configure Environment Variables
 
@@ -47,7 +49,7 @@ REDIS_URL=redis://localhost:6379
 ### Option 1: Run the Demo Script
 
 ```bash
-python main.py
+uv run python main.py
 ```
 
 This runs a demo that:

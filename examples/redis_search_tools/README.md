@@ -14,11 +14,13 @@ access to a Redis-based knowledge base with multiple search capabilities.
 
 ## Prerequisites
 
-1. **Redis Stack** running locally (or Redis Cloud with Search capability)
+1. **Redis 8.4** running locally (or Redis Cloud with Search capability)
    ```bash
    # Using Docker
-   docker run -d --name redis-stack -p 6379:6379 redis/redis-stack:latest
+   docker run -d --name redis -p 6379:6379 redis:8.4-alpine
    ```
+
+   > **Note**: Redis 8.4 includes the Redis Query Engine (evolved from RediSearch) with native support for vector search, full-text search, and JSON operations.
 
 2. **No API keys needed for embeddings** - uses Redis' open-source
    `redis/langcache-embed-v2` model (768 dimensions)
@@ -46,13 +48,13 @@ access to a Redis-based knowledge base with multiple search capabilities.
 4. Load sample data into Redis:
    ```bash
    cd examples/redis_search_tools
-   python load_data.py
+   uv run python load_data.py
    ```
 
 5. Run the agent:
    ```bash
    cd examples/redis_search_tools
-   adk web redis_search_tools_agent
+   uv run adk web redis_search_tools_agent
    ```
 
 ## Files

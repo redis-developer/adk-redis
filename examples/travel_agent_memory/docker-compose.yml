@@ -17,13 +17,18 @@ services:
     restart: unless-stopped
 
   agent-memory-server:
-    image: redislabs/agent-memory-server:latest
+    # Use locally built image with bug fix (build instructions in README)
+    # Once the next release is available, change to: redislabs/agent-memory-server:latest
+    image: ${AGENT_MEMORY_SERVER_IMAGE:-agent-memory-server:latest-fix}
     container_name: agent-memory-server
     ports:
       - "8088:8088"
     environment:
       - REDIS_URL=redis://redis:6379
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-your-openai-key-here}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GENERATION_MODEL=gemini/gemini-2.0-flash-exp
+      - EMBEDDING_MODEL=gemini/text-embedding-004
+      - EXTRACTION_DEBOUNCE_SECONDS=30  # Faster memory extraction for demos (default: 300)
     command: agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
     depends_on:
       redis:

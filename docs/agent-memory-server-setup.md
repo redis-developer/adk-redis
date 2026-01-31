@@ -17,6 +17,38 @@ Agent Memory Server provides:
 
 ## Installation
 
+> **Important**: A recent bug fix for non-OpenAI provider support is available in the latest GitHub commit but not yet in a release. Build from source to use the fix.
+
+### Prerequisites
+
+- Docker installed
+- Git installed
+- Redis 8.4+ running (see [Redis Setup Guide](redis-setup.md))
+
+### Build from Source
+
+**Option A: Automated setup (recommended)**
+
+```bash
+# Run the setup script from the repository root
+./scripts/setup-agent-memory-server.sh
+```
+
+This script will automatically clone, build, and verify the Agent Memory Server image.
+
+**Option B: Manual setup**
+
+```bash
+# Clone the repository
+git clone https://github.com/redis/agent-memory-server.git /tmp/agent-memory-server
+cd /tmp/agent-memory-server
+
+# Build Docker image
+docker build -t agent-memory-server:latest-fix .
+```
+
+> **Using the official release**: Once the next version is released, you can use `redislabs/agent-memory-server:latest` instead of building from source.
+
 ### Development Mode (Single Container)
 
 Runs API server with asyncio task backend (no separate worker needed):
@@ -25,9 +57,12 @@ Runs API server with asyncio task backend (no separate worker needed):
 docker run -d --name agent-memory-server \
   -p 8000:8000 \
   -e REDIS_URL=redis://host.docker.internal:6379 \
-  -e OPENAI_API_KEY=your-openai-key \
+  -e GEMINI_API_KEY=your-gemini-api-key \
+  -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
+  -e EMBEDDING_MODEL=gemini/text-embedding-004 \
+  -e EXTRACTION_DEBOUNCE_SECONDS=30 \
   -e DISABLE_AUTH=true \
-  redislabs/agent-memory-server:latest \
+  agent-memory-server:latest-fix \
   agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
 ```
 
@@ -40,9 +75,12 @@ Runs separate containers for API and background task worker:
 docker run -d --name agent-memory-api \
   -p 8000:8000 \
   -e REDIS_URL=redis://your-redis:6379 \
-  -e OPENAI_API_KEY=your-openai-key \
+  -e GEMINI_API_KEY=your-gemini-api-key \
+  -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
+  -e EMBEDDING_MODEL=gemini/text-embedding-004 \
+  -e EXTRACTION_DEBOUNCE_SECONDS=300 \
   -e DISABLE_AUTH=false \
-  redislabs/agent-memory-server:latest \
+  agent-memory-server:latest-fix \
   agent-memory api --host 0.0.0.0 --port 8000
 ```
 
@@ -50,8 +88,10 @@ docker run -d --name agent-memory-api \
 ```bash
 docker run -d --name agent-memory-worker \
   -e REDIS_URL=redis://your-redis:6379 \
-  -e OPENAI_API_KEY=your-openai-key \
-  redislabs/agent-memory-server:latest \
+  -e GEMINI_API_KEY=your-gemini-api-key \
+  -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
+  -e EMBEDDING_MODEL=gemini/text-embedding-004 \
+  agent-memory-server:latest-fix \
   agent-memory task-worker --concurrency 10
 ```
 
@@ -64,27 +104,35 @@ version: '3.8'
 
 services:
   redis:
-    image: redis/redis-stack:latest
+    image: redis:8.4-alpine
     ports:
       - "6379:6379"
-      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   agent-memory-api:
-    image: redislabs/agent-memory-server:latest
+    image: agent-memory-server:latest-fix
     ports:
       - "8000:8000"
     environment:
       - REDIS_URL=redis://redis:6379
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GENERATION_MODEL=gemini/gemini-2.0-flash-exp
+      - EMBEDDING_MODEL=gemini/text-embedding-004
+      - EXTRACTION_DEBOUNCE_SECONDS=30
       - DISABLE_AUTH=true
     command: agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
 ```
 
 Run:
 ```bash
-export OPENAI_API_KEY=your-key
+export GEMINI_API_KEY=your-key
 docker compose up -d
 ```
 
@@ -97,24 +145,42 @@ docker compose up -d
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379` (or `redis://host.docker.internal:6379` for Docker on Mac/Windows, `redis://172.17.0.1:6379` for Linux) |
-| `OPENAI_API_KEY` | OpenAI API key (default provider) | `sk-...` |
+| LLM Provider API Key | API key for your chosen provider | `GEMINI_API_KEY=...`, `OPENAI_API_KEY=...`, `ANTHROPIC_API_KEY=...`, etc. |
 
 ### Optional Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DISABLE_AUTH` | `false` | Disable authentication (dev only) |
-| `GENERATION_MODEL` | `gpt-4o` | LLM model for summarization |
-| `EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model |
-| `REDISVL_VECTOR_DIMENSIONS` | `1536` | Embedding dimensions |
+| `GENERATION_MODEL` | `gpt-5` | LLM model for summarization and memory extraction |
+| `EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model for semantic search |
+| `REDISVL_VECTOR_DIMENSIONS` | `1536` | Embedding dimensions (required for some models like Ollama) |
+| `EXTRACTION_DEBOUNCE_SECONDS` | `300` | Debounce period (in seconds) for memory extraction. Set to `30` for faster extraction in demos, keep `300` (5 minutes) for production to reduce API calls |
 
-### Alternative LLM Providers
+### LLM Provider Configuration
+
+Agent Memory Server uses [LiteLLM](https://docs.litellm.ai/) and supports 100+ providers. Set the appropriate environment variables for your provider:
+
+**Google Gemini:**
+```bash
+export GEMINI_API_KEY=your-key
+export GENERATION_MODEL=gemini/gemini-2.0-flash-exp
+export EMBEDDING_MODEL=gemini/text-embedding-004
+```
+
+**OpenAI:**
+```bash
+export OPENAI_API_KEY=sk-...
+export GENERATION_MODEL=gpt-4o
+export EMBEDDING_MODEL=text-embedding-3-small
+```
 
 **Anthropic:**
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
 export GENERATION_MODEL=claude-3-5-sonnet-20241022
-export EMBEDDING_MODEL=text-embedding-3-small  # Still use OpenAI for embeddings
+export EMBEDDING_MODEL=gemini/text-embedding-004  # Use Gemini for embeddings
+export GEMINI_API_KEY=your-gemini-key
 ```
 
 **AWS Bedrock:**
@@ -126,15 +192,17 @@ export GENERATION_MODEL=anthropic.claude-sonnet-4-5-20250929-v1:0
 export EMBEDDING_MODEL=bedrock/amazon.titan-embed-text-v2:0
 ```
 
-**Ollama (local):**
+**Ollama (local/offline):**
 ```bash
 export OLLAMA_API_BASE=http://localhost:11434
 export GENERATION_MODEL=ollama/llama2
 export EMBEDDING_MODEL=ollama/nomic-embed-text
-export REDISVL_VECTOR_DIMENSIONS=768  # Required for Ollama
+export REDISVL_VECTOR_DIMENSIONS=768  # Required for Ollama embeddings
 ```
 
-**See:** https://redis.github.io/agent-memory-server/llm-providers/ for complete provider list
+**See the complete provider list:**
+- **Generation Models**: https://redis.github.io/agent-memory-server/llm-providers/
+- **Embedding Models**: https://redis.github.io/agent-memory-server/embedding-providers/
 
 ---
 
@@ -143,7 +211,7 @@ export REDISVL_VECTOR_DIMENSIONS=768  # Required for Ollama
 ### Health Check
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8000/v1/health
 ```
 
 Expected response:
@@ -206,9 +274,10 @@ curl -X POST http://localhost:8000/api/v1/long-term-memory/search \
 **Problem:** "Invalid API key" or embedding failures
 
 **Solution:**
-- Verify `OPENAI_API_KEY` is set correctly
-- Check API key has sufficient credits
-- Try alternative provider (Anthropic, Bedrock, Ollama)
+- Verify your LLM provider API key is set correctly (e.g., `GEMINI_API_KEY`, `OPENAI_API_KEY`)
+- Check API key has sufficient credits/quota
+- Try alternative provider (Gemini, Anthropic, Bedrock, Ollama)
+- For local/offline embeddings, use Ollama with `EMBEDDING_MODEL=ollama/nomic-embed-text` and `REDISVL_VECTOR_DIMENSIONS=768`
 
 ### Memory Not Persisting
 

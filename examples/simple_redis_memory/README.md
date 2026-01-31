@@ -20,14 +20,14 @@ This sample demonstrates the **complete two-tier memory architecture** using Red
 ├──────────────────────────────┴─────────────────────────────────┤
 │                    Agent Memory Server API                     │
 ├────────────────────────────────────────────────────────────────┤
-│                         Redis Stack                            │
+│                          Redis 8.4                             │
 └────────────────────────────────────────────────────────────────┘
 ```
 
 ## Prerequisites
 
 - Python 3.10+
-- Docker (for Redis Stack and Agent Memory Server)
+- Docker (for Redis 8.4 and Agent Memory Server)
 
 ## Setup
 
@@ -43,28 +43,62 @@ Or install dependencies manually:
 pip install adk-redis fastapi uvicorn python-dotenv httpx
 ```
 
-### 2. Start Redis Stack
+### 2. Start Redis 8.4
 
 ```bash
-docker run -d --name redis-stack -p 6379:6379 redis/redis-stack:latest
+docker run -d --name redis -p 6379:6379 redis:8.4-alpine
 ```
 
-### 3. Start Agent Memory Server
+> **Note**: Redis 8.4 includes the Redis Query Engine (evolved from RediSearch) with native support for vector search, full-text search, and JSON operations.
+
+### 3. Build and Start Agent Memory Server
+
+> **Important**: A recent bug fix for non-OpenAI provider support is available in the latest GitHub commit but not yet in a release. Build from source to use the fix.
+
+**Option A: Automated setup (recommended)**
+
+```bash
+# Run the setup script from the repository root
+./scripts/setup-agent-memory-server.sh
+```
+
+This script will automatically clone, build, and verify the Agent Memory Server image.
+
+**Option B: Manual setup**
+
+```bash
+# Clone the repository
+git clone https://github.com/redis/agent-memory-server.git /tmp/agent-memory-server
+cd /tmp/agent-memory-server
+
+# Build Docker image
+docker build -t agent-memory-server:latest-fix .
+```
+
+**Start the server:**
 
 ```bash
 docker run -d --name agent-memory-server -p 8000:8000 \
   -e REDIS_URL=redis://host.docker.internal:6379 \
-  -e OPENAI_API_KEY=your-openai-key \
-  redislabs/agent-memory-server:latest \
+  -e GEMINI_API_KEY=your-gemini-api-key \
+  -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
+  -e EMBEDDING_MODEL=gemini/text-embedding-004 \
+  -e EXTRACTION_DEBOUNCE_SECONDS=30 \
+  agent-memory-server:latest-fix \
   agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
 ```
 
-> **Note**: The memory server requires an OpenAI API key for embeddings by default. See the [Agent Memory Server docs](https://redis.github.io/agent-memory-server/) for alternative embedding providers.
+> **Configuration Options:**
+> - **LLM Provider**: Agent Memory Server uses [LiteLLM](https://docs.litellm.ai/) and supports 100+ providers (OpenAI, Gemini, Anthropic, AWS Bedrock, Ollama, etc.). Set the appropriate environment variables for your provider (e.g., `GEMINI_API_KEY`, `GENERATION_MODEL=gemini/gemini-2.0-flash-exp`). See the [Agent Memory Server LLM Providers docs](https://redis.github.io/agent-memory-server/llm-providers/) for details.
+> - **Memory Extraction Debounce**: `EXTRACTION_DEBOUNCE_SECONDS` controls how long to wait before extracting memories from a conversation (default: 300 seconds / 5 minutes). Set to `30` for faster memory extraction in demos, or keep the default `300` for production to reduce API calls.
+> - **Embedding Models**: Agent Memory Server also uses LiteLLM for embeddings. For local/offline embeddings, use Ollama (e.g., `EMBEDDING_MODEL=ollama/nomic-embed-text`, `REDISVL_VECTOR_DIMENSIONS=768`). Note: The `redis/langcache-embed-v1` model used in the semantic_cache example is not supported by Agent Memory Server (it's RedisVL-specific). See [Embedding Providers docs](https://redis.github.io/agent-memory-server/embedding-providers/) for all options.
+>
+> **Using the official release**: Once the next version is released, you can use `redislabs/agent-memory-server:latest` instead of building from source.
 
 ### 4. Verify Setup
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8000/v1/health
 ```
 
 ### 5. Configure Environment
@@ -82,19 +116,23 @@ REDIS_MEMORY_RECENCY_BOOST=true
 
 ## Usage
 
+Run the web server:
+
 ```bash
 cd examples/simple_redis_memory
-python main.py
+uv run python main.py
 ```
 
 Open http://localhost:8080 in your browser.
+
+> **Note**: This project uses `uv` for dependency management. If you prefer to use `pip`, install the package first: `pip install "adk-redis[web]"` and then run `python main.py`.
 
 ## Demo Script
 
 Run the interactive demo to see memory in action:
 
 ```bash
-python demo_conversation.py
+uv run python demo_conversation.py
 ```
 
 This will:
