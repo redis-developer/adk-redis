@@ -71,9 +71,9 @@ def _native_hybrid_available():
     try:
         # isort: off
         from redis.commands.search.hybrid_query import CombineResultsMethod  # noqa: F401
-        from redis.commands.search.hybrid_query import (
+        from redis.commands.search.hybrid_query import (  # noqa: F401
             HybridPostProcessingConfig,
-        )  # noqa: F401
+        )
         # isort: on
 
         return True
