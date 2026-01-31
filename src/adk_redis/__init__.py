@@ -35,6 +35,13 @@ Memory Tools:
     - DeleteMemoryTool: Delete memories by ID
     - UpdateMemoryTool: Update existing memories
 
+Semantic Caching:
+    - RedisVLCacheProvider: Redis-backed semantic cache
+    - LLMResponseCache: Cache LLM responses
+    - ToolCache: Cache tool execution results
+    - create_llm_cache_callbacks: Create caching callbacks for agents
+    - create_tool_cache_callbacks: Create tool caching callbacks
+
 Example:
     ```python
     from adk_redis import (
@@ -84,6 +91,17 @@ from adk_redis.tools import MemoryPromptTool
 from adk_redis.tools import MemoryToolConfig
 from adk_redis.tools import SearchMemoryTool
 from adk_redis.tools import UpdateMemoryTool
+# Semantic caching
+from adk_redis.cache import BaseCacheProvider
+from adk_redis.cache import CacheEntry
+from adk_redis.cache import LLMResponseCache
+from adk_redis.cache import LLMResponseCacheConfig
+from adk_redis.cache import RedisVLCacheProvider
+from adk_redis.cache import RedisVLCacheProviderConfig
+from adk_redis.cache import ToolCache
+from adk_redis.cache import ToolCacheConfig
+from adk_redis.cache import create_llm_cache_callbacks
+from adk_redis.cache import create_tool_cache_callbacks
 
 __all__ = [
     # Version
@@ -115,4 +133,15 @@ __all__ = [
     "DeleteMemoryTool",
     "UpdateMemoryTool",
     "MemoryToolConfig",
+    # Semantic caching
+    "BaseCacheProvider",
+    "CacheEntry",
+    "RedisVLCacheProvider",
+    "RedisVLCacheProviderConfig",
+    "LLMResponseCache",
+    "LLMResponseCacheConfig",
+    "ToolCache",
+    "ToolCacheConfig",
+    "create_llm_cache_callbacks",
+    "create_tool_cache_callbacks",
 ]

@@ -278,8 +278,8 @@ AGENT: "Welcome back, Tyler! I remember you prefer business class flights,
        5-star hotels with spa facilities. Planning another luxury trip?"
 
 # User: arsene (budget, economy, $800-1.5k budget)
-USER: "Hi, I'm arsene"
-AGENT: "Hey Arsene! I know you're into budget travel, hostels, and backpacking.
+USER: "Hi, I'm Vishal"
+AGENT: "Hey Vishal! I know you're into budget travel, hostels, and backpacking.
        What adventure are you planning next?"
 ```
 
