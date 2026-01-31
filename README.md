@@ -337,7 +337,8 @@ Complete working examples with ADK web runner integration:
 
 | Example | Description                             | Features |
 |---------|-----------------------------------------|----------|
-| **[redis_memory](examples/simple_redis_memory/)** | Agent with two-tier memory architecture | Working memory, long-term memory, auto-summarization, semantic search |
+| **[simple_redis_memory](examples/simple_redis_memory/)** | Agent with two-tier memory architecture | Working memory, long-term memory, auto-summarization, semantic search |
+| **[semantic_cache](examples/semantic_cache/)** | Semantic caching for LLM responses | Vector-based cache, reduced latency, cost optimization, local embeddings |
 | **[redis_search_tools](examples/redis_search_tools/)** | RAG with search tools                   | Vector search, hybrid search, range search, text search |
 | **[travel_agent_memory](examples/travel_agent_memory/)** | Travel agent with websearch and memory  | Hybrid memory (tools + callbacks), web search with caching, calendar export, itinerary planning, multi-user support |
 
