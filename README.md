@@ -42,23 +42,38 @@
 
 ## Installation
 
+### Prerequisites
+
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management. Install it first:
+
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Or with pip
+pip install uv
+```
+
 ### Stable Release (Recommended)
 
 ```bash
-pip install adk-redis
+uv pip install adk-redis
 ```
 
 ### Optional Dependencies
 
 ```bash
 # Memory & session services (Redis Agent Memory Server integration)
-pip install adk-redis[memory]
+uv pip install adk-redis[memory]
 
 # Search tools (RedisVL integration)
-pip install adk-redis[search]
+uv pip install adk-redis[search]
 
 # All features
-pip install adk-redis[all]
+uv pip install adk-redis[all]
 ```
 
 ### Development Version
@@ -66,7 +81,7 @@ pip install adk-redis[all]
 For the latest features and bug fixes not yet in a stable release:
 
 ```bash
-pip install git+https://github.com/redis-applied-ai/adk-redis.git@main
+uv pip install git+https://github.com/redis-applied-ai/adk-redis.git@main
 ```
 
 > **Note:** The development version includes the newest changes but may contain experimental features. Use primarily for testing or accessing critical fixes before official release.
@@ -78,7 +93,7 @@ pip install git+https://github.com/redis-applied-ai/adk-redis.git@main
 ### Prerequisites
 
 **For memory/session services:**
-- [Redis Agent Memory Server](https://github.com/redis/agent-memory-server) (port 8000)
+- [Redis Agent Memory Server](https://github.com/redis/agent-memory-server) (port 8088)
 - Redis 8.4+ or Redis Cloud (backend for Agent Memory Server)
 
 **For search tools:**
@@ -121,18 +136,21 @@ docker build -t agent-memory-server:latest-fix .
 **Start the server:**
 
 ```bash
-docker run -d --name agent-memory-server -p 8000:8000 \
+docker run -d --name agent-memory-server -p 8088:8088 \
   -e REDIS_URL=redis://host.docker.internal:6379 \
   -e GEMINI_API_KEY=your-gemini-api-key \
-  -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
+  -e GENERATION_MODEL=gemini/gemini-2.0-flash \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
+  -e FAST_MODEL=gemini/gemini-2.0-flash \
+  -e SLOW_MODEL=gemini/gemini-2.0-flash \
   -e EXTRACTION_DEBOUNCE_SECONDS=5 \
   agent-memory-server:latest-fix \
-  agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
+  agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
 ```
 
 > **Configuration Options:**
-> - **LLM Provider**: Agent Memory Server uses [LiteLLM](https://docs.litellm.ai/) and supports 100+ providers (OpenAI, Gemini, Anthropic, AWS Bedrock, Ollama, etc.). Set the appropriate environment variables for your provider (e.g., `GEMINI_API_KEY`, `GENERATION_MODEL=gemini/gemini-2.0-flash-exp`). See the [Agent Memory Server LLM Providers docs](https://redis.github.io/agent-memory-server/llm-providers/) for details.
+> - **LLM Provider**: Agent Memory Server uses [LiteLLM](https://docs.litellm.ai/) and supports 100+ providers (OpenAI, Gemini, Anthropic, AWS Bedrock, Ollama, etc.). Set the appropriate environment variables for your provider (e.g., `GEMINI_API_KEY`, `GENERATION_MODEL=gemini/gemini-2.0-flash`). See the [Agent Memory Server LLM Providers docs](https://redis.github.io/agent-memory-server/llm-providers/) for details.
+> - **Model Configuration**: Set `GENERATION_MODEL`, `FAST_MODEL` (for quick tasks like extraction), and `SLOW_MODEL` (for complex tasks) to your preferred models. All default to OpenAI models if not specified.
 > - **Memory Extraction Debounce**: `EXTRACTION_DEBOUNCE_SECONDS` controls how long to wait before extracting memories from a conversation (default: 300 seconds). Lower values (e.g., 5) provide faster memory extraction, while higher values reduce API calls.
 > - **Embedding Models**: Agent Memory Server also uses LiteLLM for embeddings. For local/offline embeddings, use Ollama (e.g., `EMBEDDING_MODEL=ollama/nomic-embed-text`, `REDISVL_VECTOR_DIMENSIONS=768`). See [Embedding Providers docs](https://redis.github.io/agent-memory-server/embedding-providers/) for all options.
 >
@@ -163,7 +181,7 @@ from adk_redis.sessions import (
 
 # Configure session service (Tier 1: Working Memory)
 session_config = RedisWorkingMemorySessionServiceConfig(
-    api_base_url="http://localhost:8000",  # Agent Memory Server URL
+    api_base_url="http://localhost:8088",  # Agent Memory Server URL
     default_namespace="my_app",
     model_name="gpt-4o",  # Model for auto-summarization
     context_window_max=8000,  # Trigger summarization at this token count
@@ -172,7 +190,7 @@ session_service = RedisWorkingMemorySessionService(config=session_config)
 
 # Configure memory service (Tier 2: Long-Term Memory)
 memory_config = RedisLongTermMemoryServiceConfig(
-    api_base_url="http://localhost:8000",
+    api_base_url="http://localhost:8088",
     default_namespace="my_app",
     extraction_strategy="discrete",  # Extract individual facts
     recency_boost=True,  # Prioritize recent memories in search
@@ -418,11 +436,3 @@ Apache 2.0 - See [LICENSE](LICENSE) for details.
 - **[Redis](https://redis.io/)** - Redis 8.4+ with Search, JSON, and vector capabilities
 
 ---
-
-<div align="center">
-
-**Built with ❤️ by the Redis Applied AI team**
-
-*Happy Agent Building!*
-
-</div>

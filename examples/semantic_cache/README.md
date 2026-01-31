@@ -15,8 +15,20 @@ them for semantically similar queries, reducing latency and API costs.
 
 ### 1. Install Dependencies
 
+First, install [uv](https://docs.astral.sh/uv/) if you haven't already:
+
 ```bash
-pip install google-adk adk-redis
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or with pip
+pip install uv
+```
+
+Then install the package:
+
+```bash
+uv pip install "adk-redis[all]"
 ```
 
 ### 2. Start Redis

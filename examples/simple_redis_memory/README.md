@@ -31,16 +31,22 @@ This sample demonstrates the **complete two-tier memory architecture** using Red
 
 ## Setup
 
-### 1. Install adk-redis with web dependencies
+### 1. Install uv and dependencies
+
+First, install [uv](https://docs.astral.sh/uv/) if you haven't already:
 
 ```bash
-pip install "adk-redis[web]"
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or with pip
+pip install uv
 ```
 
-Or install dependencies manually:
+Then install the package with all dependencies:
 
 ```bash
-pip install adk-redis fastapi uvicorn python-dotenv httpx
+uv pip install "adk-redis[all]"
 ```
 
 ### 2. Start Redis 8.4
@@ -78,18 +84,20 @@ docker build -t agent-memory-server:latest-fix .
 **Start the server:**
 
 ```bash
-docker run -d --name agent-memory-server -p 8000:8000 \
+docker run -d --name agent-memory-server -p 8088:8088 \
   -e REDIS_URL=redis://host.docker.internal:6379 \
   -e GEMINI_API_KEY=your-gemini-api-key \
-  -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
+  -e GENERATION_MODEL=gemini/gemini-2.0-flash \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
+  -e FAST_MODEL=gemini/gemini-2.0-flash \
+  -e SLOW_MODEL=gemini/gemini-2.0-flash \
   -e EXTRACTION_DEBOUNCE_SECONDS=5 \
   agent-memory-server:latest-fix \
-  agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
+  agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
 ```
 
 > **Configuration Options:**
-> - **LLM Provider**: Agent Memory Server uses [LiteLLM](https://docs.litellm.ai/) and supports 100+ providers (OpenAI, Gemini, Anthropic, AWS Bedrock, Ollama, etc.). Set the appropriate environment variables for your provider (e.g., `GEMINI_API_KEY`, `GENERATION_MODEL=gemini/gemini-2.0-flash-exp`). See the [Agent Memory Server LLM Providers docs](https://redis.github.io/agent-memory-server/llm-providers/) for details.
+> - **LLM Provider**: Agent Memory Server uses [LiteLLM](https://docs.litellm.ai/) and supports 100+ providers (OpenAI, Gemini, Anthropic, AWS Bedrock, Ollama, etc.). Set the appropriate environment variables for your provider (e.g., `GEMINI_API_KEY`, `GENERATION_MODEL=gemini/gemini-2.0-flash`). See the [Agent Memory Server LLM Providers docs](https://redis.github.io/agent-memory-server/llm-providers/) for details.
 > - **Memory Extraction Debounce**: `EXTRACTION_DEBOUNCE_SECONDS` controls how long to wait before extracting memories from a conversation (default: 300 seconds). Lower values (e.g., 5) provide faster memory extraction, while higher values reduce API calls.
 > - **Embedding Models**: Agent Memory Server also uses LiteLLM for embeddings. For local/offline embeddings, use Ollama (e.g., `EMBEDDING_MODEL=ollama/nomic-embed-text`, `REDISVL_VECTOR_DIMENSIONS=768`). Note: The `redis/langcache-embed-v1` model used in the semantic_cache example is not supported by Agent Memory Server (it's RedisVL-specific). See [Embedding Providers docs](https://redis.github.io/agent-memory-server/embedding-providers/) for all options.
 >
@@ -98,7 +106,7 @@ docker run -d --name agent-memory-server -p 8000:8000 \
 ### 4. Verify Setup
 
 ```bash
-curl http://localhost:8000/v1/health
+curl http://localhost:8088/v1/health
 ```
 
 ### 5. Configure Environment
@@ -107,7 +115,7 @@ Create `.env` in this directory:
 
 ```bash
 GOOGLE_API_KEY=your-google-api-key
-REDIS_MEMORY_SERVER_URL=http://localhost:8000
+REDIS_MEMORY_SERVER_URL=http://localhost:8088
 REDIS_MEMORY_NAMESPACE=adk_agent_memory
 REDIS_MEMORY_EXTRACTION_STRATEGY=discrete
 REDIS_MEMORY_CONTEXT_WINDOW=8000
@@ -125,7 +133,7 @@ uv run python main.py
 
 Open http://localhost:8080 in your browser.
 
-> **Note**: This project uses `uv` for dependency management. If you prefer to use `pip`, install the package first: `pip install "adk-redis[web]"` and then run `python main.py`.
+> **Note**: This project uses `uv` for dependency management. If you prefer to use `pip`, install the package first: `uv pip install "adk-redis[all]"` and then run `python main.py`.
 
 ## Demo Script
 
@@ -169,7 +177,7 @@ User: What's my favorite coffee?
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `REDIS_MEMORY_SERVER_URL` | `http://localhost:8000` | Memory server URL |
+| `REDIS_MEMORY_SERVER_URL` | `http://localhost:8088` | Memory server URL |
 | `REDIS_MEMORY_NAMESPACE` | `adk_agent_memory` | Namespace for isolation |
 | `REDIS_MEMORY_EXTRACTION_STRATEGY` | `discrete` | `discrete`, `summary`, `preferences` |
 | `REDIS_MEMORY_CONTEXT_WINDOW` | `8000` | Max tokens before summarization |

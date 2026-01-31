@@ -27,19 +27,26 @@ access to a Redis-based knowledge base with multiple search capabilities.
 
 ## Setup
 
-1. Install dependencies:
+1. Install [uv](https://docs.astral.sh/uv/) if you haven't already:
    ```bash
-   pip install adk-redis
-   # Or with uv
-   uv pip install adk-redis
+   # macOS/Linux
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+
+   # Or with pip
+   pip install uv
    ```
 
-2. Download NLTK stopwords (required for keyword search):
+2. Install dependencies:
+   ```bash
+   uv pip install "adk-redis[all]"
+   ```
+
+3. Download NLTK stopwords (required for keyword search):
    ```bash
    python -c "import nltk; nltk.download('stopwords')"
    ```
 
-3. Set environment variables (or create a `.env` file):
+4. Set environment variables (or create a `.env` file):
    ```bash
    export REDIS_URL=redis://localhost:6379
    export GOOGLE_API_KEY=your-google-api-key  # For Gemini LLM
