@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from google.adk.tools import BaseTool
+from google.adk.tools.base_tool import BaseTool
 
 from adk_redis.tools.memory._config import MemoryToolConfig
 
