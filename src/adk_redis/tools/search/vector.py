@@ -30,124 +30,124 @@ from adk_redis.tools.search._config import RedisVectorQueryConfig
 
 
 class RedisVectorSearchTool(VectorizedSearchTool):
-  """Vector similarity search tool using RedisVL.
+    """Vector similarity search tool using RedisVL.
 
-  This tool performs K-nearest neighbor (KNN) vector similarity search
-  over a Redis index. It embeds the query text using the provided
-  vectorizer and finds the most similar documents.
+    This tool performs K-nearest neighbor (KNN) vector similarity search
+    over a Redis index. It embeds the query text using the provided
+    vectorizer and finds the most similar documents.
 
-  Example:
-      ```python
-      from redisvl.index import SearchIndex
-      from redisvl.utils.vectorize import HFTextVectorizer
-      from redisvl.query.filter import Tag
-      from adk_redis import (
-          RedisVectorSearchTool,
-          RedisVectorQueryConfig,
-      )
+    Example:
+        ```python
+        from redisvl.index import SearchIndex
+        from redisvl.utils.vectorize import HFTextVectorizer
+        from redisvl.query.filter import Tag
+        from adk_redis import (
+            RedisVectorSearchTool,
+            RedisVectorQueryConfig,
+        )
 
-      index = SearchIndex.from_yaml("schema.yaml")
-      vectorizer = HFTextVectorizer(model="redis/langcache-embed-v2")
+        index = SearchIndex.from_yaml("schema.yaml")
+        vectorizer = HFTextVectorizer(model="redis/langcache-embed-v2")
 
-      # Using config object (recommended)
-      config = RedisVectorQueryConfig(
-          num_results=5,
-          ef_runtime=100,  # Higher = better recall
-      )
-      tool = RedisVectorSearchTool(
-          index=index,
-          vectorizer=vectorizer,
-          config=config,
-          return_fields=["title", "content", "url"],
-          filter_expression=Tag("category") == "redis",
-      )
+        # Using config object (recommended)
+        config = RedisVectorQueryConfig(
+            num_results=5,
+            ef_runtime=100,  # Higher = better recall
+        )
+        tool = RedisVectorSearchTool(
+            index=index,
+            vectorizer=vectorizer,
+            config=config,
+            return_fields=["title", "content", "url"],
+            filter_expression=Tag("category") == "redis",
+        )
 
-      # Use with an agent
-      agent = Agent(model="gemini-2.5-flash", tools=[tool])
-      ```
-  """
-
-  def __init__(
-      self,
-      *,
-      index: SearchIndex | AsyncSearchIndex,
-      vectorizer: BaseVectorizer,
-      config: RedisVectorQueryConfig | None = None,
-      return_fields: list[str] | None = None,
-      filter_expression: Any | None = None,
-      name: str = "redis_vector_search",
-      description: str = "Search for semantically similar documents using vector similarity with Redis.",
-  ):
-    """Initialize the vector search tool.
-
-    Args:
-        index: The RedisVL SearchIndex to query.
-        vectorizer: The vectorizer for embedding queries.
-        config: Configuration for query parameters. If None, uses defaults.
-            See RedisVectorQueryConfig for available options including
-            num_results, vector_field_name, dtype, and version-dependent
-            parameters like ef_runtime and hybrid_policy.
-        return_fields: Optional list of fields to return in results.
-        filter_expression: Optional RedisVL FilterExpression to narrow results.
-        name: The name of the tool (exposed to LLM).
-        description: The description of the tool (exposed to LLM).
+        # Use with an agent
+        agent = Agent(model="gemini-2.5-flash", tools=[tool])
+        ```
     """
-    super().__init__(
-        name=name,
-        description=description,
-        index=index,
-        vectorizer=vectorizer,
-        return_fields=return_fields,
-    )
-    self._config = config or RedisVectorQueryConfig()
-    self._filter_expression = filter_expression
 
-  def _get_declaration(self) -> types.FunctionDeclaration:
-    """Get the function declaration for the LLM."""
-    return types.FunctionDeclaration(
-        name=self.name,
-        description=self.description,
-        parameters=types.Schema(
-            type=types.Type.OBJECT,
-            properties={
-                "query": types.Schema(
-                    type=types.Type.STRING,
-                    description="The search query text.",
-                ),
-                "num_results": types.Schema(
-                    type=types.Type.INTEGER,
-                    description=(
-                        "Number of results to return (default:"
-                        f" {self._config.num_results})."
+    def __init__(
+        self,
+        *,
+        index: SearchIndex | AsyncSearchIndex,
+        vectorizer: BaseVectorizer,
+        config: RedisVectorQueryConfig | None = None,
+        return_fields: list[str] | None = None,
+        filter_expression: Any | None = None,
+        name: str = "redis_vector_search",
+        description: str = "Search for semantically similar documents using vector similarity with Redis.",
+    ):
+        """Initialize the vector search tool.
+
+        Args:
+            index: The RedisVL SearchIndex to query.
+            vectorizer: The vectorizer for embedding queries.
+            config: Configuration for query parameters. If None, uses defaults.
+                See RedisVectorQueryConfig for available options including
+                num_results, vector_field_name, dtype, and version-dependent
+                parameters like ef_runtime and hybrid_policy.
+            return_fields: Optional list of fields to return in results.
+            filter_expression: Optional RedisVL FilterExpression to narrow results.
+            name: The name of the tool (exposed to LLM).
+            description: The description of the tool (exposed to LLM).
+        """
+        super().__init__(
+            name=name,
+            description=description,
+            index=index,
+            vectorizer=vectorizer,
+            return_fields=return_fields,
+        )
+        self._config = config or RedisVectorQueryConfig()
+        self._filter_expression = filter_expression
+
+    def _get_declaration(self) -> types.FunctionDeclaration:
+        """Get the function declaration for the LLM."""
+        return types.FunctionDeclaration(
+            name=self.name,
+            description=self.description,
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "query": types.Schema(
+                        type=types.Type.STRING,
+                        description="The search query text.",
                     ),
-                ),
-            },
-            required=["query"],
-        ),
-    )
+                    "num_results": types.Schema(
+                        type=types.Type.INTEGER,
+                        description=(
+                            "Number of results to return (default:"
+                            f" {self._config.num_results})."
+                        ),
+                    ),
+                },
+                required=["query"],
+            ),
+        )
 
-  def _build_query(
-      self, query_text: str, embedding: list[float], **kwargs: Any
-  ) -> VectorQuery:
-    """Build a VectorQuery for KNN search.
+    def _build_query(
+        self, query_text: str, embedding: list[float], **kwargs: Any
+    ) -> VectorQuery:
+        """Build a VectorQuery for KNN search.
 
-    Args:
-        query_text: The original query text (unused for vector search).
-        embedding: The vector embedding of the query text.
-        **kwargs: Additional parameters (e.g., num_results).
+        Args:
+            query_text: The original query text (unused for vector search).
+            embedding: The vector embedding of the query text.
+            **kwargs: Additional parameters (e.g., num_results).
 
-    Returns:
-        A VectorQuery configured for KNN search.
-    """
-    # Allow runtime override of num_results
-    num_results = kwargs.get("num_results", self._config.num_results)
+        Returns:
+            A VectorQuery configured for KNN search.
+        """
+        # Allow runtime override of num_results
+        num_results = kwargs.get("num_results", self._config.num_results)
 
-    # Get query kwargs from config, with runtime overrides
-    query_kwargs = self._config.to_query_kwargs(
-        vector=embedding,
-        filter_expression=self._filter_expression,
-    )
-    query_kwargs["return_fields"] = self._return_fields
-    query_kwargs["num_results"] = num_results
+        # Get query kwargs from config, with runtime overrides
+        query_kwargs = self._config.to_query_kwargs(
+            vector=embedding,
+            filter_expression=self._filter_expression,
+        )
+        query_kwargs["return_fields"] = self._return_fields
+        query_kwargs["num_results"] = num_results
 
-    return VectorQuery(**query_kwargs)
+        return VectorQuery(**query_kwargs)

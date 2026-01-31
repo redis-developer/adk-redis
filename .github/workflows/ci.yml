@@ -29,8 +29,9 @@ jobs:
 
       - name: Run linting
         run: |
-          uv run ruff check src tests
-          uv run ruff format --check src tests
+          uv run ruff check src tests examples
+          uv run isort --check-only src tests examples
+          uv run pyink --check src tests examples
 
       - name: Run type checking
         run: uv run mypy src

@@ -18,110 +18,110 @@ import pytest
 
 
 class TestMemoryImports:
-  """Test memory module imports."""
+    """Test memory module imports."""
 
-  def test_memory_service_import(self):
-    """Test RedisLongTermMemoryService can be imported."""
-    from adk_redis import RedisLongTermMemoryService
+    def test_memory_service_import(self):
+        """Test RedisLongTermMemoryService can be imported."""
+        from adk_redis import RedisLongTermMemoryService
 
-    assert RedisLongTermMemoryService is not None
+        assert RedisLongTermMemoryService is not None
 
-  def test_memory_config_import(self):
-    """Test RedisLongTermMemoryServiceConfig can be imported."""
-    from adk_redis import RedisLongTermMemoryServiceConfig
+    def test_memory_config_import(self):
+        """Test RedisLongTermMemoryServiceConfig can be imported."""
+        from adk_redis import RedisLongTermMemoryServiceConfig
 
-    assert RedisLongTermMemoryServiceConfig is not None
+        assert RedisLongTermMemoryServiceConfig is not None
 
-  def test_memory_submodule_import(self):
-    """Test memory submodule imports."""
-    from adk_redis.memory import RedisLongTermMemoryService
-    from adk_redis.memory import RedisLongTermMemoryServiceConfig
+    def test_memory_submodule_import(self):
+        """Test memory submodule imports."""
+        from adk_redis.memory import RedisLongTermMemoryService
+        from adk_redis.memory import RedisLongTermMemoryServiceConfig
 
-    assert RedisLongTermMemoryService is not None
-    assert RedisLongTermMemoryServiceConfig is not None
+        assert RedisLongTermMemoryService is not None
+        assert RedisLongTermMemoryServiceConfig is not None
 
 
 class TestSessionImports:
-  """Test session module imports."""
+    """Test session module imports."""
 
-  def test_session_service_import(self):
-    """Test RedisWorkingMemorySessionService can be imported."""
-    from adk_redis import RedisWorkingMemorySessionService
+    def test_session_service_import(self):
+        """Test RedisWorkingMemorySessionService can be imported."""
+        from adk_redis import RedisWorkingMemorySessionService
 
-    assert RedisWorkingMemorySessionService is not None
+        assert RedisWorkingMemorySessionService is not None
 
-  def test_session_config_import(self):
-    """Test RedisWorkingMemorySessionServiceConfig can be imported."""
-    from adk_redis import RedisWorkingMemorySessionServiceConfig
+    def test_session_config_import(self):
+        """Test RedisWorkingMemorySessionServiceConfig can be imported."""
+        from adk_redis import RedisWorkingMemorySessionServiceConfig
 
-    assert RedisWorkingMemorySessionServiceConfig is not None
+        assert RedisWorkingMemorySessionServiceConfig is not None
 
-  def test_session_submodule_import(self):
-    """Test sessions submodule imports."""
-    from adk_redis.sessions import RedisWorkingMemorySessionService
-    from adk_redis.sessions import RedisWorkingMemorySessionServiceConfig
+    def test_session_submodule_import(self):
+        """Test sessions submodule imports."""
+        from adk_redis.sessions import RedisWorkingMemorySessionService
+        from adk_redis.sessions import RedisWorkingMemorySessionServiceConfig
 
-    assert RedisWorkingMemorySessionService is not None
-    assert RedisWorkingMemorySessionServiceConfig is not None
+        assert RedisWorkingMemorySessionService is not None
+        assert RedisWorkingMemorySessionServiceConfig is not None
 
 
 class TestToolImports:
-  """Test tools module imports."""
+    """Test tools module imports."""
 
-  @pytest.mark.skipif(
-      not pytest.importorskip("redisvl", reason="redisvl not installed"),
-      reason="redisvl not installed",
-  )
-  def test_vector_search_tool_import(self):
-    """Test RedisVectorSearchTool can be imported."""
-    from adk_redis import RedisVectorSearchTool
+    @pytest.mark.skipif(
+        not pytest.importorskip("redisvl", reason="redisvl not installed"),
+        reason="redisvl not installed",
+    )
+    def test_vector_search_tool_import(self):
+        """Test RedisVectorSearchTool can be imported."""
+        from adk_redis import RedisVectorSearchTool
 
-    assert RedisVectorSearchTool is not None
+        assert RedisVectorSearchTool is not None
 
-  @pytest.mark.skipif(
-      not pytest.importorskip("redisvl", reason="redisvl not installed"),
-      reason="redisvl not installed",
-  )
-  def test_hybrid_search_tool_import(self):
-    """Test RedisHybridSearchTool can be imported."""
-    from adk_redis import RedisHybridSearchTool
+    @pytest.mark.skipif(
+        not pytest.importorskip("redisvl", reason="redisvl not installed"),
+        reason="redisvl not installed",
+    )
+    def test_hybrid_search_tool_import(self):
+        """Test RedisHybridSearchTool can be imported."""
+        from adk_redis import RedisHybridSearchTool
 
-    assert RedisHybridSearchTool is not None
+        assert RedisHybridSearchTool is not None
 
-  @pytest.mark.skipif(
-      not pytest.importorskip("redisvl", reason="redisvl not installed"),
-      reason="redisvl not installed",
-  )
-  def test_range_search_tool_import(self):
-    """Test RedisRangeSearchTool can be imported."""
-    from adk_redis import RedisRangeSearchTool
+    @pytest.mark.skipif(
+        not pytest.importorskip("redisvl", reason="redisvl not installed"),
+        reason="redisvl not installed",
+    )
+    def test_range_search_tool_import(self):
+        """Test RedisRangeSearchTool can be imported."""
+        from adk_redis import RedisRangeSearchTool
 
-    assert RedisRangeSearchTool is not None
+        assert RedisRangeSearchTool is not None
 
-  @pytest.mark.skipif(
-      not pytest.importorskip("redisvl", reason="redisvl not installed"),
-      reason="redisvl not installed",
-  )
-  def test_text_search_tool_import(self):
-    """Test RedisTextSearchTool can be imported."""
-    from adk_redis import RedisTextSearchTool
+    @pytest.mark.skipif(
+        not pytest.importorskip("redisvl", reason="redisvl not installed"),
+        reason="redisvl not installed",
+    )
+    def test_text_search_tool_import(self):
+        """Test RedisTextSearchTool can be imported."""
+        from adk_redis import RedisTextSearchTool
 
-    assert RedisTextSearchTool is not None
+        assert RedisTextSearchTool is not None
 
-  @pytest.mark.skipif(
-      not pytest.importorskip("redisvl", reason="redisvl not installed"),
-      reason="redisvl not installed",
-  )
-  def test_config_imports(self):
-    """Test config classes can be imported."""
-    from adk_redis import RedisAggregatedHybridQueryConfig
-    from adk_redis import RedisHybridQueryConfig
-    from adk_redis import RedisRangeQueryConfig
-    from adk_redis import RedisTextQueryConfig
-    from adk_redis import RedisVectorQueryConfig
+    @pytest.mark.skipif(
+        not pytest.importorskip("redisvl", reason="redisvl not installed"),
+        reason="redisvl not installed",
+    )
+    def test_config_imports(self):
+        """Test config classes can be imported."""
+        from adk_redis import RedisAggregatedHybridQueryConfig
+        from adk_redis import RedisHybridQueryConfig
+        from adk_redis import RedisRangeQueryConfig
+        from adk_redis import RedisTextQueryConfig
+        from adk_redis import RedisVectorQueryConfig
 
-    assert RedisVectorQueryConfig is not None
-    assert RedisHybridQueryConfig is not None
-    assert RedisAggregatedHybridQueryConfig is not None
-    assert RedisRangeQueryConfig is not None
-    assert RedisTextQueryConfig is not None
+        assert RedisVectorQueryConfig is not None
+        assert RedisHybridQueryConfig is not None
+        assert RedisAggregatedHybridQueryConfig is not None
+        assert RedisRangeQueryConfig is not None
+        assert RedisTextQueryConfig is not None

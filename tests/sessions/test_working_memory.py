@@ -25,92 +25,92 @@ from adk_redis.sessions import RedisWorkingMemorySessionServiceConfig
 
 
 class TestRedisWorkingMemorySessionServiceConfig:
-  """Tests for RedisWorkingMemorySessionServiceConfig."""
+    """Tests for RedisWorkingMemorySessionServiceConfig."""
 
-  def test_default_values(self):
-    """Test default configuration values."""
-    config = RedisWorkingMemorySessionServiceConfig()
-    assert config.api_base_url == "http://localhost:8000"
-    assert config.timeout == 30.0
-    assert config.default_namespace is None
-    assert config.model_name is None
-    assert config.context_window_max is None
-    assert config.extraction_strategy == "discrete"
-    assert config.extraction_strategy_config == {}
-    assert config.session_ttl_seconds is None
+    def test_default_values(self):
+        """Test default configuration values."""
+        config = RedisWorkingMemorySessionServiceConfig()
+        assert config.api_base_url == "http://localhost:8000"
+        assert config.timeout == 30.0
+        assert config.default_namespace is None
+        assert config.model_name is None
+        assert config.context_window_max is None
+        assert config.extraction_strategy == "discrete"
+        assert config.extraction_strategy_config == {}
+        assert config.session_ttl_seconds is None
 
-  def test_custom_values(self):
-    """Test custom configuration values."""
-    config = RedisWorkingMemorySessionServiceConfig(
-        api_base_url="http://custom:9000",
-        timeout=60.0,
-        default_namespace="test_ns",
-        model_name="gpt-4",
-        context_window_max=8000,
-        extraction_strategy="summary",
-        session_ttl_seconds=3600,
-    )
-    assert config.api_base_url == "http://custom:9000"
-    assert config.timeout == 60.0
-    assert config.default_namespace == "test_ns"
-    assert config.model_name == "gpt-4"
-    assert config.context_window_max == 8000
-    assert config.extraction_strategy == "summary"
-    assert config.session_ttl_seconds == 3600
+    def test_custom_values(self):
+        """Test custom configuration values."""
+        config = RedisWorkingMemorySessionServiceConfig(
+            api_base_url="http://custom:9000",
+            timeout=60.0,
+            default_namespace="test_ns",
+            model_name="gpt-4",
+            context_window_max=8000,
+            extraction_strategy="summary",
+            session_ttl_seconds=3600,
+        )
+        assert config.api_base_url == "http://custom:9000"
+        assert config.timeout == 60.0
+        assert config.default_namespace == "test_ns"
+        assert config.model_name == "gpt-4"
+        assert config.context_window_max == 8000
+        assert config.extraction_strategy == "summary"
+        assert config.session_ttl_seconds == 3600
 
 
 class TestRedisWorkingMemorySessionServiceInit:
-  """Tests for RedisWorkingMemorySessionService initialization."""
+    """Tests for RedisWorkingMemorySessionService initialization."""
 
-  def test_init_with_default_config(self):
-    """Test initialization with default config."""
-    service = RedisWorkingMemorySessionService()
-    assert service._config.api_base_url == "http://localhost:8000"
+    def test_init_with_default_config(self):
+        """Test initialization with default config."""
+        service = RedisWorkingMemorySessionService()
+        assert service._config.api_base_url == "http://localhost:8000"
 
-  def test_init_with_custom_config(self):
-    """Test initialization with custom config."""
-    config = RedisWorkingMemorySessionServiceConfig(
-        api_base_url="http://custom:9000",
-    )
-    service = RedisWorkingMemorySessionService(config=config)
-    assert service._config.api_base_url == "http://custom:9000"
+    def test_init_with_custom_config(self):
+        """Test initialization with custom config."""
+        config = RedisWorkingMemorySessionServiceConfig(
+            api_base_url="http://custom:9000",
+        )
+        service = RedisWorkingMemorySessionService(config=config)
+        assert service._config.api_base_url == "http://custom:9000"
 
 
 class TestRedisWorkingMemorySessionServiceMethods:
-  """Tests for RedisWorkingMemorySessionService methods."""
+    """Tests for RedisWorkingMemorySessionService methods."""
 
-  @pytest.fixture
-  def service(self):
-    """Create a service instance for testing."""
-    return RedisWorkingMemorySessionService()
+    @pytest.fixture
+    def service(self):
+        """Create a service instance for testing."""
+        return RedisWorkingMemorySessionService()
 
-  @pytest.mark.asyncio
-  async def test_list_sessions_returns_empty_on_error(self, service):
-    """Test list_sessions returns empty list on error."""
-    with patch.object(
-        service,
-        "_client",
-        create=True,
-        new_callable=lambda: MagicMock(
-            list_sessions=AsyncMock(side_effect=Exception("Test error"))
-        ),
-    ):
-      result = await service.list_sessions(
-          app_name="test_app",
-          user_id="test_user",
-      )
-      assert result.sessions == []
+    @pytest.mark.asyncio
+    async def test_list_sessions_returns_empty_on_error(self, service):
+        """Test list_sessions returns empty list on error."""
+        with patch.object(
+            service,
+            "_client",
+            create=True,
+            new_callable=lambda: MagicMock(
+                list_sessions=AsyncMock(side_effect=Exception("Test error"))
+            ),
+        ):
+            result = await service.list_sessions(
+                app_name="test_app",
+                user_id="test_user",
+            )
+            assert result.sessions == []
 
-  @pytest.mark.asyncio
-  async def test_close_cleans_up_client(self, service):
-    """Test close method cleans up client."""
-    mock_client = MagicMock()
-    mock_client.close = AsyncMock()
+    @pytest.mark.asyncio
+    async def test_close_cleans_up_client(self, service):
+        """Test close method cleans up client."""
+        mock_client = MagicMock()
+        mock_client.close = AsyncMock()
 
-    # Manually set the cached property
-    service.__dict__["_client"] = mock_client
+        # Manually set the cached property
+        service.__dict__["_client"] = mock_client
 
-    await service.close()
+        await service.close()
 
-    mock_client.close.assert_called_once()
-    assert "_client" not in service.__dict__
+        mock_client.close.assert_called_once()
+        assert "_client" not in service.__dict__

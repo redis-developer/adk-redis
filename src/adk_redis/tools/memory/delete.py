@@ -29,126 +29,126 @@ logger = logging.getLogger("adk_redis." + __name__)
 
 
 class DeleteMemoryTool(BaseMemoryTool):
-  """Tool for deleting long-term memories.
+    """Tool for deleting long-term memories.
 
-  This tool allows the LLM to delete specific memories by ID.
-  Use this when the user asks to forget something.
+    This tool allows the LLM to delete specific memories by ID.
+    Use this when the user asks to forget something.
 
-  Example:
-      ```python
-      from adk_redis.tools.memory import DeleteMemoryTool, MemoryToolConfig
+    Example:
+        ```python
+        from adk_redis.tools.memory import DeleteMemoryTool, MemoryToolConfig
 
-      config = MemoryToolConfig(
-          api_base_url="http://localhost:8000",
-          default_namespace="my_app",
-      )
-      tool = DeleteMemoryTool(config=config)
+        config = MemoryToolConfig(
+            api_base_url="http://localhost:8000",
+            default_namespace="my_app",
+        )
+        tool = DeleteMemoryTool(config=config)
 
-      # Use with ADK agent
-      agent = Agent(
-          name="my_agent",
-          tools=[tool],
-      )
-      ```
-  """
-
-  def __init__(
-      self,
-      *,
-      config: MemoryToolConfig | None = None,
-      name: str = "delete_memory",
-      description: str = (
-          "Deletes one or more long-term memories by ID. "
-          "Use this when the user asks you to forget something."
-      ),
-  ):
-    """Initialize the Delete Memory Tool.
-
-    Args:
-        config: Configuration for the tool. If None, uses defaults.
-        name: The name of the tool (exposed to LLM).
-        description: The description of the tool (exposed to LLM).
+        # Use with ADK agent
+        agent = Agent(
+            name="my_agent",
+            tools=[tool],
+        )
+        ```
     """
-    super().__init__(
-        config=config or MemoryToolConfig(),
-        name=name,
-        description=description,
-    )
 
-  def _get_declaration(self) -> types.FunctionDeclaration:
-    """Get the tool declaration for the LLM."""
-    return types.FunctionDeclaration(
-        name=self.name,
-        description=self.description,
-        parameters=types.Schema(
-            type=types.Type.OBJECT,
-            properties={
-                "memory_ids": types.Schema(
-                    type=types.Type.ARRAY,
-                    description="List of memory IDs to delete",
-                    items=types.Schema(type=types.Type.STRING),
-                ),
-                "namespace": types.Schema(
-                    type=types.Type.STRING,
-                    description="Optional namespace override",
-                ),
-                "user_id": types.Schema(
-                    type=types.Type.STRING,
-                    description="Optional user ID override",
-                ),
-            },
-            required=["memory_ids"],
+    def __init__(
+        self,
+        *,
+        config: MemoryToolConfig | None = None,
+        name: str = "delete_memory",
+        description: str = (
+            "Deletes one or more long-term memories by ID. "
+            "Use this when the user asks you to forget something."
         ),
-    )
+    ):
+        """Initialize the Delete Memory Tool.
 
-  async def run_async(self, **kwargs: Any) -> dict[str, Any]:
-    """Delete long-term memories by ID.
+        Args:
+            config: Configuration for the tool. If None, uses defaults.
+            name: The name of the tool (exposed to LLM).
+            description: The description of the tool (exposed to LLM).
+        """
+        super().__init__(
+            config=config or MemoryToolConfig(),
+            name=name,
+            description=description,
+        )
 
-    Args:
-        memory_ids: List of memory IDs to delete.
-        namespace: Optional namespace override.
-        user_id: Optional user ID override.
+    def _get_declaration(self) -> types.FunctionDeclaration:
+        """Get the tool declaration for the LLM."""
+        return types.FunctionDeclaration(
+            name=self.name,
+            description=self.description,
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "memory_ids": types.Schema(
+                        type=types.Type.ARRAY,
+                        description="List of memory IDs to delete",
+                        items=types.Schema(type=types.Type.STRING),
+                    ),
+                    "namespace": types.Schema(
+                        type=types.Type.STRING,
+                        description="Optional namespace override",
+                    ),
+                    "user_id": types.Schema(
+                        type=types.Type.STRING,
+                        description="Optional user ID override",
+                    ),
+                },
+                required=["memory_ids"],
+            ),
+        )
 
-    Returns:
-        A dictionary with status and deleted_count.
-    """
-    # ADK passes parameters in kwargs['args']
-    args = kwargs.get("args", kwargs)
+    async def run_async(self, **kwargs: Any) -> dict[str, Any]:
+        """Delete long-term memories by ID.
 
-    memory_ids = args.get("memory_ids", [])
-    self._get_namespace(args.get("namespace"))
-    self._get_user_id(args.get("user_id"))
+        Args:
+            memory_ids: List of memory IDs to delete.
+            namespace: Optional namespace override.
+            user_id: Optional user ID override.
 
-    if not memory_ids:
-      return {"status": "error", "message": "memory_ids is required"}
+        Returns:
+            A dictionary with status and deleted_count.
+        """
+        # ADK passes parameters in kwargs['args']
+        args = kwargs.get("args", kwargs)
 
-    try:
-      # delete_long_term_memories only takes memory_ids
-      client = self._get_client()
-      response = await client.delete_long_term_memories(
-          memory_ids=memory_ids,
-      )
+        memory_ids = args.get("memory_ids", [])
+        self._get_namespace(args.get("namespace"))
+        self._get_user_id(args.get("user_id"))
 
-      # Response is AckResponse with 'status' field containing message like "ok, deleted 2 memories"
-      status_msg = response.status
+        if not memory_ids:
+            return {"status": "error", "message": "memory_ids is required"}
 
-      # Parse the deleted count from the status message
-      import re
+        try:
+            # delete_long_term_memories only takes memory_ids
+            client = self._get_client()
+            response = await client.delete_long_term_memories(
+                memory_ids=memory_ids,
+            )
 
-      match = re.search(r"deleted (\d+)", status_msg)
-      deleted_count = int(match.group(1)) if match else 0
+            # Response is AckResponse with 'status' field containing message like "ok, deleted 2 memories"
+            status_msg = response.status
 
-      is_success = "ok" in status_msg.lower()
+            # Parse the deleted count from the status message
+            import re
 
-      return {
-          "status": "success" if is_success else "error",
-          "deleted_count": deleted_count,
-          "message": status_msg,
-      }
+            match = re.search(r"deleted (\d+)", status_msg)
+            deleted_count = int(match.group(1)) if match else 0
 
-    except Exception as e:
-      logger.error("Failed to delete memories: %s", e)
-      return {
-          "status": "error",
-          "message": f"Failed to delete memories: {str(e)}",
-      }
+            is_success = "ok" in status_msg.lower()
+
+            return {
+                "status": "success" if is_success else "error",
+                "deleted_count": deleted_count,
+                "message": status_msg,
+            }
+
+        except Exception as e:
+            logger.error("Failed to delete memories: %s", e)
+            return {
+                "status": "error",
+                "message": f"Failed to delete memories: {str(e)}",
+            }

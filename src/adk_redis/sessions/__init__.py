@@ -15,7 +15,9 @@
 """Redis session services for ADK."""
 
 from adk_redis.sessions.working_memory import RedisWorkingMemorySessionService
-from adk_redis.sessions.working_memory import RedisWorkingMemorySessionServiceConfig
+from adk_redis.sessions.working_memory import (
+    RedisWorkingMemorySessionServiceConfig,
+)
 
 __all__ = [
     "RedisWorkingMemorySessionService",
