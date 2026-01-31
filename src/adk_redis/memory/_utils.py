@@ -20,29 +20,29 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from google.adk.events.event import Event
+  from google.adk.events.event import Event
 
 
 def extract_text_from_event(event: "Event") -> str:
-    """Extracts text content from an event's content parts.
+  """Extracts text content from an event's content parts.
 
-    Filters out thought parts and only extracts actual text content.
-    This ensures metadata like thoughtSignature is not stored in memories.
+  Filters out thought parts and only extracts actual text content.
+  This ensures metadata like thoughtSignature is not stored in memories.
 
-    Args:
-        event: The event to extract text from.
+  Args:
+      event: The event to extract text from.
 
-    Returns:
-        Combined text from all text parts (excluding thoughts), or empty string if none found.
-    """
-    if not event.content or not event.content.parts:
-        return ""
+  Returns:
+      Combined text from all text parts (excluding thoughts), or empty string if none found.
+  """
+  if not event.content or not event.content.parts:
+    return ""
 
-    # Filter out thought parts and only extract text
-    # This prevents metadata like thoughtSignature from being stored
-    text_parts = [
-        part.text
-        for part in event.content.parts
-        if part.text and not part.thought
-    ]
-    return " ".join(text_parts)
+  # Filter out thought parts and only extract text
+  # This prevents metadata like thoughtSignature from being stored
+  text_parts = [
+      part.text
+      for part in event.content.parts
+      if part.text and not part.thought
+  ]
+  return " ".join(text_parts)

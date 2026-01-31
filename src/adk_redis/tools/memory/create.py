@@ -29,153 +29,149 @@ logger = logging.getLogger("adk_redis." + __name__)
 
 
 class CreateMemoryTool(BaseMemoryTool):
-    """Tool for creating new long-term memories.
+  """Tool for creating new long-term memories.
 
-    This tool allows the LLM to explicitly store information in long-term memory.
-    Use this when the user asks to remember something specific.
+  This tool allows the LLM to explicitly store information in long-term memory.
+  Use this when the user asks to remember something specific.
 
-    Example:
-        ```python
-        from adk_redis.tools.memory import CreateMemoryTool, MemoryToolConfig
+  Example:
+      ```python
+      from adk_redis.tools.memory import CreateMemoryTool, MemoryToolConfig
 
-        config = MemoryToolConfig(
-            api_base_url="http://localhost:8000",
-            default_namespace="my_app",
-        )
-        tool = CreateMemoryTool(config=config)
+      config = MemoryToolConfig(
+          api_base_url="http://localhost:8000",
+          default_namespace="my_app",
+      )
+      tool = CreateMemoryTool(config=config)
 
-        # Use with ADK agent
-        agent = Agent(
-            name="my_agent",
-            tools=[tool],
-        )
-        ```
+      # Use with ADK agent
+      agent = Agent(
+          name="my_agent",
+          tools=[tool],
+      )
+      ```
+  """
+
+  def __init__(
+      self,
+      *,
+      config: MemoryToolConfig | None = None,
+      name: str = "create_memory",
+      description: str = (
+          "Creates a new long-term memory. "
+          "Use this when the user asks you to remember something."
+      ),
+  ):
+    """Initialize the Create Memory Tool.
+
+    Args:
+        config: Configuration for the tool. If None, uses defaults.
+        name: The name of the tool (exposed to LLM).
+        description: The description of the tool (exposed to LLM).
     """
+    super().__init__(
+        config=config or MemoryToolConfig(),
+        name=name,
+        description=description,
+    )
 
-    def __init__(
-        self,
-        *,
-        config: MemoryToolConfig | None = None,
-        name: str = "create_memory",
-        description: str = (
-            "Creates a new long-term memory. "
-            "Use this when the user asks you to remember something."
+  def _get_declaration(self) -> types.FunctionDeclaration:
+    """Get the tool declaration for the LLM."""
+    return types.FunctionDeclaration(
+        name=self.name,
+        description=self.description,
+        parameters=types.Schema(
+            type=types.Type.OBJECT,
+            properties={
+                "content": types.Schema(
+                    type=types.Type.STRING,
+                    description="The content of the memory to store",
+                ),
+                "topics": types.Schema(
+                    type=types.Type.ARRAY,
+                    description="Optional list of topics/tags for the memory",
+                    items=types.Schema(type=types.Type.STRING),
+                ),
+                "memory_type": types.Schema(
+                    type=types.Type.STRING,
+                    description=(
+                        "Type of memory: 'semantic' (facts), 'episodic' (events), "
+                        "or 'preference' (user preferences)"
+                    ),
+                ),
+                "namespace": types.Schema(
+                    type=types.Type.STRING,
+                    description="Optional namespace override",
+                ),
+                "user_id": types.Schema(
+                    type=types.Type.STRING,
+                    description="Optional user ID override",
+                ),
+            },
+            required=["content"],
         ),
-    ):
-        """Initialize the Create Memory Tool.
+    )
 
-        Args:
-            config: Configuration for the tool. If None, uses defaults.
-            name: The name of the tool (exposed to LLM).
-            description: The description of the tool (exposed to LLM).
-        """
-        super().__init__(
-            config=config or MemoryToolConfig(),
-            name=name,
-            description=description,
-        )
+  async def run_async(self, **kwargs: Any) -> dict[str, Any]:
+    """Create a new long-term memory.
 
-    def _get_declaration(self) -> types.FunctionDeclaration:
-        """Get the tool declaration for the LLM."""
-        return types.FunctionDeclaration(
-            name=self.name,
-            description=self.description,
-            parameters=types.Schema(
-                type=types.Type.OBJECT,
-                properties={
-                    "content": types.Schema(
-                        type=types.Type.STRING,
-                        description="The content of the memory to store",
-                    ),
-                    "topics": types.Schema(
-                        type=types.Type.ARRAY,
-                        description="Optional list of topics/tags for the memory",
-                        items=types.Schema(type=types.Type.STRING),
-                    ),
-                    "memory_type": types.Schema(
-                        type=types.Type.STRING,
-                        description=(
-                            "Type of memory: 'semantic' (facts), 'episodic' (events), "
-                            "or 'preference' (user preferences)"
-                        ),
-                    ),
-                    "namespace": types.Schema(
-                        type=types.Type.STRING,
-                        description="Optional namespace override",
-                    ),
-                    "user_id": types.Schema(
-                        type=types.Type.STRING,
-                        description="Optional user ID override",
-                    ),
-                },
-                required=["content"],
-            ),
-        )
+    Args:
+        content: The content of the memory to store.
+        topics: Optional list of topics/tags.
+        memory_type: Type of memory (semantic, episodic, message).
+        namespace: Optional namespace override.
+        user_id: Optional user ID override.
 
-    async def run_async(self, **kwargs: Any) -> dict[str, Any]:
-        """Create a new long-term memory.
+    Returns:
+        A dictionary with status and memory_id.
+    """
+    # ADK passes parameters in kwargs['args']
+    args = kwargs.get("args", kwargs)
 
-        Args:
-            content: The content of the memory to store.
-            topics: Optional list of topics/tags.
-            memory_type: Type of memory (semantic, episodic, message).
-            namespace: Optional namespace override.
-            user_id: Optional user ID override.
+    content = args.get("content")
+    topics = args.get("topics", [])
+    memory_type = args.get("memory_type", "semantic")
+    namespace = self._get_namespace(args.get("namespace"))
+    user_id = self._get_user_id(args.get("user_id"))
 
-        Returns:
-            A dictionary with status and memory_id.
-        """
-        # ADK passes parameters in kwargs['args']
-        args = kwargs.get("args", kwargs)
+    if not content:
+      return {"status": "error", "message": "content is required"}
 
-        content = args.get("content")
-        topics = args.get("topics", [])
-        memory_type = args.get("memory_type", "semantic")
-        namespace = self._get_namespace(args.get("namespace"))
-        user_id = self._get_user_id(args.get("user_id"))
+    try:
+      # Use add_memory_tool which creates a memory in a session context
+      # We'll use a temporary session ID for standalone memory creation
+      import uuid
 
-        if not content:
-            return {"status": "error", "message": "content is required"}
+      session_id = f"standalone_{uuid.uuid4().hex[:8]}"
 
-        try:
-            # Use add_memory_tool which creates a memory in a session context
-            # We'll use a temporary session ID for standalone memory creation
-            import uuid
+      client = self._get_client()
+      response = await client.add_memory_tool(
+          session_id=session_id,
+          text=content,
+          memory_type=memory_type,
+          topics=topics if topics else None,
+          namespace=namespace,
+          user_id=user_id,
+      )
 
-            session_id = f"standalone_{uuid.uuid4().hex[:8]}"
+      # Response is a dict with 'success' key and summary
+      if response.get("success"):
+        # Extract memory ID from summary if available, or use session_id as fallback
+        memory_id = response.get("memory_id", session_id)
+        return {
+            "status": "success",
+            "memory_id": memory_id,
+            "message": response.get("summary", "Memory created successfully"),
+        }
+      else:
+        return {
+            "status": "error",
+            "message": response.get("summary", "Failed to create memory"),
+        }
 
-            client = self._get_client()
-            response = await client.add_memory_tool(
-                session_id=session_id,
-                text=content,
-                memory_type=memory_type,
-                topics=topics if topics else None,
-                namespace=namespace,
-                user_id=user_id,
-            )
-
-            # Response is a dict with 'success' key and summary
-            if response.get("success"):
-                # Extract memory ID from summary if available, or use session_id as fallback
-                memory_id = response.get("memory_id", session_id)
-                return {
-                    "status": "success",
-                    "memory_id": memory_id,
-                    "message": response.get(
-                        "summary", "Memory created successfully"
-                    ),
-                }
-            else:
-                return {
-                    "status": "error",
-                    "message": response.get(
-                        "summary", "Failed to create memory"
-                    ),
-                }
-
-        except Exception as e:
-            logger.error("Failed to create memory: %s", e)
-            return {
-                "status": "error",
-                "message": f"Failed to create memory: {str(e)}",
-            }
+    except Exception as e:
+      logger.error("Failed to create memory: %s", e)
+      return {
+          "status": "error",
+          "message": f"Failed to create memory: {str(e)}",
+      }

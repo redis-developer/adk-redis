@@ -16,19 +16,19 @@
 
 
 def test_version_exists():
-    """Test that version is defined."""
-    from adk_redis import __version__
+  """Test that version is defined."""
+  from adk_redis import __version__
 
-    assert __version__ is not None
-    assert isinstance(__version__, str)
+  assert __version__ is not None
+  assert isinstance(__version__, str)
 
 
 def test_version_format():
-    """Test that version follows semver format."""
-    from adk_redis import __version__
+  """Test that version follows semver format."""
+  from adk_redis import __version__
 
-    parts = __version__.split(".")
-    assert len(parts) >= 2
-    # First two parts should be numeric
-    assert parts[0].isdigit()
-    assert parts[1].isdigit()
+  parts = __version__.split(".")
+  assert len(parts) >= 2
+  # First two parts should be numeric
+  assert parts[0].isdigit()
+  assert parts[1].isdigit()

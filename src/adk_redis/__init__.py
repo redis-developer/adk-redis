@@ -59,15 +59,12 @@ Example:
 """
 
 from adk_redis._version import __version__
-
 # Memory services
 from adk_redis.memory import RedisLongTermMemoryService
 from adk_redis.memory import RedisLongTermMemoryServiceConfig
-
 # Session services
 from adk_redis.sessions import RedisWorkingMemorySessionService
 from adk_redis.sessions import RedisWorkingMemorySessionServiceConfig
-
 # Search tools - import from tools submodule
 from adk_redis.tools import BaseRedisSearchTool
 from adk_redis.tools import RedisAggregatedHybridQueryConfig
@@ -80,7 +77,6 @@ from adk_redis.tools import RedisTextSearchTool
 from adk_redis.tools import RedisVectorQueryConfig
 from adk_redis.tools import RedisVectorSearchTool
 from adk_redis.tools import VectorizedSearchTool
-
 # Memory tools
 from adk_redis.tools import CreateMemoryTool
 from adk_redis.tools import DeleteMemoryTool

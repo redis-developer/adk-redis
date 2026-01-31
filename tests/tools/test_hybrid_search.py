@@ -37,341 +37,335 @@ from adk_redis.tools.search.hybrid import _supports_native_hybrid
 
 @pytest.fixture
 def mock_vectorizer():
-    """Mock RedisVL vectorizer."""
-    vectorizer = MagicMock(spec=BaseVectorizer)
-    vectorizer.embed = MagicMock(return_value=[0.1] * 384)
-    vectorizer.aembed = AsyncMock(return_value=[0.1] * 384)
-    return vectorizer
+  """Mock RedisVL vectorizer."""
+  vectorizer = MagicMock(spec=BaseVectorizer)
+  vectorizer.embed = MagicMock(return_value=[0.1] * 384)
+  vectorizer.aembed = AsyncMock(return_value=[0.1] * 384)
+  return vectorizer
 
 
 @pytest.fixture
 def mock_redis_client():
-    """Mock Redis client with info method."""
-    client = MagicMock()
-    client.info = MagicMock(return_value={"redis_version": "8.4.0"})
-    return client
+  """Mock Redis client with info method."""
+  client = MagicMock()
+  client.info = MagicMock(return_value={"redis_version": "8.4.0"})
+  return client
 
 
 @pytest.fixture
 def mock_index(mock_redis_client):
-    """Mock RedisVL SearchIndex with Redis client."""
-    index = MagicMock(spec=SearchIndex)
-    index.query = MagicMock(
-        return_value=[
-            {"title": "Test Doc", "content": "Test content", "score": 0.9}
-        ]
-    )
-    # Mock _redis_client property for sync index
-    type(index)._redis_client = property(lambda self: mock_redis_client)
-    return index
+  """Mock RedisVL SearchIndex with Redis client."""
+  index = MagicMock(spec=SearchIndex)
+  index.query = MagicMock(
+      return_value=[
+          {"title": "Test Doc", "content": "Test content", "score": 0.9}
+      ]
+  )
+  # Mock _redis_client property for sync index
+  type(index)._redis_client = property(lambda self: mock_redis_client)
+  return index
 
 
 def _native_hybrid_available():
-    """Check if native HybridQuery dependencies are available."""
-    try:
-        # isort: off
-        from redis.commands.search.hybrid_query import CombineResultsMethod  # noqa: F401
-        from redis.commands.search.hybrid_query import (  # noqa: F401
-            HybridPostProcessingConfig,
-        )
-        # isort: on
+  """Check if native HybridQuery dependencies are available."""
+  try:
+    # isort: off
+    from redis.commands.search.hybrid_query import CombineResultsMethod  # noqa: F401
+    from redis.commands.search.hybrid_query import HybridPostProcessingConfig  # noqa: F401
+    # isort: on
 
-        return True
-    except (ImportError, ModuleNotFoundError):
-        return False
+    return True
+  except (ImportError, ModuleNotFoundError):
+    return False
 
 
 class TestVersionDetection:
-    """Tests for version detection functions."""
+  """Tests for version detection functions."""
 
-    def test_get_redisvl_version(self):
-        """Test version string retrieval."""
-        version = _get_redisvl_version()
-        assert isinstance(version, str)
-        # Should be a valid version string like "0.13.0" or "0.0.0"
-        assert len(version.split(".")) >= 2
+  def test_get_redisvl_version(self):
+    """Test version string retrieval."""
+    version = _get_redisvl_version()
+    assert isinstance(version, str)
+    # Should be a valid version string like "0.13.0" or "0.0.0"
+    assert len(version.split(".")) >= 2
 
-    def test_get_redis_server_version(self, mock_index):
-        """Test Redis server version retrieval."""
-        version = _get_redis_server_version(mock_index)
-        assert version == "8.4.0"
+  def test_get_redis_server_version(self, mock_index):
+    """Test Redis server version retrieval."""
+    version = _get_redis_server_version(mock_index)
+    assert version == "8.4.0"
 
-    def test_get_redis_server_version_client_none(self):
-        """Test Redis server version when client is None."""
-        index = MagicMock(spec=SearchIndex)
-        type(index)._redis_client = property(lambda self: None)
-        version = _get_redis_server_version(index)
-        assert version == "0.0.0"
+  def test_get_redis_server_version_client_none(self):
+    """Test Redis server version when client is None."""
+    index = MagicMock(spec=SearchIndex)
+    type(index)._redis_client = property(lambda self: None)
+    version = _get_redis_server_version(index)
+    assert version == "0.0.0"
 
-    def test_get_redis_server_version_exception(self, mock_index):
-        """Test Redis server version when info() raises exception."""
-        mock_index._redis_client.info.side_effect = Exception(
-            "Connection error"
-        )
-        version = _get_redis_server_version(mock_index)
-        assert version == "0.0.0"
+  def test_get_redis_server_version_exception(self, mock_index):
+    """Test Redis server version when info() raises exception."""
+    mock_index._redis_client.info.side_effect = Exception("Connection error")
+    version = _get_redis_server_version(mock_index)
+    assert version == "0.0.0"
 
-    def test_supports_native_hybrid_both_versions_ok(self, mock_index):
-        """Test native hybrid support when both versions meet requirements."""
-        with patch(
-            "adk_redis.tools.search.hybrid._get_redisvl_version",
-            return_value="0.13.0",
-        ):
-            result = _supports_native_hybrid(mock_index)
-            assert result is True
+  def test_supports_native_hybrid_both_versions_ok(self, mock_index):
+    """Test native hybrid support when both versions meet requirements."""
+    with patch(
+        "adk_redis.tools.search.hybrid._get_redisvl_version",
+        return_value="0.13.0",
+    ):
+      result = _supports_native_hybrid(mock_index)
+      assert result is True
 
-    def test_supports_native_hybrid_redisvl_too_old(self, mock_index):
-        """Test native hybrid not supported when redisvl version is too old."""
-        with patch(
-            "adk_redis.tools.search.hybrid._get_redisvl_version",
-            return_value="0.12.0",
-        ):
-            result = _supports_native_hybrid(mock_index)
-            assert result is False
+  def test_supports_native_hybrid_redisvl_too_old(self, mock_index):
+    """Test native hybrid not supported when redisvl version is too old."""
+    with patch(
+        "adk_redis.tools.search.hybrid._get_redisvl_version",
+        return_value="0.12.0",
+    ):
+      result = _supports_native_hybrid(mock_index)
+      assert result is False
 
-    def test_supports_native_hybrid_redis_server_too_old(self):
-        """Test native hybrid not supported when Redis server version is too old."""
-        # Create index with old Redis server version
-        mock_client = MagicMock()
-        mock_client.info = MagicMock(return_value={"redis_version": "7.2.0"})
-        index = MagicMock(spec=SearchIndex)
-        type(index)._redis_client = property(lambda self: mock_client)
+  def test_supports_native_hybrid_redis_server_too_old(self):
+    """Test native hybrid not supported when Redis server version is too old."""
+    # Create index with old Redis server version
+    mock_client = MagicMock()
+    mock_client.info = MagicMock(return_value={"redis_version": "7.2.0"})
+    index = MagicMock(spec=SearchIndex)
+    type(index)._redis_client = property(lambda self: mock_client)
 
-        with patch(
-            "adk_redis.tools.search.hybrid._get_redisvl_version",
-            return_value="0.13.0",
-        ):
-            result = _supports_native_hybrid(index)
-            assert result is False
+    with patch(
+        "adk_redis.tools.search.hybrid._get_redisvl_version",
+        return_value="0.13.0",
+    ):
+      result = _supports_native_hybrid(index)
+      assert result is False
 
-    def test_supports_native_hybrid_both_versions_too_old(self):
-        """Test native hybrid not supported when both versions are too old."""
-        # Create index with old Redis server version
-        mock_client = MagicMock()
-        mock_client.info = MagicMock(return_value={"redis_version": "7.2.0"})
-        index = MagicMock(spec=SearchIndex)
-        type(index)._redis_client = property(lambda self: mock_client)
+  def test_supports_native_hybrid_both_versions_too_old(self):
+    """Test native hybrid not supported when both versions are too old."""
+    # Create index with old Redis server version
+    mock_client = MagicMock()
+    mock_client.info = MagicMock(return_value={"redis_version": "7.2.0"})
+    index = MagicMock(spec=SearchIndex)
+    type(index)._redis_client = property(lambda self: mock_client)
 
-        with patch(
-            "adk_redis.tools.search.hybrid._get_redisvl_version",
-            return_value="0.12.0",
-        ):
-            result = _supports_native_hybrid(index)
-            assert result is False
+    with patch(
+        "adk_redis.tools.search.hybrid._get_redisvl_version",
+        return_value="0.12.0",
+    ):
+      result = _supports_native_hybrid(index)
+      assert result is False
 
 
 class TestRedisHybridQueryConfig:
-    """Tests for RedisHybridQueryConfig (native mode)."""
+  """Tests for RedisHybridQueryConfig (native mode)."""
 
-    def test_default_values(self):
-        """Test default config values."""
-        config = RedisHybridQueryConfig()
-        assert config.text_field_name == "content"
-        assert config.vector_field_name == "embedding"
-        assert config.text_scorer == "BM25STD"
-        assert config.combination_method is None
-        assert config.linear_alpha == 0.3
-        assert config.rrf_window == 20
-        assert config.rrf_constant == 60
-        assert config.num_results == 10
-        assert config.dtype == "float32"
-        assert config.stopwords == "english"
+  def test_default_values(self):
+    """Test default config values."""
+    config = RedisHybridQueryConfig()
+    assert config.text_field_name == "content"
+    assert config.vector_field_name == "embedding"
+    assert config.text_scorer == "BM25STD"
+    assert config.combination_method is None
+    assert config.linear_alpha == 0.3
+    assert config.rrf_window == 20
+    assert config.rrf_constant == 60
+    assert config.num_results == 10
+    assert config.dtype == "float32"
+    assert config.stopwords == "english"
 
-    def test_to_query_kwargs(self):
-        """Test conversion to query kwargs."""
-        config = RedisHybridQueryConfig(
-            text_field_name="content",
-            combination_method="LINEAR",
-            linear_alpha=0.7,
-        )
-        kwargs = config.to_query_kwargs(
-            text="test query",
-            vector=[0.1] * 384,
-            return_fields=["title"],
-        )
-        assert kwargs["text"] == "test query"
-        assert kwargs["text_field_name"] == "content"
-        assert kwargs["combination_method"] == "LINEAR"
-        assert kwargs["linear_alpha"] == 0.7
-        assert kwargs["return_fields"] == ["title"]
+  def test_to_query_kwargs(self):
+    """Test conversion to query kwargs."""
+    config = RedisHybridQueryConfig(
+        text_field_name="content",
+        combination_method="LINEAR",
+        linear_alpha=0.7,
+    )
+    kwargs = config.to_query_kwargs(
+        text="test query",
+        vector=[0.1] * 384,
+        return_fields=["title"],
+    )
+    assert kwargs["text"] == "test query"
+    assert kwargs["text_field_name"] == "content"
+    assert kwargs["combination_method"] == "LINEAR"
+    assert kwargs["linear_alpha"] == 0.7
+    assert kwargs["return_fields"] == ["title"]
 
 
 class TestRedisAggregatedHybridQueryConfig:
-    """Tests for RedisAggregatedHybridQueryConfig (legacy mode)."""
+  """Tests for RedisAggregatedHybridQueryConfig (legacy mode)."""
 
-    def test_default_values(self):
-        """Test default config values."""
-        config = RedisAggregatedHybridQueryConfig()
-        assert config.text_field_name == "content"
-        assert config.vector_field_name == "embedding"
-        assert config.text_scorer == "BM25STD"
-        assert config.alpha == 0.7
-        assert config.num_results == 10
-        assert config.dtype == "float32"
-        assert config.dialect == 2
+  def test_default_values(self):
+    """Test default config values."""
+    config = RedisAggregatedHybridQueryConfig()
+    assert config.text_field_name == "content"
+    assert config.vector_field_name == "embedding"
+    assert config.text_scorer == "BM25STD"
+    assert config.alpha == 0.7
+    assert config.num_results == 10
+    assert config.dtype == "float32"
+    assert config.dialect == 2
 
-    def test_to_query_kwargs(self):
-        """Test conversion to query kwargs."""
-        config = RedisAggregatedHybridQueryConfig(
-            text_field_name="content",
-            alpha=0.8,
-        )
-        kwargs = config.to_query_kwargs(
-            text="test query",
-            vector=[0.1] * 384,
-            return_fields=["title"],
-        )
-        assert kwargs["text"] == "test query"
-        assert kwargs["text_field_name"] == "content"
-        assert kwargs["alpha"] == 0.8
-        assert kwargs["return_fields"] == ["title"]
-        assert "linear_alpha" not in kwargs
-        assert "combination_method" not in kwargs
+  def test_to_query_kwargs(self):
+    """Test conversion to query kwargs."""
+    config = RedisAggregatedHybridQueryConfig(
+        text_field_name="content",
+        alpha=0.8,
+    )
+    kwargs = config.to_query_kwargs(
+        text="test query",
+        vector=[0.1] * 384,
+        return_fields=["title"],
+    )
+    assert kwargs["text"] == "test query"
+    assert kwargs["text_field_name"] == "content"
+    assert kwargs["alpha"] == 0.8
+    assert kwargs["return_fields"] == ["title"]
+    assert "linear_alpha" not in kwargs
+    assert "combination_method" not in kwargs
 
 
 class TestRedisHybridSearchToolInit:
-    """Tests for RedisHybridSearchTool initialization."""
+  """Tests for RedisHybridSearchTool initialization."""
 
-    def test_auto_detect_config_native(self, mock_index, mock_vectorizer):
-        """Test auto-detection uses native config when supported."""
-        with patch(
-            "adk_redis.tools.search.hybrid._supports_native_hybrid",
-            return_value=True,
-        ):
-            tool = RedisHybridSearchTool(
-                index=mock_index,
-                vectorizer=mock_vectorizer,
-            )
-            assert isinstance(tool._config, RedisHybridQueryConfig)
-            assert tool._use_native is True
-
-    def test_auto_detect_config_aggregate(self, mock_index, mock_vectorizer):
-        """Test auto-detection uses aggregate config when native not supported."""
-        with patch(
-            "adk_redis.tools.search.hybrid._supports_native_hybrid",
-            return_value=False,
-        ):
-            tool = RedisHybridSearchTool(
-                index=mock_index,
-                vectorizer=mock_vectorizer,
-            )
-            assert isinstance(tool._config, RedisAggregatedHybridQueryConfig)
-            assert tool._use_native is False
-
-    def test_native_config_on_old_version_raises(
-        self, mock_index, mock_vectorizer
+  def test_auto_detect_config_native(self, mock_index, mock_vectorizer):
+    """Test auto-detection uses native config when supported."""
+    with patch(
+        "adk_redis.tools.search.hybrid._supports_native_hybrid",
+        return_value=True,
     ):
-        """Test that using native config on old version raises ValueError."""
-        with patch(
-            "adk_redis.tools.search.hybrid._supports_native_hybrid",
-            return_value=False,
-        ):
-            with pytest.raises(
-                ValueError, match="RedisHybridQueryConfig requires"
-            ):
-                RedisHybridSearchTool(
-                    index=mock_index,
-                    vectorizer=mock_vectorizer,
-                    config=RedisHybridQueryConfig(),
-                )
+      tool = RedisHybridSearchTool(
+          index=mock_index,
+          vectorizer=mock_vectorizer,
+      )
+      assert isinstance(tool._config, RedisHybridQueryConfig)
+      assert tool._use_native is True
 
-    def test_aggregate_config_on_new_version_warns(
-        self, mock_index, mock_vectorizer
+  def test_auto_detect_config_aggregate(self, mock_index, mock_vectorizer):
+    """Test auto-detection uses aggregate config when native not supported."""
+    with patch(
+        "adk_redis.tools.search.hybrid._supports_native_hybrid",
+        return_value=False,
     ):
-        """Test that using aggregate config on new version emits deprecation warning."""
-        with patch(
-            "adk_redis.tools.search.hybrid._supports_native_hybrid",
-            return_value=True,
-        ):
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter("always")
-                tool = RedisHybridSearchTool(
-                    index=mock_index,
-                    vectorizer=mock_vectorizer,
-                    config=RedisAggregatedHybridQueryConfig(),
-                )
-                assert len(w) == 1
-                assert issubclass(w[0].category, DeprecationWarning)
-                assert "deprecated" in str(w[0].message).lower()
-                assert tool._use_native is False
+      tool = RedisHybridSearchTool(
+          index=mock_index,
+          vectorizer=mock_vectorizer,
+      )
+      assert isinstance(tool._config, RedisAggregatedHybridQueryConfig)
+      assert tool._use_native is False
 
-    def test_custom_name_and_description(self, mock_index, mock_vectorizer):
-        """Test custom tool name and description."""
-        with patch(
-            "adk_redis.tools.search.hybrid._supports_native_hybrid",
-            return_value=True,
-        ):
-            tool = RedisHybridSearchTool(
-                index=mock_index,
-                vectorizer=mock_vectorizer,
-                name="custom_hybrid",
-                description="Custom hybrid search",
-            )
-            assert tool.name == "custom_hybrid"
-            assert tool.description == "Custom hybrid search"
+  def test_native_config_on_old_version_raises(
+      self, mock_index, mock_vectorizer
+  ):
+    """Test that using native config on old version raises ValueError."""
+    with patch(
+        "adk_redis.tools.search.hybrid._supports_native_hybrid",
+        return_value=False,
+    ):
+      with pytest.raises(ValueError, match="RedisHybridQueryConfig requires"):
+        RedisHybridSearchTool(
+            index=mock_index,
+            vectorizer=mock_vectorizer,
+            config=RedisHybridQueryConfig(),
+        )
+
+  def test_aggregate_config_on_new_version_warns(
+      self, mock_index, mock_vectorizer
+  ):
+    """Test that using aggregate config on new version emits deprecation warning."""
+    with patch(
+        "adk_redis.tools.search.hybrid._supports_native_hybrid",
+        return_value=True,
+    ):
+      with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        tool = RedisHybridSearchTool(
+            index=mock_index,
+            vectorizer=mock_vectorizer,
+            config=RedisAggregatedHybridQueryConfig(),
+        )
+        assert len(w) == 1
+        assert issubclass(w[0].category, DeprecationWarning)
+        assert "deprecated" in str(w[0].message).lower()
+        assert tool._use_native is False
+
+  def test_custom_name_and_description(self, mock_index, mock_vectorizer):
+    """Test custom tool name and description."""
+    with patch(
+        "adk_redis.tools.search.hybrid._supports_native_hybrid",
+        return_value=True,
+    ):
+      tool = RedisHybridSearchTool(
+          index=mock_index,
+          vectorizer=mock_vectorizer,
+          name="custom_hybrid",
+          description="Custom hybrid search",
+      )
+      assert tool.name == "custom_hybrid"
+      assert tool.description == "Custom hybrid search"
 
 
 class TestRedisHybridSearchToolBuildQuery:
-    """Tests for _build_query method."""
+  """Tests for _build_query method."""
 
-    @pytest.mark.skipif(
-        not _native_hybrid_available(),
-        reason="HybridQuery requires redis-py>=7.1.0 and Redis>=8.4.0",
-    )
-    def test_build_query_native(self, mock_index, mock_vectorizer):
-        """Test query building with native HybridQuery."""
-        from redisvl.query import HybridQuery
+  @pytest.mark.skipif(
+      not _native_hybrid_available(),
+      reason="HybridQuery requires redis-py>=7.1.0 and Redis>=8.4.0",
+  )
+  def test_build_query_native(self, mock_index, mock_vectorizer):
+    """Test query building with native HybridQuery."""
+    from redisvl.query import HybridQuery
 
-        with patch(
-            "adk_redis.tools.search.hybrid._supports_native_hybrid",
-            return_value=True,
-        ):
-            tool = RedisHybridSearchTool(
-                index=mock_index,
-                vectorizer=mock_vectorizer,
-                config=RedisHybridQueryConfig(num_results=5, stopwords=None),
-            )
-            embedding = [0.1] * 384
-            query = tool._build_query("test query", embedding)
-            assert isinstance(query, HybridQuery)
+    with patch(
+        "adk_redis.tools.search.hybrid._supports_native_hybrid",
+        return_value=True,
+    ):
+      tool = RedisHybridSearchTool(
+          index=mock_index,
+          vectorizer=mock_vectorizer,
+          config=RedisHybridQueryConfig(num_results=5, stopwords=None),
+      )
+      embedding = [0.1] * 384
+      query = tool._build_query("test query", embedding)
+      assert isinstance(query, HybridQuery)
 
-    def test_build_query_aggregate(self, mock_index, mock_vectorizer):
-        """Test query building with AggregateHybridQuery."""
-        from redisvl.query import AggregateHybridQuery
+  def test_build_query_aggregate(self, mock_index, mock_vectorizer):
+    """Test query building with AggregateHybridQuery."""
+    from redisvl.query import AggregateHybridQuery
 
-        with patch(
-            "adk_redis.tools.search.hybrid._supports_native_hybrid",
-            return_value=False,
-        ):
-            tool = RedisHybridSearchTool(
-                index=mock_index,
-                vectorizer=mock_vectorizer,
-                config=RedisAggregatedHybridQueryConfig(
-                    num_results=5, stopwords=None
-                ),
-            )
-            embedding = [0.1] * 384
-            query = tool._build_query("test query", embedding)
-            assert isinstance(query, AggregateHybridQuery)
+    with patch(
+        "adk_redis.tools.search.hybrid._supports_native_hybrid",
+        return_value=False,
+    ):
+      tool = RedisHybridSearchTool(
+          index=mock_index,
+          vectorizer=mock_vectorizer,
+          config=RedisAggregatedHybridQueryConfig(
+              num_results=5, stopwords=None
+          ),
+      )
+      embedding = [0.1] * 384
+      query = tool._build_query("test query", embedding)
+      assert isinstance(query, AggregateHybridQuery)
 
 
 class TestRedisHybridSearchToolDeclaration:
-    """Tests for _get_declaration method."""
+  """Tests for _get_declaration method."""
 
-    def test_get_declaration(self, mock_index, mock_vectorizer):
-        """Test function declaration generation."""
-        with patch(
-            "adk_redis.tools.search.hybrid._supports_native_hybrid",
-            return_value=True,
-        ):
-            tool = RedisHybridSearchTool(
-                index=mock_index,
-                vectorizer=mock_vectorizer,
-                config=RedisHybridQueryConfig(num_results=5),
-            )
-            declaration = tool._get_declaration()
+  def test_get_declaration(self, mock_index, mock_vectorizer):
+    """Test function declaration generation."""
+    with patch(
+        "adk_redis.tools.search.hybrid._supports_native_hybrid",
+        return_value=True,
+    ):
+      tool = RedisHybridSearchTool(
+          index=mock_index,
+          vectorizer=mock_vectorizer,
+          config=RedisHybridQueryConfig(num_results=5),
+      )
+      declaration = tool._get_declaration()
 
-            assert declaration.name == "redis_hybrid_search"
-            assert "query" in declaration.parameters.properties
-            assert "num_results" in declaration.parameters.properties
-            assert "query" in declaration.parameters.required
+      assert declaration.name == "redis_hybrid_search"
+      assert "query" in declaration.parameters.properties
+      assert "num_results" in declaration.parameters.properties
+      assert "query" in declaration.parameters.required
