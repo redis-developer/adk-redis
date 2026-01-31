@@ -27,19 +27,17 @@ import os
 
 from google.adk import Agent
 from google.adk.agents.callback_context import CallbackContext
-from google.adk.tools import load_memory, preload_memory
-
-from adk_redis.tools.memory import (
-    CreateMemoryTool,
-    DeleteMemoryTool,
-    SearchMemoryTool,
-    UpdateMemoryTool,
-    MemoryToolConfig,
-)
+from google.adk.tools import load_memory
+from google.adk.tools import preload_memory
 from tools.calendar_export import CalendarExportTool
 from tools.itinerary_planner import ItineraryPlannerTool
 from tools.tavily_search import TavilySearchTool
 
+from adk_redis.tools.memory import CreateMemoryTool
+from adk_redis.tools.memory import DeleteMemoryTool
+from adk_redis.tools.memory import MemoryToolConfig
+from adk_redis.tools.memory import SearchMemoryTool
+from adk_redis.tools.memory import UpdateMemoryTool
 
 # Configuration from environment
 MEMORY_SERVER_URL = os.getenv("MEMORY_SERVER_URL", "http://localhost:8088")
@@ -47,12 +45,12 @@ NAMESPACE = os.getenv("NAMESPACE", "travel_agent")
 
 
 async def after_agent(callback_context: CallbackContext):
-    """Store session to long-term memory after agent completes.
+  """Store session to long-term memory after agent completes.
 
-    This callback automatically extracts important facts and preferences
-    from the conversation and stores them in long-term memory.
-    """
-    await callback_context.add_session_to_memory()
+  This callback automatically extracts important facts and preferences
+  from the conversation and stores them in long-term memory.
+  """
+  await callback_context.add_session_to_memory()
 
 
 # Configure memory tools
@@ -70,11 +68,9 @@ tools = [
     CreateMemoryTool(config=memory_config),
     UpdateMemoryTool(config=memory_config),
     DeleteMemoryTool(config=memory_config),
-
     # Automatic memory tools (framework-controlled)
     preload_memory,
     load_memory,
-
     # Calendar export and itinerary planning tools
     CalendarExportTool(),
     ItineraryPlannerTool(),
@@ -82,16 +78,16 @@ tools = [
 
 # Add Tavily web search tool if API key is available
 if os.getenv("TAVILY_API_KEY"):
-    try:
-        tavily_tool = TavilySearchTool(
-            max_results=5,
-            cache_ttl=3600,  # 1 hour cache
-        )
-        tools.append(tavily_tool)
-    except Exception as e:
-        print(f"⚠️  Web search disabled: {e}")
+  try:
+    tavily_tool = TavilySearchTool(
+        max_results=5,
+        cache_ttl=3600,  # 1 hour cache
+    )
+    tools.append(tavily_tool)
+  except Exception as e:
+    print(f"⚠️  Web search disabled: {e}")
 else:
-    print("ℹ️  Web search disabled (TAVILY_API_KEY not set)")
+  print("ℹ️  Web search disabled (TAVILY_API_KEY not set)")
 
 
 # Create the travel agent
@@ -184,4 +180,3 @@ Once you have their user_id, use it in ALL memory tool calls (search_memory, cre
 Remember: You're not just a search engine - you're a personalized travel assistant who learns and remembers!
 """,
 )
-

@@ -164,4 +164,3 @@ class MemoryPromptTool(BaseMemoryTool):
           "status": "error",
           "message": f"Failed to enrich prompt: {str(e)}",
       }
-

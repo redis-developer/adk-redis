@@ -134,7 +134,8 @@ class DeleteMemoryTool(BaseMemoryTool):
 
       # Parse the deleted count from the status message
       import re
-      match = re.search(r'deleted (\d+)', status_msg)
+
+      match = re.search(r"deleted (\d+)", status_msg)
       deleted_count = int(match.group(1)) if match else 0
 
       is_success = "ok" in status_msg.lower()
@@ -151,4 +152,3 @@ class DeleteMemoryTool(BaseMemoryTool):
           "status": "error",
           "message": f"Failed to delete memories: {str(e)}",
       }
-

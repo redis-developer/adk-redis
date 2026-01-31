@@ -167,4 +167,3 @@ class UpdateMemoryTool(BaseMemoryTool):
           "status": "error",
           "message": f"Failed to update memory: {str(e)}",
       }
-

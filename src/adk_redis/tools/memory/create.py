@@ -141,6 +141,7 @@ class CreateMemoryTool(BaseMemoryTool):
       # Use add_memory_tool which creates a memory in a session context
       # We'll use a temporary session ID for standalone memory creation
       import uuid
+
       session_id = f"standalone_{uuid.uuid4().hex[:8]}"
 
       client = self._get_client()
@@ -174,4 +175,3 @@ class CreateMemoryTool(BaseMemoryTool):
           "status": "error",
           "message": f"Failed to create memory: {str(e)}",
       }
-

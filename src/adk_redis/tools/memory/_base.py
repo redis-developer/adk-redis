@@ -127,4 +127,3 @@ class BaseMemoryTool(BaseTool):
         The user ID to use (override or default).
     """
     return user_id or self._config.default_user_id
-

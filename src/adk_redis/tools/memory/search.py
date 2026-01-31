@@ -143,14 +143,16 @@ class SearchMemoryTool(BaseMemoryTool):
       memories_data = response.get("memories", [])
       memories = []
       for memory in memories_data:
-        memories.append({
-            "id": memory.get("id"),
-            "content": memory.get("text"),
-            "score": memory.get("score", 0.0),
-            "topics": memory.get("topics", []),
-            "memory_type": memory.get("memory_type"),
-            "created_at": memory.get("created_at"),
-        })
+        memories.append(
+            {
+                "id": memory.get("id"),
+                "content": memory.get("text"),
+                "score": memory.get("score", 0.0),
+                "topics": memory.get("topics", []),
+                "memory_type": memory.get("memory_type"),
+                "created_at": memory.get("created_at"),
+            }
+        )
 
       return {
           "status": "success",
@@ -164,4 +166,3 @@ class SearchMemoryTool(BaseMemoryTool):
           "status": "error",
           "message": f"Failed to search memories: {str(e)}",
       }
-

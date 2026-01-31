@@ -69,4 +69,3 @@ class MemoryToolConfig(BaseModel):
   half_life_last_access_days: float = Field(default=7.0, gt=0.0)
   half_life_created_days: float = Field(default=30.0, gt=0.0)
   deduplicate: bool = True
-
