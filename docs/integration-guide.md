@@ -92,7 +92,7 @@ docker run -d --name agent-memory-server \
   -e GEMINI_API_KEY=your-gemini-api-key \
   -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
-  -e EXTRACTION_DEBOUNCE_SECONDS=30 \
+  -e EXTRACTION_DEBOUNCE_SECONDS=5 \
   -e DISABLE_AUTH=true \
   agent-memory-server:latest-fix \
   agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio

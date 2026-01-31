@@ -28,7 +28,7 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GENERATION_MODEL=gemini/gemini-2.0-flash-exp
       - EMBEDDING_MODEL=gemini/text-embedding-004
-      - EXTRACTION_DEBOUNCE_SECONDS=30  # Faster memory extraction for demos (default: 300)
+      - EXTRACTION_DEBOUNCE_SECONDS=5
     command: agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
     depends_on:
       redis:

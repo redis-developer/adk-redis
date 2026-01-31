@@ -60,7 +60,7 @@ docker run -d --name agent-memory-server \
   -e GEMINI_API_KEY=your-gemini-api-key \
   -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
-  -e EXTRACTION_DEBOUNCE_SECONDS=30 \
+  -e EXTRACTION_DEBOUNCE_SECONDS=5 \
   -e DISABLE_AUTH=true \
   agent-memory-server:latest-fix \
   agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
@@ -78,7 +78,7 @@ docker run -d --name agent-memory-api \
   -e GEMINI_API_KEY=your-gemini-api-key \
   -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
-  -e EXTRACTION_DEBOUNCE_SECONDS=300 \
+  -e EXTRACTION_DEBOUNCE_SECONDS=5 \
   -e DISABLE_AUTH=false \
   agent-memory-server:latest-fix \
   agent-memory api --host 0.0.0.0 --port 8000
@@ -122,7 +122,7 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GENERATION_MODEL=gemini/gemini-2.0-flash-exp
       - EMBEDDING_MODEL=gemini/text-embedding-004
-      - EXTRACTION_DEBOUNCE_SECONDS=30
+      - EXTRACTION_DEBOUNCE_SECONDS=5
       - DISABLE_AUTH=true
     command: agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
     depends_on:
@@ -155,7 +155,7 @@ docker compose up -d
 | `GENERATION_MODEL` | `gpt-5` | LLM model for summarization and memory extraction |
 | `EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model for semantic search |
 | `REDISVL_VECTOR_DIMENSIONS` | `1536` | Embedding dimensions (required for some models like Ollama) |
-| `EXTRACTION_DEBOUNCE_SECONDS` | `300` | Debounce period (in seconds) for memory extraction. Set to `30` for faster extraction in demos, keep `300` (5 minutes) for production to reduce API calls |
+| `EXTRACTION_DEBOUNCE_SECONDS` | `300` | Debounce period (in seconds) for memory extraction. Lower values (e.g., 5) provide faster memory extraction, while higher values reduce API calls |
 
 ### LLM Provider Configuration
 

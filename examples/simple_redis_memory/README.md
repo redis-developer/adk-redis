@@ -83,14 +83,14 @@ docker run -d --name agent-memory-server -p 8000:8000 \
   -e GEMINI_API_KEY=your-gemini-api-key \
   -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
-  -e EXTRACTION_DEBOUNCE_SECONDS=30 \
+  -e EXTRACTION_DEBOUNCE_SECONDS=5 \
   agent-memory-server:latest-fix \
   agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
 ```
 
 > **Configuration Options:**
 > - **LLM Provider**: Agent Memory Server uses [LiteLLM](https://docs.litellm.ai/) and supports 100+ providers (OpenAI, Gemini, Anthropic, AWS Bedrock, Ollama, etc.). Set the appropriate environment variables for your provider (e.g., `GEMINI_API_KEY`, `GENERATION_MODEL=gemini/gemini-2.0-flash-exp`). See the [Agent Memory Server LLM Providers docs](https://redis.github.io/agent-memory-server/llm-providers/) for details.
-> - **Memory Extraction Debounce**: `EXTRACTION_DEBOUNCE_SECONDS` controls how long to wait before extracting memories from a conversation (default: 300 seconds / 5 minutes). Set to `30` for faster memory extraction in demos, or keep the default `300` for production to reduce API calls.
+> - **Memory Extraction Debounce**: `EXTRACTION_DEBOUNCE_SECONDS` controls how long to wait before extracting memories from a conversation (default: 300 seconds). Lower values (e.g., 5) provide faster memory extraction, while higher values reduce API calls.
 > - **Embedding Models**: Agent Memory Server also uses LiteLLM for embeddings. For local/offline embeddings, use Ollama (e.g., `EMBEDDING_MODEL=ollama/nomic-embed-text`, `REDISVL_VECTOR_DIMENSIONS=768`). Note: The `redis/langcache-embed-v1` model used in the semantic_cache example is not supported by Agent Memory Server (it's RedisVL-specific). See [Embedding Providers docs](https://redis.github.io/agent-memory-server/embedding-providers/) for all options.
 >
 > **Using the official release**: Once the next version is released, you can use `redislabs/agent-memory-server:latest` instead of building from source.
