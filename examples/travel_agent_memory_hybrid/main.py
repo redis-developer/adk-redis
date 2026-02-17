@@ -70,7 +70,7 @@ def redis_memory_factory(uri: str, **kwargs):
     base_url = parse_base_url(uri)
     config = RedisLongTermMemoryServiceConfig(
         api_base_url=base_url,
-        default_namespace=os.getenv("NAMESPACE", "travel_agent_hybrid"),
+        default_namespace=os.getenv("NAMESPACE", "travel_agent_memory_hybrid"),
         extraction_strategy=os.getenv("REDIS_MEMORY_EXTRACTION_STRATEGY", "discrete"),
         recency_boost=os.getenv("REDIS_MEMORY_RECENCY_BOOST", "true").lower() == "true",
         semantic_weight=float(os.getenv("REDIS_MEMORY_SEMANTIC_WEIGHT", "0.7")),
@@ -104,7 +104,7 @@ app: FastAPI = get_fast_api_app(
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    namespace = os.getenv("NAMESPACE", "travel_agent_hybrid")
+    namespace = os.getenv("NAMESPACE", "travel_agent_memory_hybrid")
     server = os.getenv("MEMORY_SERVER_URL", "http://localhost:8088")
     extraction = os.getenv("REDIS_MEMORY_EXTRACTION_STRATEGY", "discrete")
     context_window = os.getenv("REDIS_MEMORY_CONTEXT_WINDOW", "8000")

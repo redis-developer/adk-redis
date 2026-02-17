@@ -81,7 +81,7 @@ docker images | grep agent-memory-server
 **Step 2: Start the services with Docker Compose**
 
 ```bash
-cd examples/travel_agent_hybrid
+cd examples/travel_agent_memory_hybrid
 docker compose up -d
 ```
 
@@ -159,10 +159,10 @@ docker run -d --name agent-memory-server -p 8088:8088 \
 
 ### Setup Environment Variables
 
-Create a `.env` file in the `examples/travel_agent_hybrid` directory:
+Create a `.env` file in the `examples/travel_agent_memory_hybrid` directory:
 
 ```bash
-cd examples/travel_agent_hybrid
+cd examples/travel_agent_memory_hybrid
 cat > .env << EOF
 GOOGLE_API_KEY=your-google-api-key
 TAVILY_API_KEY=your-tavily-api-key
@@ -189,7 +189,7 @@ This creates 3 demo users:
 The hybrid approach requires `main.py` to register the Redis services. Using `adk web .` would bypass the services and only use the memory tools.
 
 ```bash
-cd examples/travel_agent_hybrid
+cd examples/travel_agent_memory_hybrid
 uv run python main.py
 ```
 
@@ -495,7 +495,7 @@ Agent Response
 ### File Structure
 
 ```
-examples/travel_agent_memory/
+examples/travel_agent_memory_hybrid/
 ├── README.md                    # This file (comprehensive guide)
 │
 ├── travel_agent/                # Main agent package
@@ -512,11 +512,8 @@ examples/travel_agent_memory/
 │   ├── users.json               # Tyler, Nitin, Vishal profiles
 │   └── seed_script.py           # Script to populate Agent Memory Server
 │
-├── evaluation/                  # Testing framework
-│   ├── travel_agent_eval.test.json  # Test cases
-│   ├── test_config.json             # Scoring config
-│   └── README.md                    # Eval documentation
-│
+├── main.py                      # Custom FastAPI server with Redis services
+├── docker-compose.yml           # Redis + Agent Memory Server
 ├── .env.example                 # Environment template
 └── .env                         # Your local environment (gitignored)
 ```
@@ -573,7 +570,7 @@ Error: Connection refused to http://localhost:8088
 
 **Solution:** Start the services using Docker Compose:
 ```bash
-cd examples/travel_agent_memory
+cd examples/travel_agent_memory_hybrid
 docker compose up -d
 ```
 

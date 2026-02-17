@@ -53,7 +53,7 @@ docker images | grep agent-memory-server
 **Step 2: Start the services with Docker Compose**
 
 ```bash
-cd examples/travel_agent_memory
+cd examples/travel_agent_memory_tools
 docker compose up -d
 ```
 
@@ -132,7 +132,7 @@ docker run -d --name agent-memory-server -p 8088:8088 \
 ### Setup Environment Variables
 
 ```bash
-cd examples/travel_agent_memory
+cd examples/travel_agent_memory_tools
 cp .env.example .env
 # Edit .env and add your GOOGLE_API_KEY and TAVILY_API_KEY
 ```
@@ -154,14 +154,14 @@ This creates 3 demo users:
 
 ```bash
 # From the repository root
-cd examples/travel_agent_memory
+cd examples/travel_agent_memory_tools
 uv run adk web .
 ```
 
 Or specify the directory directly:
 ```bash
 # From anywhere
-uv run adk web examples/travel_agent_memory
+uv run adk web examples/travel_agent_memory_tools
 ```
 
 Then open **http://localhost:8000** in your browser.
@@ -189,7 +189,7 @@ print(response.text)
 
 ## Features
 
-### 1. Hybrid Memory Architecture
+### 1. Memory Architecture
 
 This agent uses **both** explicit and automatic memory approaches:
 
@@ -452,7 +452,7 @@ Agent Response
 ### File Structure
 
 ```
-examples/travel_agent_memory/
+examples/travel_agent_memory_tools/
 ├── README.md                    # This file (comprehensive guide)
 │
 ├── travel_agent/                # Main agent package
@@ -469,11 +469,7 @@ examples/travel_agent_memory/
 │   ├── users.json               # Tyler, Nitin, Vishal profiles
 │   └── seed_script.py           # Script to populate Agent Memory Server
 │
-├── evaluation/                  # Testing framework
-│   ├── travel_agent_eval.test.json  # Test cases
-│   ├── test_config.json             # Scoring config
-│   └── README.md                    # Eval documentation
-│
+├── docker-compose.yml           # Redis + Agent Memory Server
 ├── .env.example                 # Environment template
 └── .env                         # Your local environment (gitignored)
 ```
@@ -530,7 +526,7 @@ Error: Connection refused to http://localhost:8088
 
 **Solution:** Start the services using Docker Compose:
 ```bash
-cd examples/travel_agent_memory
+cd examples/travel_agent_memory_tools
 docker compose up -d
 ```
 
@@ -578,12 +574,12 @@ uv run adk web .
 
 ## Key Concepts Demonstrated
 
-1. **Two-tier memory** - Working memory (session) + long-term memory (Agent Memory Server)
-2. **Hybrid approach** - Explicit tools + automatic callbacks
+1. **Tool-based memory** - LLM-controlled memory operations via Agent Memory Server API
+2. **Explicit + automatic** - Memory tools + `after_agent_callback` for extraction
 3. **Redis caching** - Web search results cached for performance
 4. **Multi-user isolation** - Each user has separate memory namespace
 5. **Tool composition** - Memory + search + calendar + planning
-6. **ADK evaluation** - Test cases with scoring criteria
+6. **Standard ADK CLI** - Uses `adk web .` without custom services
 
 ---
 
