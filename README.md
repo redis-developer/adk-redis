@@ -23,16 +23,20 @@
 
 ## Introduction
 
-**adk-redis** provides Redis integrations for Google's Agent Development Kit (ADK). Implements ADK's `BaseMemoryService`, `BaseSessionService`, and tool interfaces using Redis Agent Memory Server and RedisVL.
+**adk-redis** provides Redis integrations for Google's Agent Development Kit (ADK). Implements ADK's `BaseMemoryService`, `BaseSessionService`, tool interfaces, and semantic caching using Redis Agent Memory Server and RedisVL.
 
 <div align="center">
 
-| 🧠 [**Memory Services**](#memory-services) | 💬 [**Session Services**](#session-services) | 🔍 [**Search Tools**](#search-tools) |
+| 🔌 [**ADK Services**](#memory-services) | 🔧 [**Agent Tools**](#search-tools) | ⚡ [**Semantic Caching**](#semantic-caching) |
 |:---:|:---:|:---:|
-| **Long-Term Memory**<br/>*Semantic search & auto-extraction* | **Working Memory**<br/>*Session management & auto-summarization* | **Vector Search**<br/>*Similarity search with filters* |
-| Cross-session knowledge retrieval | Context window management | Hybrid search (vector + text) |
-| Recency-boosted search | Background memory promotion | Range & text search |
-| Facts, preferences, episodic memory | State persistence | Multiple vectorizer support |
+| **Memory Service**<br/>*Long-term memory via Agent Memory Server* | **Memory Tools**<br/>*LLM-controlled memory operations* | **LLM Response Cache**<br/>*Reduce latency & costs* |
+| Semantic search & auto-extraction | search, create, update, delete | Similarity-based cache lookup |
+| Cross-session knowledge retrieval | Direct Agent Memory Server API | Configurable distance threshold |
+| Recency-boosted search | Namespace & user isolation | TTL-based expiration |
+| **Session Service**<br/>*Working memory via Agent Memory Server* | **Search Tools**<br/>*RAG via RedisVL* | **Tool Cache**<br/>*Avoid redundant calls* |
+| Context window management | Vector, hybrid, text, range search | Cache tool execution results |
+| Auto-summarization | Multiple vectorizers supported | Reduce API calls |
+| Background memory promotion | Metadata filtering | Configurable thresholds |
 
 </div>
 
@@ -394,6 +398,20 @@ Four specialized search tools for different RAG use cases:
 
 > All search tools support multiple vectorizers (OpenAI, HuggingFace, Cohere, Mistral, Voyage AI, etc.) and advanced filtering.
 
+### Semantic Caching
+
+Reduce latency and costs with similarity-based caching:
+
+| Feature | Description |
+|---------|-------------|
+| **LLM Response Cache** | Cache LLM responses and return similar cached results |
+| **Tool Result Cache** | Cache tool execution results to avoid redundant calls |
+| **Similarity Threshold** | Configurable distance threshold for cache hits |
+| **TTL Support** | Time-based cache expiration |
+| **Multiple Vectorizers** | Support for OpenAI, HuggingFace, local embeddings, etc. |
+
+**Implementations:** `LLMResponseCache`, `ToolCache`
+
 ---
 
 ## Requirements
@@ -409,12 +427,27 @@ Four specialized search tools for different RAG use cases:
 
 Complete working examples with ADK web runner integration:
 
-| Example | Description                             | Features |
-|---------|-----------------------------------------|----------|
+| Example | Description | Features |
+|---------|-------------|----------|
 | **[simple_redis_memory](examples/simple_redis_memory/)** | Agent with two-tier memory architecture | Working memory, long-term memory, auto-summarization, semantic search |
 | **[semantic_cache](examples/semantic_cache/)** | Semantic caching for LLM responses | Vector-based cache, reduced latency, cost optimization, local embeddings |
-| **[redis_search_tools](examples/redis_search_tools/)** | RAG with search tools                   | Vector search, hybrid search, range search, text search |
-| **[travel_agent_memory](examples/travel_agent_memory/)** | Travel agent with websearch and memory  | Hybrid memory (tools + callbacks), web search with caching, calendar export, itinerary planning, multi-user support |
+| **[redis_search_tools](examples/redis_search_tools/)** | RAG with search tools | Vector search, hybrid search, range search, text search |
+| **[travel_agent_memory_hybrid](examples/travel_agent_memory_hybrid/)** | Travel agent with framework-managed memory | Redis session + memory services, automatic memory extraction, web search, calendar export, itinerary planning |
+| **[travel_agent_memory_tools](examples/travel_agent_memory_tools/)** | Travel agent with LLM-controlled memory | Memory tools only (search/create/update/delete), in-memory session, web search, calendar export, itinerary planning |
+
+### Travel Agent Examples Comparison
+
+Both examples use **Redis Agent Memory Server** for long-term memory persistence. The difference is in how they integrate with ADK:
+
+| Aspect | `travel_agent_memory_hybrid` | `travel_agent_memory_tools` |
+|--------|------------------------------|----------------------------|
+| **How to Run** | `python main.py` (custom FastAPI) | `adk web .` (standard ADK CLI) |
+| **Session Service** | `RedisWorkingMemorySessionService` (Redis-backed, auto-summarization) | ADK default (in-memory) |
+| **Memory Service** | `RedisLongTermMemoryService` (ADK's `BaseMemoryService` interface) | Memory tools only (direct Agent Memory Server API calls) |
+| **Memory Extraction** | `after_agent_callback` + framework-managed | `after_agent_callback` |
+| **Session Sync** | Real-time (every message synced to Agent Memory Server) | End-of-turn (batch sync via `after_agent_callback`) |
+| **Auto-Summarization** | Yes, mid-conversation (real-time sync triggers when context exceeded) | Yes, end-of-turn (batch sync triggers when context exceeded) |
+| **Best For** | Full ADK service integration (`BaseSessionService` + `BaseMemoryService`) | Tool-based Agent Memory Server integration (no custom services) |
 
 Each example includes:
 - Complete runnable code

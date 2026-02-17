@@ -131,7 +131,8 @@ class SearchMemoryTool(BaseMemoryTool):
     try:
       # Use search_long_term_memory which supports namespace filtering
       client = self._get_client()
-      from agent_memory_client.filters import Namespace, UserId
+      from agent_memory_client.filters import Namespace
+      from agent_memory_client.filters import UserId
 
       ns = Namespace(eq=namespace)
       uid = UserId(eq=user_id) if user_id else None
