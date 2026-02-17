@@ -27,7 +27,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GENERATION_MODEL=gemini/gemini-2.0-flash
-      - EMBEDDING_MODEL=gemini/text-embedding-004
+      - EMBEDDING_MODEL=gemini/gemini-embedding-001
+      - REDISVL_VECTOR_DIMENSIONS=3072
       - FAST_MODEL=gemini/gemini-2.0-flash
       - SLOW_MODEL=gemini/gemini-2.0-flash
       - EXTRACTION_DEBOUNCE_SECONDS=5
