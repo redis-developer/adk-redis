@@ -92,7 +92,7 @@ async def main():
   """Load users.json and seed all users."""
   # Get configuration
   base_url = os.getenv("MEMORY_SERVER_URL", "http://localhost:8088")
-  namespace = "travel_agent"
+  namespace = os.getenv("NAMESPACE", "travel_agent_tools")
 
   # Load users file
   users_file = Path(__file__).parent / "users.json"

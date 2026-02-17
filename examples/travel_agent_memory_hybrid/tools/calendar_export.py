@@ -24,6 +24,7 @@ from uuid import uuid4
 
 from google import genai
 from google.adk.tools import BaseTool
+from google.adk.tools.tool_context import ToolContext
 
 
 class CalendarExportTool(BaseTool):
@@ -53,8 +54,8 @@ class CalendarExportTool(BaseTool):
         **kwargs,
     )
 
-  def get_function_declaration(self) -> genai.types.FunctionDeclaration:
-    """Define the tool's function signature for the LLM."""
+  def _get_declaration(self) -> genai.types.FunctionDeclaration:
+    """Get the tool declaration for the LLM."""
     return genai.types.FunctionDeclaration(
         name=self.name,
         description=self.description,
@@ -96,15 +97,19 @@ class CalendarExportTool(BaseTool):
         ),
     )
 
-  async def run(self, events: list[dict[str, str]]) -> dict[str, Any]:
+  async def run_async(
+      self, *, args: dict[str, Any], tool_context: ToolContext
+  ) -> dict[str, Any]:
     """Generate ICS calendar file from travel events.
 
     Args:
-        events: List of event dictionaries with title, start_date, end_date, location, description
+        args: Dictionary containing 'events' list
+        tool_context: The tool context (unused)
 
     Returns:
         Dictionary with success status and ICS file content
     """
+    events = args.get("events", [])
     try:
       # Generate ICS content
       ics_content = self._generate_ics(events)

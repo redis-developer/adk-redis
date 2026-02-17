@@ -94,8 +94,8 @@ class CreateMemoryTool(BaseMemoryTool):
                 "memory_type": types.Schema(
                     type=types.Type.STRING,
                     description=(
-                        "Type of memory: 'semantic' (facts), 'episodic' (events), "
-                        "or 'preference' (user preferences)"
+                        "Type of memory: 'semantic' (facts/preferences), "
+                        "'episodic' (events/experiences), or 'message' (conversation)"
                     ),
                 ),
                 "namespace": types.Schema(
@@ -129,12 +129,25 @@ class CreateMemoryTool(BaseMemoryTool):
 
     content = args.get("content")
     topics = args.get("topics", [])
-    memory_type = args.get("memory_type", "semantic")
+    memory_type_raw = args.get("memory_type", "semantic")
     namespace = self._get_namespace(args.get("namespace"))
     user_id = self._get_user_id(args.get("user_id"))
 
     if not content:
       return {"status": "error", "message": "content is required"}
+
+    # Map invalid memory types to valid ones
+    # Valid types: 'semantic', 'episodic', 'message'
+    memory_type_map = {
+        "preference": "semantic",
+        "fact": "semantic",
+        "event": "episodic",
+        "experience": "episodic",
+        "conversation": "message",
+    }
+    memory_type = memory_type_map.get(memory_type_raw, memory_type_raw)
+    if memory_type not in ("semantic", "episodic", "message"):
+      memory_type = "semantic"  # Default fallback
 
     try:
       # Use add_memory_tool which creates a memory in a session context

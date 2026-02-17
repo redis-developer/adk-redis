@@ -1,16 +1,20 @@
-# Travel Agent with Memory
+# Travel Agent Memory Tools
 
-A comprehensive travel planning agent demonstrating ADK-Redis integration with Redis Agent Memory Server.
+A comprehensive travel planning agent demonstrating **LLM-controlled memory tools** with Redis Agent Memory Server.
 
 ## Overview
 
-This example showcases a production-ready travel agent with:
-- **Two-tier memory architecture** - Working memory + long-term memory via Agent Memory Server
-- **Hybrid memory approach** - Both explicit tools (user-controlled) and automatic callbacks (framework-controlled)
+This example showcases memory tools that the LLM can explicitly call:
+- **Memory Tools** - SearchMemoryTool, CreateMemoryTool, UpdateMemoryTool, DeleteMemoryTool
+- **ADK Built-in** - preload_memory, load_memory
 - **Web search with caching** - Tavily search with Redis-backed result caching
 - **Calendar integration** - Export itineraries to ICS format
 - **Multi-day trip planning** - Structured itinerary generation
 - **Multi-user support** - Memory isolation per user
+
+**Key Difference from `travel_agent_memory_hybrid`:**
+- This example uses `adk web .` with only memory tools (no Redis services)
+- `travel_agent_memory_hybrid` uses `python main.py` with BOTH services AND tools
 
 ## Quick Start
 

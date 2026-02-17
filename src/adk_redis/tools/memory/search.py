@@ -122,34 +122,38 @@ class SearchMemoryTool(BaseMemoryTool):
 
     query = args.get("query")
     limit = args.get("limit", self._config.search_top_k)
-    self._get_namespace(args.get("namespace"))
+    namespace = self._get_namespace(args.get("namespace"))
     user_id = self._get_user_id(args.get("user_id"))
 
     if not query:
       return {"status": "error", "message": "query is required"}
 
     try:
-      # Use search_memory_tool which returns a dict
+      # Use search_long_term_memory which supports namespace filtering
       client = self._get_client()
-      response = await client.search_memory_tool(
-          query=query,
-          max_results=limit,
-          min_relevance=self._config.distance_threshold,
-          user_id=user_id,
+      from agent_memory_client.filters import Namespace, UserId
+
+      ns = Namespace(eq=namespace)
+      uid = UserId(eq=user_id) if user_id else None
+      response = await client.search_long_term_memory(
+          text=query,
+          namespace=ns,
+          user_id=uid,
+          distance_threshold=self._config.distance_threshold,
+          limit=limit,
       )
 
-      # Response is a dict with 'memories' key containing list of memory dicts
-      memories_data = response.get("memories", [])
+      # Response is a MemoryRecordResults object with .memories attribute
       memories = []
-      for memory in memories_data:
+      for memory in response.memories:
         memories.append(
             {
-                "id": memory.get("id"),
-                "content": memory.get("text"),
-                "score": memory.get("score", 0.0),
-                "topics": memory.get("topics", []),
-                "memory_type": memory.get("memory_type"),
-                "created_at": memory.get("created_at"),
+                "id": memory.id,
+                "content": memory.text,
+                "score": getattr(memory, "dist", 0.0),
+                "topics": memory.topics or [],
+                "memory_type": memory.memory_type,
+                "created_at": str(memory.created_at) if memory.created_at else None,
             }
         )
 
