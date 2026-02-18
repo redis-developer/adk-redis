@@ -15,7 +15,7 @@
 [![Code style: pyink](https://img.shields.io/badge/code%20style-pyink-black)](https://github.com/google/pyink)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue)](https://mypy-lang.org/)
 
-**[Documentation](https://github.com/redis-applied-ai/adk-redis)** • **[Examples](examples/)** • **[Agent Memory Server](https://github.com/redis/agent-memory-server)** • **[RedisVL](https://docs.redisvl.com)**
+**[Documentation](https://github.com/redis-developer/adk-redis)** • **[Examples](examples/)** • **[Agent Memory Server](https://github.com/redis/agent-memory-server)** • **[RedisVL](https://docs.redisvl.com)**
 
 </div>
 
@@ -85,7 +85,7 @@ uv pip install adk-redis[all]
 For the latest features and bug fixes not yet in a stable release:
 
 ```bash
-uv pip install git+https://github.com/redis-applied-ai/adk-redis.git@main
+uv pip install git+https://github.com/redis-developer/adk-redis.git@main
 ```
 
 > **Note:** The development version includes the newest changes but may contain experimental features. Use primarily for testing or accessing critical fixes before official release.
@@ -439,7 +439,7 @@ This project follows the [Google Python Style Guide](https://google.github.io/st
 
 ```bash
 # Clone the repository
-git clone https://github.com/redis-applied-ai/adk-redis.git
+git clone https://github.com/redis-developer/adk-redis.git
 cd adk-redis
 
 # Install development dependencies
@@ -468,7 +468,7 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for coding style, type hints, testing
 
 Please help us by contributing PRs, opening GitHub issues for bugs or new feature ideas, improving documentation, or increasing test coverage. See the following steps for contributing:
 
-1. [Open an issue](https://github.com/redis-applied-ai/adk-redis/issues) for bugs or feature requests
+1. [Open an issue](https://github.com/redis-developer/adk-redis/issues) for bugs or feature requests
 2. Read [CONTRIBUTING.md](CONTRIBUTING.md) and submit a pull request
 3. Improve documentation and examples
 
@@ -483,7 +483,7 @@ Apache 2.0 - See [LICENSE](LICENSE) for details.
 ## Helpful Links
 
 ### Documentation & Resources
-- **[GitHub Repository](https://github.com/redis-applied-ai/adk-redis)** - Source code and issue tracking
+- **[GitHub Repository](https://github.com/redis-developer/adk-redis)** - Source code and issue tracking
 - **[Examples](examples/)** - Complete working examples with ADK web runner
 - **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
 
