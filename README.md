@@ -15,7 +15,7 @@
 [![Code style: pyink](https://img.shields.io/badge/code%20style-pyink-black)](https://github.com/google/pyink)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue)](https://mypy-lang.org/)
 
-**[Documentation](https://github.com/redis-developer/adk-redis)** • **[Examples](examples/)** • **[Agent Memory Server](https://github.com/redis/agent-memory-server)** • **[RedisVL](https://docs.redisvl.com)**
+**[PyPI](https://pypi.org/project/adk-redis/)** • **[Documentation](https://github.com/redis-developer/adk-redis)** • **[Examples](examples/)** • **[Agent Memory Server](https://github.com/redis/agent-memory-server)** • **[RedisVL](https://docs.redisvl.com)**
 
 </div>
 
@@ -46,49 +46,49 @@
 
 ## Installation
 
-### Prerequisites
-
-This project uses [uv](https://docs.astral.sh/uv/) for dependency management. Install it first:
+### Install from PyPI
 
 ```bash
-# macOS/Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Windows
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-
-# Or with pip
-pip install uv
-```
-
-### Stable Release (Recommended)
-
-```bash
-uv pip install adk-redis
+pip install adk-redis
 ```
 
 ### Optional Dependencies
 
+Install with optional features based on your use case:
+
 ```bash
 # Memory & session services (Redis Agent Memory Server integration)
-uv pip install adk-redis[memory]
+pip install adk-redis[memory]
 
 # Search tools (RedisVL integration)
-uv pip install adk-redis[search]
+pip install adk-redis[search]
 
 # All features
-uv pip install adk-redis[all]
+pip install adk-redis[all]
 ```
 
-### Development Version
-
-For the latest features and bug fixes not yet in a stable release:
+### Verify Installation
 
 ```bash
-uv pip install git+https://github.com/redis-developer/adk-redis.git@main
+python -c "from adk_redis import __version__; print(__version__)"
 ```
 
-> **Note:** The development version includes the newest changes but may contain experimental features. Use primarily for testing or accessing critical fixes before official release.
+### Development Installation
+
+For contributors or those who want the latest unreleased changes:
+
+```bash
+# Clone the repository
+git clone https://github.com/redis-developer/adk-redis.git
+cd adk-redis
+
+# Install with uv (recommended for development)
+pip install uv
+uv sync --all-extras
+
+# Or install directly from GitHub
+pip install git+https://github.com/redis-developer/adk-redis.git@main
+```
 
 ---
 
@@ -483,6 +483,7 @@ Apache 2.0 - See [LICENSE](LICENSE) for details.
 ## Helpful Links
 
 ### Documentation & Resources
+- **[PyPI Package](https://pypi.org/project/adk-redis/)** - Install with `pip install adk-redis`
 - **[GitHub Repository](https://github.com/redis-developer/adk-redis)** - Source code and issue tracking
 - **[Examples](examples/)** - Complete working examples with ADK web runner
 - **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project

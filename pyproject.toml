@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "adk-redis"
-version = "0.0.2"
+version = "0.0.3"
 description = "Redis integrations for Google's Agent Development Kit (ADK)"
 readme = "README.md"
 license = "Apache-2.0"
