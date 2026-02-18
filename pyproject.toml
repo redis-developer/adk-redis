@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "adk-redis"
-dynamic = ["version"]
+version = "0.0.2"
 description = "Redis integrations for Google's Agent Development Kit (ADK)"
 readme = "README.md"
 license = "Apache-2.0"
@@ -69,14 +69,13 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/redis-applied-ai/adk-redis"
-Documentation = "https://github.com/redis-applied-ai/adk-redis#readme"
-Repository = "https://github.com/redis-applied-ai/adk-redis"
-Issues = "https://github.com/redis-applied-ai/adk-redis/issues"
-Changelog = "https://github.com/redis-applied-ai/adk-redis/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/redis-developer/adk-redis"
+Documentation = "https://github.com/redis-developer/adk-redis#readme"
+Repository = "https://github.com/redis-developer/adk-redis"
+Issues = "https://github.com/redis-developer/adk-redis/issues"
+Changelog = "https://github.com/redis-developer/adk-redis/blob/main/CHANGELOG.md"
 
-[tool.hatch.version]
-path = "src/adk_redis/_version.py"
+
 
 [tool.hatch.build.targets.sdist]
 include = [
