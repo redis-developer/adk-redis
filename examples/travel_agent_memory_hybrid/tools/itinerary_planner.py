@@ -182,13 +182,23 @@ class ItineraryPlannerTool(BaseTool):
       summary_lines.append(f"## Day {day_number} - {date}")
 
       # Process activities
-      for activity in sorted(activities, key=lambda a: a.get("time", "00:00")):
-        time = activity.get("time", "")
+      for activity in sorted(activities, key=lambda a: a.get("time", "00:00") or "00:00"):
+        time = activity.get("time", "") or "09:00"  # Default to 9am if empty
         title = activity.get("title", "Untitled Activity")
         description = activity.get("description", "")
         location = activity.get("location", "")
-        duration = activity.get("duration_minutes", 60)
+        duration = activity.get("duration_minutes", 60) or 60
         category = activity.get("category", "activity")
+
+        # Parse time safely
+        try:
+          parts = time.split(":")
+          hour = int(parts[0]) if len(parts) > 0 and parts[0] else 9
+          minute = int(parts[1]) if len(parts) > 1 and parts[1] else 0
+        except (ValueError, IndexError):
+          hour, minute = 9, 0  # Default to 9:00 AM
+
+        time = f"{hour:02d}:{minute:02d}"
 
         # Add to summary
         emoji = self._get_category_emoji(category)
@@ -201,7 +211,6 @@ class ItineraryPlannerTool(BaseTool):
         # Create calendar event
         start_datetime = f"{date}T{time}:00"
         # Calculate end time (add duration)
-        hour, minute = map(int, time.split(":"))
         end_minutes = hour * 60 + minute + duration
         end_hour = (end_minutes // 60) % 24
         end_minute = end_minutes % 60
