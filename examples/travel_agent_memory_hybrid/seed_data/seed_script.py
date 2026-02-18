@@ -55,7 +55,7 @@ async def seed_user_memories(
     for idx, pref in enumerate(preferences):
       # Create memory record with required fields
       memory_record = {
-          "id": f"{user_id}_pref_{idx}",  # Required: unique ID for deduplication
+          "id": f"{user_id}_{namespace}_pref_{idx}",  # Required: unique ID for deduplication
           "text": pref,  # Required: the actual memory text
           "user_id": user_id,  # Optional: for user isolation
           "namespace": namespace,  # Optional: for namespace isolation
