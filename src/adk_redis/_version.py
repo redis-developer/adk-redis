@@ -1,3 +1,5 @@
 """Version information for adk-redis."""
 
-__version__ = "0.0.2"
+from importlib.metadata import version
+
+__version__ = version("adk-redis")
