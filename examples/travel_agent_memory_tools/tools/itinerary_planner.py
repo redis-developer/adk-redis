@@ -176,7 +176,9 @@ class ItineraryPlannerTool(BaseTool):
       summary_lines.append(f"## Day {day_number} - {date}")
 
       # Process activities
-      for activity in sorted(activities, key=lambda a: a.get("time", "00:00") or "00:00"):
+      for activity in sorted(
+          activities, key=lambda a: a.get("time", "00:00") or "00:00"
+      ):
         time = activity.get("time", "") or "09:00"  # Default to 9am if empty
         title = activity.get("title", "Untitled Activity")
         description = activity.get("description", "")
