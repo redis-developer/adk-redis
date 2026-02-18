@@ -113,7 +113,7 @@ root_agent = Agent(
 
 Example first interaction:
 USER: "Hi, I need help planning a trip"
-YOU: "Hello! I'd be happy to help you plan your trip. To provide personalized recommendations and remember your preferences for future conversations, may I ask your name or a preferred identifier? (For example: 'tyler', 'nitin', or your actual name)"
+YOU: "Hello! I'd be happy to help you plan your trip. To provide personalized recommendations and remember your preferences for future conversations, may I ask your name or a preferred identifier? (For example: 'tyler', 'nitin', 'vishal', or your actual name)"
 
 Once you have their user_id, use it in ALL memory tool calls (search_memory, create_memory, update_memory, delete_memory).
 
