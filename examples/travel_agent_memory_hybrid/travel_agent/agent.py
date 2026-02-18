@@ -12,14 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Comprehensive Travel Agent with Memory, Web Search, and Calendar Export.
+"""Travel Agent Hybrid: Full Services + Memory Tools.
 
-This agent demonstrates ADK-Redis capabilities:
-- Two-tier memory architecture (Agent Memory Server)
-- Web search with Redis caching (Tavily)
-- Explicit memory tools (create, search, update, delete)
-- Automatic memory tools (load_memory, preload_memory)
-- Multi-user support with memory isolation
+This agent demonstrates the HYBRID approach combining:
+
+Framework-Managed (via main.py services):
+- RedisWorkingMemorySessionService - Session persistence with auto-summarization
+- RedisLongTermMemoryService - Automatic memory extraction and semantic search
+
+LLM-Controlled (via tools):
+- SearchMemoryTool, CreateMemoryTool, UpdateMemoryTool, DeleteMemoryTool
+- preload_memory, load_memory (ADK built-in)
+- TavilySearchTool (web search with Redis caching)
+- ItineraryPlannerTool, CalendarExportTool
 """
 
 import os
@@ -40,7 +45,7 @@ from adk_redis.tools.memory import UpdateMemoryTool
 
 # Configuration from environment
 MEMORY_SERVER_URL = os.getenv("MEMORY_SERVER_URL", "http://localhost:8088")
-NAMESPACE = os.getenv("NAMESPACE", "travel_agent")
+NAMESPACE = os.getenv("NAMESPACE", "travel_agent_memory_hybrid")
 
 
 async def after_agent(callback_context: CallbackContext):

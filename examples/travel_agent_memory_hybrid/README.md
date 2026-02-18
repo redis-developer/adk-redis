@@ -1,18 +1,50 @@
-# Travel Agent with Memory
+# Travel Agent Memory Hybrid
 
-A comprehensive travel planning agent demonstrating ADK-Redis integration with Redis Agent Memory Server.
+A comprehensive travel planning agent demonstrating the **HYBRID approach** with both framework-managed services AND LLM-controlled memory tools.
+
+## TL;DR - Quick Start
+
+```bash
+# 1. Build Agent Memory Server (one-time setup)
+./scripts/setup-agent-memory-server.sh
+
+# 2. Start Redis + Agent Memory Server
+cd examples/travel_agent_memory_hybrid
+docker compose up -d
+
+# 3. Set environment variables
+export GOOGLE_API_KEY=your-google-api-key
+export TAVILY_API_KEY=your-tavily-api-key  # optional
+
+# 4. Run the agent (MUST use main.py, not adk web)
+uv run python main.py
+
+# 5. Open http://localhost:8080 in your browser
+```
+
+---
 
 ## Overview
 
-This example showcases a production-ready travel agent with:
-- **Two-tier memory architecture** - Working memory + long-term memory via Agent Memory Server
-- **Hybrid memory approach** - Both explicit tools (user-controlled) and automatic callbacks (framework-controlled)
-- **Web search with caching** - Tavily search with Redis-backed result caching
-- **Calendar integration** - Export itineraries to ICS format
-- **Multi-day trip planning** - Structured itinerary generation
-- **Multi-user support** - Memory isolation per user
+This example showcases the full hybrid integration combining:
 
-## Quick Start
+**Framework-Managed Services (via main.py):**
+- **RedisWorkingMemorySessionService** - Session persistence with auto-summarization
+- **RedisLongTermMemoryService** - Automatic memory extraction and semantic search
+
+**LLM-Controlled Tools:**
+- **Memory Tools** - SearchMemoryTool, CreateMemoryTool, UpdateMemoryTool, DeleteMemoryTool
+- **ADK Built-in** - preload_memory, load_memory
+- **Web Search** - Tavily search with Redis-backed result caching
+- **Planning** - ItineraryPlannerTool, CalendarExportTool
+
+**Key Difference from `travel_agent_memory_tools`:**
+- `travel_agent_memory_tools` uses `adk web .` with only memory tools (no services)
+- `travel_agent_memory_hybrid` uses `python main.py` with BOTH services AND tools
+
+## Detailed Setup
+
+If you need more details on any step, see below.
 
 ### Prerequisites
 
@@ -49,7 +81,7 @@ docker images | grep agent-memory-server
 **Step 2: Start the services with Docker Compose**
 
 ```bash
-cd examples/travel_agent_memory
+cd examples/travel_agent_memory_hybrid
 docker compose up -d
 ```
 
@@ -127,10 +159,16 @@ docker run -d --name agent-memory-server -p 8088:8088 \
 
 ### Setup Environment Variables
 
+Create a `.env` file in the `examples/travel_agent_memory_hybrid` directory:
+
 ```bash
-cd examples/travel_agent_memory
-cp .env.example .env
-# Edit .env and add your GOOGLE_API_KEY and TAVILY_API_KEY
+cd examples/travel_agent_memory_hybrid
+cat > .env << EOF
+GOOGLE_API_KEY=your-google-api-key
+TAVILY_API_KEY=your-tavily-api-key
+MEMORY_SERVER_URL=http://localhost:8088
+NAMESPACE=travel_agent_hybrid
+EOF
 ```
 
 ### (Optional) Seed Demo User Profiles
@@ -146,21 +184,16 @@ This creates 3 demo users:
 
 ### Running the Agent
 
-**Option 1: ADK Web Runner (Recommended)**
+**IMPORTANT: Use `python main.py` (NOT `adk web .`)**
+
+The hybrid approach requires `main.py` to register the Redis services. Using `adk web .` would bypass the services and only use the memory tools.
 
 ```bash
-# From the repository root
-cd examples/travel_agent_memory
-uv run adk web .
+cd examples/travel_agent_memory_hybrid
+uv run python main.py
 ```
 
-Or specify the directory directly:
-```bash
-# From anywhere
-uv run adk web examples/travel_agent_memory
-```
-
-Then open **http://localhost:8000** in your browser.
+Then open **http://localhost:8080** in your browser.
 
 **Web UI Features:**
 - Chat interface with message history
@@ -168,13 +201,27 @@ Then open **http://localhost:8000** in your browser.
 - Trace button for latency visualization
 - Hot reload on code changes
 
-**Option 2: Programmatic Usage**
+**What's Different from `travel_agent_memory`:**
+- Uses `RedisWorkingMemorySessionService` for session persistence
+- Uses `RedisLongTermMemoryService` for automatic memory extraction
+- PLUS all the memory tools for explicit LLM control
+
+**Programmatic Usage:**
 
 ```python
 from travel_agent import root_agent
 from google.adk.runners import Runner
+from adk_redis.sessions import RedisWorkingMemorySessionService
+from adk_redis.memory import RedisLongTermMemoryService
 
-runner = Runner(agent=root_agent)
+session_service = RedisWorkingMemorySessionService()
+memory_service = RedisLongTermMemoryService()
+
+runner = Runner(
+    agent=root_agent,
+    session_service=session_service,
+    memory_service=memory_service,
+)
 
 # Run a conversation
 response = runner.run("Hi, I need help planning a trip to Tokyo")
@@ -448,7 +495,7 @@ Agent Response
 ### File Structure
 
 ```
-examples/travel_agent_memory/
+examples/travel_agent_memory_hybrid/
 ├── README.md                    # This file (comprehensive guide)
 │
 ├── travel_agent/                # Main agent package
@@ -465,11 +512,8 @@ examples/travel_agent_memory/
 │   ├── users.json               # Tyler, Nitin, Vishal profiles
 │   └── seed_script.py           # Script to populate Agent Memory Server
 │
-├── evaluation/                  # Testing framework
-│   ├── travel_agent_eval.test.json  # Test cases
-│   ├── test_config.json             # Scoring config
-│   └── README.md                    # Eval documentation
-│
+├── main.py                      # Custom FastAPI server with Redis services
+├── docker-compose.yml           # Redis + Agent Memory Server
 ├── .env.example                 # Environment template
 └── .env                         # Your local environment (gitignored)
 ```
@@ -526,7 +570,7 @@ Error: Connection refused to http://localhost:8088
 
 **Solution:** Start the services using Docker Compose:
 ```bash
-cd examples/travel_agent_memory
+cd examples/travel_agent_memory_hybrid
 docker compose up -d
 ```
 

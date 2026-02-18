@@ -165,8 +165,14 @@ class RedisWorkingMemorySessionService(BaseSessionService):
     """Convert WorkingMemoryResponse to ADK Session."""
     events = []
     for msg in response.messages or []:
-      author = "user" if msg.role == "user" else response.session_id
-      content = types.Content(parts=[types.Part(text=msg.content)])
+      # For assistant messages, use app_name as the author since that matches
+      # the agent name in ADK. Using session_id causes "Event from an unknown
+      # agent" warnings and breaks conversation history handling.
+      author = "user" if msg.role == "user" else app_name
+      # Set the role on Content - "user" for user messages, "model" for assistant
+      # This is required for ADK's content processor to include events in LLM context
+      role = "user" if msg.role == "user" else "model"
+      content = types.Content(role=role, parts=[types.Part(text=msg.content)])
       # Preserve original message timestamp if available
       timestamp = (
           msg.created_at.timestamp()

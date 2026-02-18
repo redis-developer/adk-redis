@@ -8,6 +8,8 @@ meals, and logistics organized by day and time.
 from typing import Any
 
 from google.adk.tools import BaseTool
+from google.adk.tools.tool_context import ToolContext
+from google.genai import types
 
 
 class ItineraryPlannerTool(BaseTool):
@@ -31,30 +33,96 @@ class ItineraryPlannerTool(BaseTool):
         **kwargs,
     )
 
-  async def run(
-      self,
-      destination: str,
-      start_date: str,
-      end_date: str,
-      days: list[dict[str, Any]],
+  def _get_declaration(self) -> types.FunctionDeclaration:
+    """Get the tool declaration for the LLM."""
+    return types.FunctionDeclaration(
+        name=self.name,
+        description=self.description,
+        parameters=types.Schema(
+            type=types.Type.OBJECT,
+            properties={
+                "destination": types.Schema(
+                    type=types.Type.STRING,
+                    description="Trip destination (e.g., 'Paris, France', 'Berlin, Germany')",
+                ),
+                "start_date": types.Schema(
+                    type=types.Type.STRING,
+                    description="Trip start date in ISO format (YYYY-MM-DD)",
+                ),
+                "end_date": types.Schema(
+                    type=types.Type.STRING,
+                    description="Trip end date in ISO format (YYYY-MM-DD)",
+                ),
+                "days": types.Schema(
+                    type=types.Type.ARRAY,
+                    description="List of daily plans with activities",
+                    items=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={
+                            "day_number": types.Schema(
+                                type=types.Type.INTEGER,
+                                description="Day number (1, 2, 3, etc.)",
+                            ),
+                            "date": types.Schema(
+                                type=types.Type.STRING,
+                                description="Date in YYYY-MM-DD format",
+                            ),
+                            "activities": types.Schema(
+                                type=types.Type.ARRAY,
+                                description="List of activities for the day",
+                                items=types.Schema(
+                                    type=types.Type.OBJECT,
+                                    properties={
+                                        "time": types.Schema(
+                                            type=types.Type.STRING,
+                                            description="Time in HH:MM format (e.g., '09:00')",
+                                        ),
+                                        "title": types.Schema(
+                                            type=types.Type.STRING,
+                                            description="Activity name",
+                                        ),
+                                        "description": types.Schema(
+                                            type=types.Type.STRING,
+                                            description="Activity details",
+                                        ),
+                                        "location": types.Schema(
+                                            type=types.Type.STRING,
+                                            description="Address or place name",
+                                        ),
+                                        "duration_minutes": types.Schema(
+                                            type=types.Type.INTEGER,
+                                            description="Duration in minutes (default: 60)",
+                                        ),
+                                        "category": types.Schema(
+                                            type=types.Type.STRING,
+                                            description="Category: sightseeing, dining, transport, etc.",
+                                        ),
+                                    },
+                                    required=["time", "title"],
+                                ),
+                            ),
+                        },
+                        required=["day_number", "date", "activities"],
+                    ),
+                ),
+            },
+            required=["destination", "start_date", "end_date", "days"],
+        ),
+    )
+
+  async def run_async(
+      self, *, args: dict[str, Any], tool_context: ToolContext
   ) -> dict[str, Any]:
     """
     Create a structured itinerary.
 
     Args:
-        destination: Trip destination (e.g., "Paris, France")
-        start_date: Trip start date (ISO format: YYYY-MM-DD)
-        end_date: Trip end date (ISO format: YYYY-MM-DD)
-        days: List of daily plans, each containing:
-            - day_number: int (1, 2, 3, etc.)
-            - date: str (YYYY-MM-DD)
-            - activities: list of dicts with:
-                - time: str (HH:MM format, e.g., "09:00")
-                - title: str (activity name)
-                - description: str (details)
-                - location: str (address or place name)
-                - duration_minutes: int (optional)
-                - category: str (e.g., "sightseeing", "dining", "transport")
+        args: Dictionary containing:
+            - destination: Trip destination (e.g., "Paris, France")
+            - start_date: Trip start date (ISO format: YYYY-MM-DD)
+            - end_date: Trip end date (ISO format: YYYY-MM-DD)
+            - days: List of daily plans
+        tool_context: The tool context (unused)
 
     Returns:
         dict with:
@@ -63,6 +131,11 @@ class ItineraryPlannerTool(BaseTool):
             - summary: human-readable summary
             - calendar_events: list ready for export_to_calendar tool
     """
+    destination = args.get("destination", "")
+    start_date = args.get("start_date", "")
+    end_date = args.get("end_date", "")
+    days = args.get("days", [])
+
     # Validate inputs
     if not destination or not start_date or not end_date:
       return {

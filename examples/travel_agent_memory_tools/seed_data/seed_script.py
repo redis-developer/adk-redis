@@ -37,7 +37,7 @@ import httpx
 async def seed_user_memories(
     user_id: str,
     preferences: list[str],
-    namespace: str = "travel_agent",
+    namespace: str = "travel_agent_memory_tools",
     base_url: str = "http://localhost:8088",
 ):
   """Seed memories for a user.
@@ -92,7 +92,7 @@ async def main():
   """Load users.json and seed all users."""
   # Get configuration
   base_url = os.getenv("MEMORY_SERVER_URL", "http://localhost:8088")
-  namespace = "travel_agent"
+  namespace = os.getenv("NAMESPACE", "travel_agent_memory_tools")
 
   # Load users file
   users_file = Path(__file__).parent / "users.json"
