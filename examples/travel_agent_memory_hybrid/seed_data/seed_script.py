@@ -37,7 +37,7 @@ import httpx
 async def seed_user_memories(
     user_id: str,
     preferences: list[str],
-    namespace: str = "travel_agent",
+    namespace: str = "travel_agent_memory_hybrid",
     base_url: str = "http://localhost:8088",
 ):
   """Seed memories for a user.

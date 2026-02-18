@@ -40,7 +40,7 @@ from adk_redis.tools.memory import UpdateMemoryTool
 
 # Configuration from environment
 MEMORY_SERVER_URL = os.getenv("MEMORY_SERVER_URL", "http://localhost:8088")
-NAMESPACE = os.getenv("NAMESPACE", "travel_agent")
+NAMESPACE = os.getenv("NAMESPACE", "travel_agent_memory_tools")
 
 
 async def after_agent(callback_context: CallbackContext):

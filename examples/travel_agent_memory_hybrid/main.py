@@ -59,8 +59,12 @@ def redis_session_factory(uri: str, **kwargs):
         api_base_url=base_url,
         default_namespace=os.getenv("NAMESPACE", "travel_agent_memory_hybrid"),
         model_name=os.getenv("REDIS_MEMORY_MODEL_NAME", "gpt-4o"),
-        context_window_max=int(os.getenv("REDIS_MEMORY_CONTEXT_WINDOW", "8000")),
-        extraction_strategy=os.getenv("REDIS_MEMORY_EXTRACTION_STRATEGY", "discrete"),
+        context_window_max=int(
+            os.getenv("REDIS_MEMORY_CONTEXT_WINDOW", "8000")
+        ),
+        extraction_strategy=os.getenv(
+            "REDIS_MEMORY_EXTRACTION_STRATEGY", "discrete"
+        ),
     )
     return RedisWorkingMemorySessionService(config=config)
 
@@ -71,8 +75,11 @@ def redis_memory_factory(uri: str, **kwargs):
     config = RedisLongTermMemoryServiceConfig(
         api_base_url=base_url,
         default_namespace=os.getenv("NAMESPACE", "travel_agent_memory_hybrid"),
-        extraction_strategy=os.getenv("REDIS_MEMORY_EXTRACTION_STRATEGY", "discrete"),
-        recency_boost=os.getenv("REDIS_MEMORY_RECENCY_BOOST", "true").lower() == "true",
+        extraction_strategy=os.getenv(
+            "REDIS_MEMORY_EXTRACTION_STRATEGY", "discrete"
+        ),
+        recency_boost=os.getenv("REDIS_MEMORY_RECENCY_BOOST", "true").lower()
+        == "true",
         semantic_weight=float(os.getenv("REDIS_MEMORY_SEMANTIC_WEIGHT", "0.7")),
         recency_weight=float(os.getenv("REDIS_MEMORY_RECENCY_WEIGHT", "0.3")),
     )
@@ -133,4 +140,3 @@ Hybrid Architecture:
   - Best of both worlds: automatic + explicit memory management
 """)
     uvicorn.run(app, host="0.0.0.0", port=port)
-
