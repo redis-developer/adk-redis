@@ -17,9 +17,7 @@ services:
     restart: unless-stopped
 
   agent-memory-server:
-    # Use locally built image with bug fix (build instructions in README)
-    # Once the next release is available, change to: redislabs/agent-memory-server:latest
-    image: ${AGENT_MEMORY_SERVER_IMAGE:-agent-memory-server:latest-fix}
+    image: redislabs/agent-memory-server:latest
     container_name: agent-memory-server
     ports:
       - "8088:8088"

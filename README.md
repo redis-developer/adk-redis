@@ -169,31 +169,7 @@ docker rm -f redis
 - **Permission denied**: Run with `sudo` or add your user to the docker group
 - **Container won't start**: Check logs with `docker logs redis`
 
-#### 2. Build and Start Agent Memory Server
-
-> **Important**: A recent bug fix for non-OpenAI provider support is available in the latest GitHub commit but not yet in a release. Build from source to use the fix.
-
-**Option A: Automated setup (recommended)**
-
-```bash
-# Run the setup script from the repository root
-./scripts/setup-agent-memory-server.sh
-```
-
-This script will automatically clone, build, and verify the Agent Memory Server image.
-
-**Option B: Manual setup**
-
-```bash
-# Clone the repository
-git clone https://github.com/redis/agent-memory-server.git /tmp/agent-memory-server
-cd /tmp/agent-memory-server
-
-# Build Docker image
-docker build -t agent-memory-server:latest-fix .
-```
-
-**Start the server:**
+#### 2. Start Agent Memory Server
 
 ```bash
 docker run -d --name agent-memory-server -p 8088:8088 \
@@ -204,7 +180,7 @@ docker run -d --name agent-memory-server -p 8088:8088 \
   -e FAST_MODEL=gemini/gemini-2.0-flash \
   -e SLOW_MODEL=gemini/gemini-2.0-flash \
   -e EXTRACTION_DEBOUNCE_SECONDS=5 \
-  agent-memory-server:latest-fix \
+  redislabs/agent-memory-server:latest \
   agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
 ```
 
@@ -213,8 +189,6 @@ docker run -d --name agent-memory-server -p 8088:8088 \
 > - **Model Configuration**: Set `GENERATION_MODEL`, `FAST_MODEL` (for quick tasks like extraction), and `SLOW_MODEL` (for complex tasks) to your preferred models. All default to OpenAI models if not specified.
 > - **Memory Extraction Debounce**: `EXTRACTION_DEBOUNCE_SECONDS` controls how long to wait before extracting memories from a conversation (default: 300 seconds). Lower values (e.g., 5) provide faster memory extraction, while higher values reduce API calls.
 > - **Embedding Models**: Agent Memory Server also uses LiteLLM for embeddings. For local/offline embeddings, use Ollama (e.g., `EMBEDDING_MODEL=ollama/nomic-embed-text`, `REDISVL_VECTOR_DIMENSIONS=768`). See [Embedding Providers docs](https://redis.github.io/agent-memory-server/embedding-providers/) for all options.
->
-> **Using the official release**: Once the next version is released, you can use `redislabs/agent-memory-server:latest` instead of building from source.
 
 **See detailed setup guides:**
 - [Redis Setup Guide](docs/redis-setup.md) - All Redis deployment options

@@ -55,32 +55,6 @@ Complete guide for integrating Redis Agent Memory Server with adk-redis.
 
 ### 1. Start Infrastructure
 
-> **Important**: A recent bug fix for non-OpenAI provider support is available in the latest GitHub commit but not yet in a release. Build Agent Memory Server from source first.
-
-**Build Agent Memory Server from source:**
-
-**Option A: Automated setup (recommended)**
-
-```bash
-# Run the setup script from the repository root
-./scripts/setup-agent-memory-server.sh
-```
-
-This script will automatically clone, build, and verify the Agent Memory Server image.
-
-**Option B: Manual setup**
-
-```bash
-# Clone the repository
-git clone https://github.com/redis/agent-memory-server.git /tmp/agent-memory-server
-cd /tmp/agent-memory-server
-
-# Build Docker image
-docker build -t agent-memory-server:latest-fix .
-```
-
-**Start the infrastructure:**
-
 ```bash
 # Start Redis 8.4
 docker run -d --name redis -p 6379:6379 redis:8.4-alpine
@@ -94,7 +68,7 @@ docker run -d --name agent-memory-server \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
   -e EXTRACTION_DEBOUNCE_SECONDS=5 \
   -e DISABLE_AUTH=true \
-  agent-memory-server:latest-fix \
+  redislabs/agent-memory-server:latest \
   agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
 
 # Verify

@@ -17,37 +17,10 @@ Agent Memory Server provides:
 
 ## Installation
 
-> **Important**: A recent bug fix for non-OpenAI provider support is available in the latest GitHub commit but not yet in a release. Build from source to use the fix.
-
 ### Prerequisites
 
 - Docker installed
-- Git installed
 - Redis 8.4+ running (see [Redis Setup Guide](redis-setup.md))
-
-### Build from Source
-
-**Option A: Automated setup (recommended)**
-
-```bash
-# Run the setup script from the repository root
-./scripts/setup-agent-memory-server.sh
-```
-
-This script will automatically clone, build, and verify the Agent Memory Server image.
-
-**Option B: Manual setup**
-
-```bash
-# Clone the repository
-git clone https://github.com/redis/agent-memory-server.git /tmp/agent-memory-server
-cd /tmp/agent-memory-server
-
-# Build Docker image
-docker build -t agent-memory-server:latest-fix .
-```
-
-> **Using the official release**: Once the next version is released, you can use `redislabs/agent-memory-server:latest` instead of building from source.
 
 ### Development Mode (Single Container)
 
@@ -62,7 +35,7 @@ docker run -d --name agent-memory-server \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
   -e EXTRACTION_DEBOUNCE_SECONDS=5 \
   -e DISABLE_AUTH=true \
-  agent-memory-server:latest-fix \
+  redislabs/agent-memory-server:latest \
   agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
 ```
 
@@ -80,7 +53,7 @@ docker run -d --name agent-memory-api \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
   -e EXTRACTION_DEBOUNCE_SECONDS=5 \
   -e DISABLE_AUTH=false \
-  agent-memory-server:latest-fix \
+  redislabs/agent-memory-server:latest \
   agent-memory api --host 0.0.0.0 --port 8000
 ```
 
@@ -91,7 +64,7 @@ docker run -d --name agent-memory-worker \
   -e GEMINI_API_KEY=your-gemini-api-key \
   -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
-  agent-memory-server:latest-fix \
+  redislabs/agent-memory-server:latest \
   agent-memory task-worker --concurrency 10
 ```
 
@@ -114,7 +87,7 @@ services:
       retries: 5
 
   agent-memory-api:
-    image: agent-memory-server:latest-fix
+    image: redislabs/agent-memory-server:latest
     ports:
       - "8000:8000"
     environment:
