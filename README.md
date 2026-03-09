@@ -30,13 +30,14 @@
 | 🔌 [**ADK Services**](#memory-services) | 🔧 [**Agent Tools**](#search-tools) | ⚡ [**Semantic Caching**](#semantic-caching) |
 |:---:|:---:|:---:|
 | **Memory Service**<br/>*Long-term memory via Agent Memory Server* | **Memory Tools**<br/>*LLM-controlled memory operations* | **LLM Response Cache**<br/>*Reduce latency & costs* |
-| Semantic search & auto-extraction | search, create, update, delete | Similarity-based cache lookup |
-| Cross-session knowledge retrieval | Direct Agent Memory Server API | Configurable distance threshold |
+| Semantic search & auto-extraction | REST API or MCP protocol | Similarity-based cache lookup |
+| Cross-session knowledge retrieval | search, create, update, delete | Configurable distance threshold |
 | Recency-boosted search | Namespace & user isolation | TTL-based expiration |
 | **Session Service**<br/>*Working memory via Agent Memory Server* | **Search Tools**<br/>*RAG via RedisVL* | **Tool Cache**<br/>*Avoid redundant calls* |
 | Context window management | Vector, hybrid, text, range search | Cache tool execution results |
 | Auto-summarization | Multiple vectorizers supported | Reduce API calls |
-| Background memory promotion | Metadata filtering | Configurable thresholds |
+| Background memory promotion | **MCP Tools**<br/>*Model Context Protocol* | Configurable thresholds |
+| | SSE-based tool discovery | |
 
 </div>
 
