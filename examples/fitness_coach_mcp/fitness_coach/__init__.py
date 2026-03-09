@@ -32,4 +32,3 @@ To run programmatically:
 from fitness_coach.agent import root_agent
 
 __all__ = ["root_agent"]
-

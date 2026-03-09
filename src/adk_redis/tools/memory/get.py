@@ -124,7 +124,9 @@ class GetMemoryTool(BaseMemoryTool):
               "namespace": memory.namespace,
               "user_id": memory.user_id,
               "session_id": memory.session_id,
-              "created_at": str(memory.created_at) if memory.created_at else None,
+              "created_at": str(memory.created_at)
+              if memory.created_at
+              else None,
               "last_accessed": str(memory.last_accessed)
               if memory.last_accessed
               else None,
@@ -143,4 +145,3 @@ class GetMemoryTool(BaseMemoryTool):
           "status": "error",
           "message": f"Failed to get memory: {error_msg}",
       }
-

@@ -109,8 +109,7 @@ def create_memory_mcp_toolset(
   """
   try:
     from google.adk.tools.mcp_tool import McpToolset
-    from google.adk.tools.mcp_tool.mcp_session_manager import \
-        SseConnectionParams
+    from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
   except ImportError as e:
     raise ImportError(
         "google-adk with MCP support is required. "
@@ -157,4 +156,3 @@ __all__ = [
     "MCP_TOOL_SET_WORKING_MEMORY",
     "ALL_MCP_TOOLS",
 ]
-
