@@ -1,0 +1,61 @@
+# Docker Compose for Fitness Coach MCP example
+# Runs Redis, API server (port 8088), and MCP server (port 9000)
+services:
+  redis:
+    image: redis:8.4-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # REST API server for direct API calls
+  agent-memory-api:
+    image: redislabs/agent-memory-server:0.13.2
+    container_name: agent-memory-api
+    ports:
+      - "8088:8088"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GENERATION_MODEL=gemini/gemini-2.0-flash
+      - EMBEDDING_MODEL=gemini/gemini-embedding-001
+      - REDISVL_VECTOR_DIMENSIONS=3072
+      - FAST_MODEL=gemini/gemini-2.0-flash
+      - SLOW_MODEL=gemini/gemini-2.0-flash
+      - EXTRACTION_DEBOUNCE_SECONDS=5
+    command: agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # MCP server for SSE-based tool access
+  agent-memory-mcp:
+    image: redislabs/agent-memory-server:0.13.2
+    container_name: agent-memory-mcp
+    ports:
+      - "9000:9000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GENERATION_MODEL=gemini/gemini-2.0-flash
+      - EMBEDDING_MODEL=gemini/gemini-embedding-001
+      - REDISVL_VECTOR_DIMENSIONS=3072
+      - FAST_MODEL=gemini/gemini-2.0-flash
+      - SLOW_MODEL=gemini/gemini-2.0-flash
+    command: agent-memory mcp --mode sse --port 9000
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+    driver: local

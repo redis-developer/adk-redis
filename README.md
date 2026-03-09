@@ -180,7 +180,7 @@ docker run -d --name agent-memory-server -p 8088:8088 \
   -e FAST_MODEL=gemini/gemini-2.0-flash \
   -e SLOW_MODEL=gemini/gemini-2.0-flash \
   -e EXTRACTION_DEBOUNCE_SECONDS=5 \
-  redislabs/agent-memory-server:latest \
+  redislabs/agent-memory-server:0.13.2 \
   agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
 ```
 
@@ -407,21 +407,55 @@ Complete working examples with ADK web runner integration:
 | **[semantic_cache](examples/semantic_cache/)** | Semantic caching for LLM responses | Vector-based cache, reduced latency, cost optimization, local embeddings |
 | **[redis_search_tools](examples/redis_search_tools/)** | RAG with search tools | Vector search, hybrid search, range search, text search |
 | **[travel_agent_memory_hybrid](examples/travel_agent_memory_hybrid/)** | Travel agent with framework-managed memory | Redis session + memory services, automatic memory extraction, web search, calendar export, itinerary planning |
-| **[travel_agent_memory_tools](examples/travel_agent_memory_tools/)** | Travel agent with LLM-controlled memory | Memory tools only (search/create/update/delete), in-memory session, web search, calendar export, itinerary planning |
+| **[travel_agent_memory_tools](examples/travel_agent_memory_tools/)** | Travel agent with LLM-controlled memory | REST memory tools (search/create/update/delete), in-memory session, web search, calendar export, itinerary planning |
+| **[fitness_coach_mcp](examples/fitness_coach_mcp/)** | Fitness coach with MCP memory tools | MCP-based memory via SSE, semantic + episodic memory, workout tracking, injury awareness |
+
+### Memory Integration Approaches
+
+There are **three ways** to integrate memory with ADK agents using Redis Agent Memory Server:
+
+| Approach | Example | Protocol | Best For |
+|----------|---------|----------|----------|
+| **ADK Services** | `simple_redis_memory`, `travel_agent_memory_hybrid` | REST | Full framework integration (`BaseSessionService` + `BaseMemoryService`) |
+| **REST Tools** | `travel_agent_memory_tools` | REST | LLM-controlled memory with explicit tool calls |
+| **MCP Tools** | `fitness_coach_mcp` | SSE | Standard MCP protocol, automatic tool discovery |
+
+### MCP Integration
+
+MCP (Model Context Protocol) provides a standardized way to connect agents to tools. The `fitness_coach_mcp` example demonstrates this approach:
+
+```python
+from adk_redis import create_memory_mcp_toolset
+
+memory_tools = create_memory_mcp_toolset(
+    server_url="http://localhost:8088",
+    tool_filter=["search_long_term_memory", "create_long_term_memories"],
+)
+
+agent = Agent(model="gemini-2.0-flash", tools=[memory_tools])
+```
+
+**Available MCP Tools:**
+- `search_long_term_memory` - Semantic search across memories
+- `create_long_term_memories` - Store new memories (semantic or episodic)
+- `get_long_term_memory` - Retrieve memory by ID
+- `edit_long_term_memory` - Update existing memories
+- `delete_long_term_memories` - Remove memories
+- `memory_prompt` - Get context-enriched prompts
+- `set_working_memory` - Update working memory
+
+For detailed MCP integration guidance, see the [MCP Integration Guide](nitin_docs/mcp-integration-guide.md).
 
 ### Travel Agent Examples Comparison
 
-Both examples use **Redis Agent Memory Server** for long-term memory persistence. The difference is in how they integrate with ADK:
+Both travel agent examples use **Redis Agent Memory Server** for long-term memory. The difference is in how they integrate with ADK:
 
 | Aspect | `travel_agent_memory_hybrid` | `travel_agent_memory_tools` |
 |--------|------------------------------|----------------------------|
 | **How to Run** | `python main.py` (custom FastAPI) | `adk web .` (standard ADK CLI) |
-| **Session Service** | `RedisWorkingMemorySessionService` (Redis-backed, auto-summarization) | ADK default (in-memory) |
-| **Memory Service** | `RedisLongTermMemoryService` (ADK's `BaseMemoryService` interface) | Memory tools only (direct Agent Memory Server API calls) |
-| **Memory Extraction** | `after_agent_callback` + framework-managed | `after_agent_callback` |
-| **Session Sync** | Real-time (every message synced to Agent Memory Server) | End-of-turn (batch sync via `after_agent_callback`) |
-| **Auto-Summarization** | Yes, mid-conversation (real-time sync triggers when context exceeded) | Yes, end-of-turn (batch sync triggers when context exceeded) |
-| **Best For** | Full ADK service integration (`BaseSessionService` + `BaseMemoryService`) | Tool-based Agent Memory Server integration (no custom services) |
+| **Session Service** | `RedisWorkingMemorySessionService` (Redis-backed) | ADK default (in-memory) |
+| **Memory Service** | `RedisLongTermMemoryService` (ADK interface) | REST tools only |
+| **Best For** | Full ADK service integration | Tool-based integration |
 
 Each example includes:
 - Complete runnable code
