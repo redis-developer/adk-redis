@@ -445,7 +445,7 @@ agent = Agent(model="gemini-2.0-flash", tools=[memory_tools])
 - `memory_prompt` - Get context-enriched prompts
 - `set_working_memory` - Update working memory
 
-For detailed MCP integration guidance, see the [MCP Integration Guide](nitin_docs/mcp-integration-guide.md).
+For a complete MCP example, see the [fitness_coach_mcp example](examples/fitness_coach_mcp/).
 
 ### Travel Agent Examples Comparison
 

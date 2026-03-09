@@ -307,7 +307,7 @@ agent = Agent(
 )
 ```
 
-See [MCP Integration Guide](../nitin_docs/mcp-integration-guide.md) for details.
+See the [fitness_coach_mcp example](../examples/fitness_coach_mcp/) for a complete MCP integration example.
 
 ### Decision Matrix
 
@@ -352,7 +352,7 @@ pip install "adk-redis[memory]"
 
 ## Alternative: MCP Integration
 
-For MCP (Model Context Protocol) based integration, see the [MCP Integration Guide](../nitin_docs/mcp-integration-guide.md) and the [fitness_coach_mcp example](../examples/fitness_coach_mcp/).
+For MCP (Model Context Protocol) based integration, see the [fitness_coach_mcp example](../examples/fitness_coach_mcp/).
 
 MCP provides a standardized protocol for connecting agents to tools via Server-Sent Events (SSE):
 

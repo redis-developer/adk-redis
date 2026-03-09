@@ -267,7 +267,7 @@ uv run adk web .
 ## Learn More
 
 - [ADK-Redis Documentation](../../README.md)
-- [MCP Integration Guide](../../nitin_docs/mcp-integration-guide.md)
+- [Integration Guide](../../docs/integration-guide.md)
 - [Agent Memory Server Docs](https://redis.github.io/agent-memory-server/)
 - [Memory Types](https://redis.github.io/agent-memory-server/long-term-memory/)
 
