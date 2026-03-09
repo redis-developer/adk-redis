@@ -71,7 +71,7 @@ docker run -d --name agent-memory-server \
   -p 8000:8000 \
   -e REDIS_URL=redis://host.docker.internal:6379 \
   -e OPENAI_API_KEY=your-openai-key \
-  redislabs/agent-memory-server:latest \
+  redislabs/agent-memory-server:0.13.2 \
   agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
 ```
 

@@ -86,7 +86,7 @@ docker run -d --name agent-memory-server -p 8088:8088 \
   -e FAST_MODEL=gemini/gemini-2.0-flash \
   -e SLOW_MODEL=gemini/gemini-2.0-flash \
   -e EXTRACTION_DEBOUNCE_SECONDS=5 \
-  redislabs/agent-memory-server:latest \
+  redislabs/agent-memory-server:0.13.2 \
   agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
 ```
 
@@ -521,7 +521,7 @@ docker run -d --name redis -p 6379:6379 redis:8.4-alpine
 docker run -d --name agent-memory-server -p 8088:8088 \
   -e REDIS_URL=redis://host.docker.internal:6379 \
   -e OPENAI_API_KEY=your-openai-key \
-  redislabs/agent-memory-server:latest \
+  redislabs/agent-memory-server:0.13.2 \
   agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
 ```
 

@@ -17,7 +17,7 @@ services:
     restart: unless-stopped
 
   agent-memory-server:
-    image: redislabs/agent-memory-server:latest
+    image: redislabs/agent-memory-server:0.13.2
     container_name: agent-memory-server
     ports:
       - "8088:8088"
