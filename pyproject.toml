@@ -42,7 +42,7 @@ dependencies = [
 [project.optional-dependencies]
 # Redis Agent Memory Server integration (long-term memory + working memory sessions)
 memory = [
-    "agent-memory-client>=0.2.0",
+    "agent-memory-client>=0.14.0",
 ]
 
 # RedisVL-based search tools
@@ -109,6 +109,10 @@ line_length = 80
 force_single_line = true
 single_line_exclusions = ["typing"]
 skip_glob = ["*/__init__.py"]
+# Prevent isort from using line continuations that conflict with pyink
+use_parentheses = true
+include_trailing_comma = true
+multi_line_output = 3
 
 [tool.ruff]
 line-length = 80

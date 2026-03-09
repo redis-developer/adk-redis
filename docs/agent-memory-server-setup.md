@@ -35,7 +35,7 @@ docker run -d --name agent-memory-server \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
   -e EXTRACTION_DEBOUNCE_SECONDS=5 \
   -e DISABLE_AUTH=true \
-  redislabs/agent-memory-server:latest \
+  redislabs/agent-memory-server:0.13.2 \
   agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
 ```
 
@@ -53,7 +53,7 @@ docker run -d --name agent-memory-api \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
   -e EXTRACTION_DEBOUNCE_SECONDS=5 \
   -e DISABLE_AUTH=false \
-  redislabs/agent-memory-server:latest \
+  redislabs/agent-memory-server:0.13.2 \
   agent-memory api --host 0.0.0.0 --port 8000
 ```
 
@@ -64,7 +64,7 @@ docker run -d --name agent-memory-worker \
   -e GEMINI_API_KEY=your-gemini-api-key \
   -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
-  redislabs/agent-memory-server:latest \
+  redislabs/agent-memory-server:0.13.2 \
   agent-memory task-worker --concurrency 10
 ```
 
@@ -87,7 +87,7 @@ services:
       retries: 5
 
   agent-memory-api:
-    image: redislabs/agent-memory-server:latest
+    image: redislabs/agent-memory-server:0.13.2
     ports:
       - "8000:8000"
     environment:

@@ -63,6 +63,7 @@ Example:
 from adk_redis.tools.memory._config import MemoryToolConfig
 from adk_redis.tools.memory.create import CreateMemoryTool
 from adk_redis.tools.memory.delete import DeleteMemoryTool
+from adk_redis.tools.memory.get import GetMemoryTool
 from adk_redis.tools.memory.prompt import MemoryPromptTool
 from adk_redis.tools.memory.search import SearchMemoryTool
 from adk_redis.tools.memory.update import UpdateMemoryTool
@@ -71,6 +72,7 @@ __all__ = [
     "MemoryToolConfig",
     "MemoryPromptTool",
     "SearchMemoryTool",
+    "GetMemoryTool",
     "CreateMemoryTool",
     "DeleteMemoryTool",
     "UpdateMemoryTool",

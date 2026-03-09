@@ -25,9 +25,10 @@ lint-fix:
 	uv run ruff check --fix --unsafe-fixes src tests examples
 
 # Format code (Google ADK-Python style: pyink + isort)
+# Note: pyink must run first, then isort, to avoid conflicts
 format:
-	uv run isort src tests examples
 	uv run pyink src tests examples
+	uv run isort src tests examples
 
 # Check formatting without making changes
 format-check:

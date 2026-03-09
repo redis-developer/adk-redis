@@ -87,10 +87,14 @@ from adk_redis.tools import VectorizedSearchTool
 # Memory tools
 from adk_redis.tools import CreateMemoryTool
 from adk_redis.tools import DeleteMemoryTool
+from adk_redis.tools import GetMemoryTool
 from adk_redis.tools import MemoryPromptTool
 from adk_redis.tools import MemoryToolConfig
 from adk_redis.tools import SearchMemoryTool
 from adk_redis.tools import UpdateMemoryTool
+# Memory tools (MCP-based)
+from adk_redis.tools.mcp_memory import ALL_MCP_TOOLS
+from adk_redis.tools.mcp_memory import create_memory_mcp_toolset
 # Semantic caching
 from adk_redis.cache import BaseCacheProvider
 from adk_redis.cache import CacheEntry
@@ -132,7 +136,11 @@ __all__ = [
     "CreateMemoryTool",
     "DeleteMemoryTool",
     "UpdateMemoryTool",
+    "GetMemoryTool",
     "MemoryToolConfig",
+    # MCP tools
+    "create_memory_mcp_toolset",
+    "ALL_MCP_TOOLS",
     # Semantic caching
     "BaseCacheProvider",
     "CacheEntry",

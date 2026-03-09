@@ -68,7 +68,7 @@ docker run -d --name agent-memory-server \
   -e EMBEDDING_MODEL=gemini/text-embedding-004 \
   -e EXTRACTION_DEBOUNCE_SECONDS=5 \
   -e DISABLE_AUTH=true \
-  redislabs/agent-memory-server:latest \
+  redislabs/agent-memory-server:0.13.2 \
   agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
 
 # Verify
@@ -238,6 +238,89 @@ adk web redis_search_tools_agent
 
 ---
 
+## Three Ways to Use Memory
+
+adk-redis provides three approaches for memory integration:
+
+### 1. Memory Services (Framework-Managed)
+
+Best for: Full ADK integration with automatic memory management.
+
+```python
+from adk_redis import (
+    RedisWorkingMemorySessionService,
+    RedisLongTermMemoryService,
+)
+
+# Framework handles memory automatically
+runner = Runner(
+    agent=agent,
+    session_service=session_service,
+    memory_service=memory_service,
+)
+```
+
+### 2. REST-Based Tools (LLM-Controlled)
+
+Best for: Explicit LLM control over memory operations.
+
+```python
+from adk_redis import (
+    SearchMemoryTool,
+    GetMemoryTool,
+    CreateMemoryTool,
+    UpdateMemoryTool,
+    DeleteMemoryTool,
+    MemoryToolConfig,
+)
+
+config = MemoryToolConfig(
+    api_base_url="http://localhost:8000",
+    default_namespace="my_app",
+)
+
+agent = Agent(
+    name="memory_agent",
+    tools=[
+        SearchMemoryTool(config=config),
+        GetMemoryTool(config=config),
+        CreateMemoryTool(config=config),
+    ],
+)
+```
+
+### 3. MCP-Based Tools (Protocol-Based)
+
+Best for: MCP ecosystem integration and standardized tool discovery.
+
+```python
+from adk_redis import create_memory_mcp_toolset
+
+memory_tools = create_memory_mcp_toolset(
+    server_url="http://localhost:8000",
+    tool_filter=["search_long_term_memory", "create_long_term_memories"],
+)
+
+agent = Agent(
+    name="memory_agent",
+    tools=[memory_tools],
+)
+```
+
+See the [fitness_coach_mcp example](../examples/fitness_coach_mcp/) for a complete MCP integration example.
+
+### Decision Matrix
+
+| Use Case | Recommended Approach |
+|----------|---------------------|
+| Full ADK integration | Memory Services |
+| LLM decides when to remember | REST Tools |
+| MCP ecosystem | MCP Tools |
+| Debugging/development | REST Tools |
+| Multi-agent systems | MCP Tools |
+
+---
+
 ## Troubleshooting
 
 ### No memories found
@@ -265,3 +348,35 @@ curl http://localhost:8000/v1/health
 pip install "adk-redis[memory]"
 ```
 
+---
+
+## Alternative: MCP Integration
+
+For MCP (Model Context Protocol) based integration, see the [fitness_coach_mcp example](../examples/fitness_coach_mcp/).
+
+MCP provides a standardized protocol for connecting agents to tools via Server-Sent Events (SSE):
+
+```python
+from google.adk import Agent
+from adk_redis import create_memory_mcp_toolset
+
+# Connect to Agent Memory Server's MCP endpoint
+memory_tools = create_memory_mcp_toolset(
+    server_url="http://localhost:9000",  # MCP server port
+    tool_filter=["search_long_term_memory", "create_long_term_memories"],
+)
+
+agent = Agent(
+    model="gemini-2.0-flash",
+    name="my_agent",
+    tools=[memory_tools],
+)
+```
+
+**When to use MCP vs Services:**
+
+| Approach | Best For |
+|----------|----------|
+| **ADK Services** | Full framework integration, automatic memory extraction |
+| **REST Tools** | LLM-controlled memory with explicit tool calls |
+| **MCP Tools** | Standard MCP protocol, automatic tool discovery |
