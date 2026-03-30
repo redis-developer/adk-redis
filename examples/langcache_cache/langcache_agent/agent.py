@@ -64,7 +64,7 @@ except ImportError:
   warnings.warn(
       "redisvl>=0.5.0 is not installed. LangCache caching is disabled. "
       "Install with: pip install 'adk-redis[langcache]'",
-      stacklevel=1,
+      stacklevel=2,
   )
   before_model_cb = None
   after_model_cb = None
@@ -75,7 +75,7 @@ except KeyError as e:
   warnings.warn(
       f"Missing required environment variable {e}. "
       "Set LANGCACHE_CACHE_ID and LANGCACHE_API_KEY to enable caching.",
-      stacklevel=1,
+      stacklevel=2,
   )
   before_model_cb = None
   after_model_cb = None

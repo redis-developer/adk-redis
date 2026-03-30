@@ -100,7 +100,7 @@ langcache_cache/
 |---------|--------------------------|----------------------------|
 | Vectorizer | Local (HuggingFace, OpenAI, etc.) | Server-side (managed) |
 | Redis instance | Required | Not required |
-| Install extra | `adk-redis[cache]` | `adk-redis[langcache]` |
+| Install extra | `adk-redis[search]` | `adk-redis[langcache]` |
 | Provider class | `RedisVLCacheProvider` | `LangCacheCacheProvider` |
 | Setup complexity | Higher (Redis + vectorizer) | Lower (API key only) |
 

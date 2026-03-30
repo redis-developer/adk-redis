@@ -43,13 +43,24 @@ from adk_redis.cache import LLMResponseCacheConfig
 load_dotenv()
 
 
+def _get_required_env_var(name: str) -> str:
+  """Retrieve a required environment variable or raise a clear error."""
+  value = os.getenv(name)
+  if not value:
+    raise RuntimeError(
+        f"Missing required environment variable '{name}'. Please set it in your "
+        "environment or in a .env file before running this example."
+    )
+  return value
+
+
 def create_cached_agent() -> tuple[Agent, LLMResponseCache]:
   """Create an agent with LangCache semantic caching enabled."""
   # Create LangCache provider (managed -- no local vectorizer needed)
   provider = LangCacheCacheProvider(
       config=LangCacheCacheProviderConfig(
-          cache_id=os.environ["LANGCACHE_CACHE_ID"],
-          api_key=os.environ["LANGCACHE_API_KEY"],
+          cache_id=_get_required_env_var("LANGCACHE_CACHE_ID"),
+          api_key=_get_required_env_var("LANGCACHE_API_KEY"),
           server_url=os.getenv(
               "LANGCACHE_SERVER_URL",
               "https://aws-us-east-1.langcache.redis.io",

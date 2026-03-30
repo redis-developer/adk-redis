@@ -25,6 +25,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 from pydantic import Field
+from pydantic import SecretStr
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ class LangCacheCacheProviderConfig(BaseModel):
       min_length=1,
       description="LangCache cache ID from the LangCache service.",
   )
-  api_key: str = Field(
+  api_key: SecretStr = Field(
       ...,
       min_length=1,
       description="LangCache API key for authentication.",
@@ -214,7 +215,7 @@ class LangCacheCacheProvider(BaseCacheProvider):
         name=config.name,
         server_url=config.server_url,
         cache_id=config.cache_id,
-        api_key=config.api_key,
+        api_key=config.api_key.get_secret_value(),
         ttl=config.ttl,
         use_exact_search=config.use_exact_search,
         use_semantic_search=config.use_semantic_search,
@@ -233,10 +234,10 @@ class LangCacheCacheProvider(BaseCacheProvider):
     distance_threshold = kwargs.get(
         "distance_threshold", self._config.distance_threshold
     )
-    result = await self._cache.acheck(
-        prompt=prompt,
-        distance_threshold=distance_threshold,
-    )
+    acheck_kwargs: dict[str, Any] = {"prompt": prompt}
+    if distance_threshold is not None:
+      acheck_kwargs["distance_threshold"] = distance_threshold
+    result = await self._cache.acheck(**acheck_kwargs)
     if result:
       logger.debug("LangCache hit for prompt: %s", prompt[:50])
       return CacheEntry(
