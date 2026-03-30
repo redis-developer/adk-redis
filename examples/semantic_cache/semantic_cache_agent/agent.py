@@ -60,7 +60,13 @@ try:
   before_model_cb, after_model_cb = create_llm_cache_callbacks(llm_cache)
 
 except ImportError:
-  # Fallback if redisvl is not installed
+  import warnings
+
+  warnings.warn(
+      "redisvl is not installed. Semantic caching is disabled. "
+      "Install with: pip install 'adk-redis[search]'",
+      stacklevel=2,
+  )
   before_model_cb = None
   after_model_cb = None
 
