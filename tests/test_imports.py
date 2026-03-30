@@ -229,3 +229,46 @@ class TestMCPToolImports:
     assert MCP_TOOL_DELETE == "delete_long_term_memories"
     assert MCP_TOOL_PROMPT == "memory_prompt"
     assert MCP_TOOL_SET_WORKING_MEMORY == "set_working_memory"
+
+
+
+class TestCacheImports:
+  """Test cache module imports."""
+
+  def test_base_cache_provider_import(self):
+    """Test BaseCacheProvider can be imported."""
+    from adk_redis import BaseCacheProvider
+
+    assert BaseCacheProvider is not None
+
+  def test_cache_entry_import(self):
+    """Test CacheEntry can be imported."""
+    from adk_redis import CacheEntry
+
+    assert CacheEntry is not None
+
+  def test_langcache_cache_provider_import(self):
+    """Test LangCacheCacheProvider can be imported."""
+    from adk_redis import LangCacheCacheProvider
+
+    assert LangCacheCacheProvider is not None
+
+  def test_langcache_cache_provider_config_import(self):
+    """Test LangCacheCacheProviderConfig can be imported."""
+    from adk_redis import LangCacheCacheProviderConfig
+
+    assert LangCacheCacheProviderConfig is not None
+
+  def test_redisvl_cache_provider_import(self):
+    """Test RedisVLCacheProvider can be imported."""
+    from adk_redis import RedisVLCacheProvider
+
+    assert RedisVLCacheProvider is not None
+
+  def test_cache_submodule_import(self):
+    """Test cache submodule imports work."""
+    from adk_redis.cache import LangCacheCacheProvider
+    from adk_redis.cache import LangCacheCacheProviderConfig
+
+    assert LangCacheCacheProvider is not None
+    assert LangCacheCacheProviderConfig is not None

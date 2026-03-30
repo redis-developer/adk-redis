@@ -50,9 +50,14 @@ search = [
     "redisvl>=0.5.0",
 ]
 
+# LangCache (managed semantic cache service)
+langcache = [
+    "redisvl>=0.5.0",
+]
+
 # All Redis integrations
 all = [
-    "adk-redis[memory,search]",
+    "adk-redis[memory,search,langcache]",
 ]
 
 # Development dependencies

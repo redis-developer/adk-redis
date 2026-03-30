@@ -36,8 +36,8 @@
 | **Session Service**<br/>*Working memory via Agent Memory Server* | **Search Tools**<br/>*RAG via RedisVL* | **Tool Cache**<br/>*Avoid redundant calls* |
 | Context window management | Vector, hybrid, text, range search | Cache tool execution results |
 | Auto-summarization | Multiple vectorizers supported | Reduce API calls |
-| Background memory promotion | **MCP Tools**<br/>*Model Context Protocol* | Configurable thresholds |
-| | SSE-based tool discovery | |
+| Background memory promotion | **MCP Tools**<br/>*Model Context Protocol* | **LangCache**<br/>*Managed semantic cache* |
+| | SSE-based tool discovery | Cloud-hosted, no local vectorizer |
 
 </div>
 
@@ -63,6 +63,9 @@ pip install adk-redis[memory]
 
 # Search tools (RedisVL integration)
 pip install adk-redis[search]
+
+# LangCache (managed semantic cache service)
+pip install adk-redis[langcache]
 
 # All features
 pip install adk-redis[all]
@@ -384,8 +387,33 @@ Reduce latency and costs with similarity-based caching:
 | **Similarity Threshold** | Configurable distance threshold for cache hits |
 | **TTL Support** | Time-based cache expiration |
 | **Multiple Vectorizers** | Support for OpenAI, HuggingFace, local embeddings, etc. |
+| **LangCache (Managed)** | Cloud-hosted semantic cache — no local vectorizer needed |
 
-**Implementations:** `LLMResponseCache`, `ToolCache`
+**Cache Providers:**
+
+| Provider | Description | Vectorizer Required |
+|----------|-------------|:-------------------:|
+| `RedisVLCacheProvider` | Self-hosted semantic cache using RedisVL | Yes |
+| `LangCacheCacheProvider` | Managed semantic cache via [Redis LangCache](https://redis.io/langcache) | No (server-side) |
+
+Both providers implement `BaseCacheProvider` and work with `LLMResponseCache` and `ToolCache`.
+
+**LangCache Quick Start:**
+
+```python
+from adk_redis import LangCacheCacheProvider, LangCacheCacheProviderConfig, LLMResponseCache
+
+# Configure LangCache (managed — no local embeddings needed)
+langcache_config = LangCacheCacheProviderConfig(
+    cache_id="your-cache-id",
+    api_key="your-api-key",
+    ttl=3600,
+)
+cache_provider = LangCacheCacheProvider(config=langcache_config)
+
+# Use with LLM response caching
+llm_cache = LLMResponseCache(provider=cache_provider)
+```
 
 ---
 
@@ -406,6 +434,7 @@ Complete working examples with ADK web runner integration:
 |---------|-------------|----------|
 | **[simple_redis_memory](examples/simple_redis_memory/)** | Agent with two-tier memory architecture | Working memory, long-term memory, auto-summarization, semantic search |
 | **[semantic_cache](examples/semantic_cache/)** | Semantic caching for LLM responses | Vector-based cache, reduced latency, cost optimization, local embeddings |
+| **[langcache_cache](examples/langcache_cache/)** | Managed semantic caching via LangCache | Cloud-hosted cache, no local vectorizer, no Redis instance needed |
 | **[redis_search_tools](examples/redis_search_tools/)** | RAG with search tools | Vector search, hybrid search, range search, text search |
 | **[travel_agent_memory_hybrid](examples/travel_agent_memory_hybrid/)** | Travel agent with framework-managed memory | Redis session + memory services, automatic memory extraction, web search, calendar export, itinerary planning |
 | **[travel_agent_memory_tools](examples/travel_agent_memory_tools/)** | Travel agent with LLM-controlled memory | REST memory tools (search/create/update/delete), in-memory session, web search, calendar export, itinerary planning |
