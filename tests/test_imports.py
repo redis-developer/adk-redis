@@ -231,7 +231,6 @@ class TestMCPToolImports:
     assert MCP_TOOL_SET_WORKING_MEMORY == "set_working_memory"
 
 
-
 class TestCacheImports:
   """Test cache module imports."""
 

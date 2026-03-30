@@ -91,19 +91,24 @@ class LangCacheCacheProviderConfig(BaseModel):
       description="LangCache server URL.",
   )
   cache_id: str = Field(
-      default="",
+      ...,
+      min_length=1,
       description="LangCache cache ID from the LangCache service.",
   )
   api_key: str = Field(
-      default="",
+      ...,
+      min_length=1,
       description="LangCache API key for authentication.",
   )
   ttl: Optional[int] = Field(
       default=None,
+      ge=0,
       description="TTL in seconds for cached entries. None means no expiry.",
   )
   distance_threshold: Optional[float] = Field(
       default=None,
+      ge=0.0,
+      le=2.0,
       description="Distance threshold for semantic similarity matching.",
   )
   use_exact_search: bool = Field(
@@ -202,7 +207,7 @@ class LangCacheCacheProvider(BaseCacheProvider):
       raise ImportError(
           "redisvl>=0.5.0 with LangCache support is required for "
           "LangCacheCacheProvider. Install it with: "
-          "pip install 'redisvl>=0.5.0'"
+          "pip install 'adk-redis[langcache]'"
       ) from e
 
     self._config = config
@@ -259,13 +264,16 @@ class LangCacheCacheProvider(BaseCacheProvider):
       metadata: Optional metadata to store alongside the entry.
       **kwargs: Additional keyword arguments (e.g., ttl).
     """
+    astore_kwargs: dict[str, Any] = {
+        "prompt": prompt,
+        "response": response,
+        "metadata": metadata,
+    }
+    # Only override TTL when an explicit, non-None value is provided.
     ttl = kwargs.get("ttl")
-    await self._cache.astore(
-        prompt=prompt,
-        response=response,
-        metadata=metadata,
-        ttl=ttl,
-    )
+    if ttl is not None:
+      astore_kwargs["ttl"] = ttl
+    await self._cache.astore(**astore_kwargs)
     logger.debug("LangCache stored response for prompt: %s", prompt[:50])
 
   async def clear(self, **kwargs: Any) -> None:
