@@ -181,7 +181,6 @@ class RedisVLCacheProvider(BaseCacheProvider):
     logger.debug("RedisVL cache provider closed")
 
 
-
 class LangCacheCacheProvider(BaseCacheProvider):
   """Cache provider using Redis LangCache (managed semantic cache service).
 

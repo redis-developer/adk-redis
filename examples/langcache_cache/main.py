@@ -86,8 +86,10 @@ def create_cached_agent() -> tuple[Agent, LLMResponseCache]:
 
 async def main():
   """Run the LangCache cached agent demo."""
-  print("""Creating LangCache cached agent...
-No local vectorizer or Redis instance needed -- LangCache handles it all.""")
+  print(
+      """Creating LangCache cached agent...
+No local vectorizer or Redis instance needed -- LangCache handles it all."""
+  )
   agent, llm_cache = create_cached_agent()
 
   # Create session service and runner
@@ -127,9 +129,10 @@ No local vectorizer or Redis instance needed -- LangCache handles it all.""")
             print(f"Response: {part.text[:200]}...")
             break
 
-  print("\n" + "=" * 60 + "\nDemo complete! Responses were cached via LangCache.")
+  print(
+      "\n" + "=" * 60 + "\nDemo complete! Responses were cached via LangCache."
+  )
 
 
 if __name__ == "__main__":
   asyncio.run(main())
-
