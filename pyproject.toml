@@ -56,6 +56,11 @@ langcache = [
     "langcache",
 ]
 
+# Example runner dependencies
+examples = [
+    "python-dotenv",
+]
+
 # All Redis integrations
 all = [
     "adk-redis[memory,search,langcache]",
