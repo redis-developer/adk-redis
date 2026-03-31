@@ -79,7 +79,7 @@ class RedisVLCacheProviderConfig(BaseModel):
   distance_threshold: float = Field(default=0.1, ge=0.0, le=2.0)
 
 
-class LangCacheCacheProviderConfig(BaseModel):
+class LangCacheProviderConfig(BaseModel):
   """Configuration for LangCache (managed semantic cache) provider.
 
   LangCache is a managed semantic caching service provided by Redis.
@@ -182,31 +182,31 @@ class RedisVLCacheProvider(BaseCacheProvider):
     logger.debug("RedisVL cache provider closed")
 
 
-class LangCacheCacheProvider(BaseCacheProvider):
+class LangCacheProvider(BaseCacheProvider):
   """Cache provider using Redis LangCache (managed semantic cache service).
 
   LangCache is a managed semantic caching service that handles embedding
   generation, storage, and retrieval. Unlike RedisVLCacheProvider, it does
   not require a local vectorizer — embeddings are handled server-side.
 
-  Requires redisvl>=0.5.0 with LangCache support.
+  Requires redisvl>=0.11.0 with LangCache support.
   """
 
-  def __init__(self, config: LangCacheCacheProviderConfig):
+  def __init__(self, config: LangCacheProviderConfig):
     """Initialize the LangCache cache provider.
 
     Args:
       config: Configuration for the LangCache provider.
 
     Raises:
-      ImportError: If redisvl>=0.5.0 is not installed.
+      ImportError: If redisvl>=0.11.0 is not installed.
     """
     try:
       from redisvl.extensions.cache.llm import LangCacheSemanticCache
     except ImportError as e:
       raise ImportError(
-          "redisvl>=0.5.0 with LangCache support is required for "
-          "LangCacheCacheProvider. Install it with: "
+          "redisvl>=0.11.0 with LangCache support is required for "
+          "LangCacheProvider. Install it with: "
           "pip install 'adk-redis[langcache]'"
       ) from e
 
@@ -219,6 +219,7 @@ class LangCacheCacheProvider(BaseCacheProvider):
         ttl=config.ttl,
         use_exact_search=config.use_exact_search,
         use_semantic_search=config.use_semantic_search,
+        distance_scale="redis",
     )
 
   async def check(self, prompt: str, **kwargs: Any) -> Optional[CacheEntry]:

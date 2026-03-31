@@ -397,22 +397,22 @@ Reduce latency and costs with similarity-based caching:
 | Provider | Description | Vectorizer Required |
 |----------|-------------|:-------------------:|
 | `RedisVLCacheProvider` | Self-hosted semantic cache using RedisVL | Yes |
-| `LangCacheCacheProvider` | Managed semantic cache via [Redis LangCache](https://redis.io/langcache) | No (server-side) |
+| `LangCacheProvider` | Managed semantic cache via [Redis LangCache](https://redis.io/langcache) | No (server-side) |
 
 Both providers implement `BaseCacheProvider` and work with `LLMResponseCache` and `ToolCache`.
 
 **LangCache Quick Start:**
 
 ```python
-from adk_redis import LangCacheCacheProvider, LangCacheCacheProviderConfig, LLMResponseCache
+from adk_redis import LangCacheProvider, LangCacheProviderConfig, LLMResponseCache
 
 # Configure LangCache (managed — no local embeddings needed)
-langcache_config = LangCacheCacheProviderConfig(
+langcache_config = LangCacheProviderConfig(
     cache_id="your-cache-id",
     api_key="your-api-key",
     ttl=3600,
 )
-cache_provider = LangCacheCacheProvider(config=langcache_config)
+cache_provider = LangCacheProvider(config=langcache_config)
 
 # Use with LLM response caching
 llm_cache = LLMResponseCache(provider=cache_provider)

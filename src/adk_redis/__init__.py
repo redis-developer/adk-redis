@@ -37,7 +37,7 @@ Memory Tools:
 
 Semantic Caching:
     - RedisVLCacheProvider: Redis-backed semantic cache (self-hosted)
-    - LangCacheCacheProvider: Managed semantic cache via Redis LangCache
+    - LangCacheProvider: Managed semantic cache via Redis LangCache
     - LLMResponseCache: Cache LLM responses
     - ToolCache: Cache tool execution results
     - create_llm_cache_callbacks: Create caching callbacks for agents
@@ -99,8 +99,8 @@ from adk_redis.tools.mcp_memory import create_memory_mcp_toolset
 # Semantic caching
 from adk_redis.cache import BaseCacheProvider
 from adk_redis.cache import CacheEntry
-from adk_redis.cache import LangCacheCacheProvider
-from adk_redis.cache import LangCacheCacheProviderConfig
+from adk_redis.cache import LangCacheProvider
+from adk_redis.cache import LangCacheProviderConfig
 from adk_redis.cache import LLMResponseCache
 from adk_redis.cache import LLMResponseCacheConfig
 from adk_redis.cache import RedisVLCacheProvider
@@ -147,8 +147,8 @@ __all__ = [
     # Semantic caching
     "BaseCacheProvider",
     "CacheEntry",
-    "LangCacheCacheProvider",
-    "LangCacheCacheProviderConfig",
+    "LangCacheProvider",
+    "LangCacheProviderConfig",
     "RedisVLCacheProvider",
     "RedisVLCacheProviderConfig",
     "LLMResponseCache",

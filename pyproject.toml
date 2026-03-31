@@ -52,7 +52,7 @@ search = [
 
 # LangCache (managed semantic cache service)
 langcache = [
-    "redisvl>=0.5.0",
+    "redisvl>=0.11.0",
     "langcache",
 ]
 

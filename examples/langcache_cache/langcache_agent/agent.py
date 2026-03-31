@@ -26,15 +26,15 @@ import os
 from google.adk.agents import Agent
 
 from adk_redis.cache import create_llm_cache_callbacks
-from adk_redis.cache import LangCacheCacheProvider
-from adk_redis.cache import LangCacheCacheProviderConfig
+from adk_redis.cache import LangCacheProvider
+from adk_redis.cache import LangCacheProviderConfig
 from adk_redis.cache import LLMResponseCache
 from adk_redis.cache import LLMResponseCacheConfig
 
 try:
   # Create LangCache provider (managed -- no local vectorizer needed)
-  provider = LangCacheCacheProvider(
-      config=LangCacheCacheProviderConfig(
+  provider = LangCacheProvider(
+      config=LangCacheProviderConfig(
           cache_id=os.environ["LANGCACHE_CACHE_ID"],
           api_key=os.environ["LANGCACHE_API_KEY"],
           server_url=os.getenv(
@@ -62,7 +62,7 @@ except ImportError:
   import warnings
 
   warnings.warn(
-      "redisvl>=0.5.0 is not installed. LangCache caching is disabled. "
+      "redisvl>=0.11.0 is not installed. LangCache caching is disabled. "
       "Install with: pip install 'adk-redis[langcache]'",
       stacklevel=2,
   )

@@ -29,7 +29,7 @@ pip install uv
 Then install the package with LangCache support:
 
 ```bash
-uv pip install "adk-redis[langcache]"
+uv pip install "adk-redis[langcache]" python-dotenv
 ```
 
 ### 2. Configure Environment Variables
@@ -101,12 +101,12 @@ langcache_cache/
 | Vectorizer | Local (HuggingFace, OpenAI, etc.) | Server-side (managed) |
 | Redis instance | Required | Not required |
 | Install extra | `adk-redis[search]` | `adk-redis[langcache]` |
-| Provider class | `RedisVLCacheProvider` | `LangCacheCacheProvider` |
+| Provider class | `RedisVLCacheProvider` | `LangCacheProvider` |
 | Setup complexity | Higher (Redis + vectorizer) | Lower (API key only) |
 
 ## Configuration Options
 
-### LangCacheCacheProviderConfig
+### LangCacheProviderConfig
 
 - `cache_id` (str): LangCache cache ID (required)
 - `api_key` (str): LangCache API key (required)

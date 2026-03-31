@@ -34,8 +34,8 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from adk_redis.cache import create_llm_cache_callbacks
-from adk_redis.cache import LangCacheCacheProvider
-from adk_redis.cache import LangCacheCacheProviderConfig
+from adk_redis.cache import LangCacheProvider
+from adk_redis.cache import LangCacheProviderConfig
 from adk_redis.cache import LLMResponseCache
 from adk_redis.cache import LLMResponseCacheConfig
 
@@ -57,8 +57,8 @@ def _get_required_env_var(name: str) -> str:
 def create_cached_agent() -> tuple[Agent, LLMResponseCache]:
   """Create an agent with LangCache semantic caching enabled."""
   # Create LangCache provider (managed -- no local vectorizer needed)
-  provider = LangCacheCacheProvider(
-      config=LangCacheCacheProviderConfig(
+  provider = LangCacheProvider(
+      config=LangCacheProviderConfig(
           cache_id=_get_required_env_var("LANGCACHE_CACHE_ID"),
           api_key=_get_required_env_var("LANGCACHE_API_KEY"),
           server_url=os.getenv(

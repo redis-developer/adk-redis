@@ -246,17 +246,17 @@ class TestCacheImports:
 
     assert CacheEntry is not None
 
-  def test_langcache_cache_provider_import(self):
-    """Test LangCacheCacheProvider can be imported."""
-    from adk_redis import LangCacheCacheProvider
+  def test_langcache_provider_import(self):
+    """Test LangCacheProvider can be imported."""
+    from adk_redis import LangCacheProvider
 
-    assert LangCacheCacheProvider is not None
+    assert LangCacheProvider is not None
 
-  def test_langcache_cache_provider_config_import(self):
-    """Test LangCacheCacheProviderConfig can be imported."""
-    from adk_redis import LangCacheCacheProviderConfig
+  def test_langcache_provider_config_import(self):
+    """Test LangCacheProviderConfig can be imported."""
+    from adk_redis import LangCacheProviderConfig
 
-    assert LangCacheCacheProviderConfig is not None
+    assert LangCacheProviderConfig is not None
 
   def test_redisvl_cache_provider_import(self):
     """Test RedisVLCacheProvider can be imported."""
@@ -266,8 +266,8 @@ class TestCacheImports:
 
   def test_cache_submodule_import(self):
     """Test cache submodule imports work."""
-    from adk_redis.cache import LangCacheCacheProvider
-    from adk_redis.cache import LangCacheCacheProviderConfig
+    from adk_redis.cache import LangCacheProvider
+    from adk_redis.cache import LangCacheProviderConfig
 
-    assert LangCacheCacheProvider is not None
-    assert LangCacheCacheProviderConfig is not None
+    assert LangCacheProvider is not None
+    assert LangCacheProviderConfig is not None
