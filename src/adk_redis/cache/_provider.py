@@ -189,7 +189,7 @@ class LangCacheProvider(BaseCacheProvider):
   generation, storage, and retrieval. Unlike RedisVLCacheProvider, it does
   not require a local vectorizer — embeddings are handled server-side.
 
-  Requires redisvl>=0.11.0 with LangCache support.
+  Requires redisvl>=0.11.1 with LangCache support.
   """
 
   def __init__(self, config: LangCacheProviderConfig):
@@ -199,13 +199,13 @@ class LangCacheProvider(BaseCacheProvider):
       config: Configuration for the LangCache provider.
 
     Raises:
-      ImportError: If redisvl>=0.11.0 is not installed.
+      ImportError: If redisvl>=0.11.1 is not installed.
     """
     try:
       from redisvl.extensions.cache.llm import LangCacheSemanticCache
     except ImportError as e:
       raise ImportError(
-          "redisvl>=0.11.0 with LangCache support is required for "
+          "redisvl>=0.11.1 with LangCache support is required for "
           "LangCacheProvider. Install it with: "
           "pip install 'adk-redis[langcache]'"
       ) from e

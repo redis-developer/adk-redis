@@ -73,7 +73,7 @@ def create_cached_agent() -> tuple[Agent, LLMResponseCache]:
   llm_cache = LLMResponseCache(
       provider=provider,
       config=LLMResponseCacheConfig(
-          first_message_only=True,  # Only cache first message in session
+          first_message_only=False,  # Check cache for every message in session
           include_app_name=True,
           include_user_id=True,
       ),

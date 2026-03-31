@@ -49,7 +49,7 @@ try:
   llm_cache = LLMResponseCache(
       provider=provider,
       config=LLMResponseCacheConfig(
-          first_message_only=True,
+          first_message_only=False,
           include_app_name=True,
           include_user_id=True,
       ),
@@ -62,7 +62,7 @@ except ImportError:
   import warnings
 
   warnings.warn(
-      "redisvl>=0.11.0 is not installed. LangCache caching is disabled. "
+      "redisvl>=0.11.1 is not installed. LangCache caching is disabled. "
       "Install with: pip install 'adk-redis[langcache]'",
       stacklevel=2,
   )
