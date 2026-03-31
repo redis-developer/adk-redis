@@ -19,6 +19,8 @@ from .llm_cache import LLMResponseCache, LLMResponseCacheConfig
 from ._provider import (
     BaseCacheProvider,
     CacheEntry,
+    LangCacheProvider,
+    LangCacheProviderConfig,
     RedisVLCacheProvider,
     RedisVLCacheProviderConfig,
 )
@@ -27,6 +29,8 @@ from .tool_cache import ToolCache, ToolCacheConfig
 __all__ = [
     "BaseCacheProvider",
     "CacheEntry",
+    "LangCacheProvider",
+    "LangCacheProviderConfig",
     "RedisVLCacheProvider",
     "RedisVLCacheProviderConfig",
     "LLMResponseCache",

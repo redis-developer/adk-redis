@@ -71,9 +71,9 @@ class TavilySearchTool(BaseTool):
   ):
     super().__init__(name=name, description=description)
 
-    # Get API key
-    self.tavily_api_key = tavily_api_key or os.getenv("TAVILY_API_KEY")
-    if not self.tavily_api_key:
+    # Get API key (stored as private attr to avoid leaking in prints/repr)
+    self._tavily_api_key = tavily_api_key or os.getenv("TAVILY_API_KEY")
+    if not self._tavily_api_key:
       raise ValueError(
           "Tavily API key required. Set TAVILY_API_KEY environment variable "
           "or pass tavily_api_key parameter."
@@ -161,7 +161,7 @@ class TavilySearchTool(BaseTool):
         response = await client.post(
             self.tavily_api_url,
             json={
-                "api_key": self.tavily_api_key,
+                "api_key": self._tavily_api_key,
                 "query": query,
                 "max_results": self.max_results,
             },

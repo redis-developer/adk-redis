@@ -28,7 +28,7 @@ from pydantic import Field
 
 from ._provider import BaseCacheProvider
 
-logger = logging.getLogger("google_adk." + __name__)
+logger = logging.getLogger("adk_redis." + __name__)
 
 
 class LLMResponseCacheConfig(BaseModel):
