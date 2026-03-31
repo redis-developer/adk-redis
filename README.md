@@ -67,8 +67,11 @@ pip install adk-redis[search]
 # LangCache (managed semantic cache service)
 pip install adk-redis[langcache]
 
-# All features
+# All library features
 pip install adk-redis[all]
+
+# Running the examples (adds python-dotenv and other example dependencies)
+pip install adk-redis[all,examples]
 ```
 
 ### Verify Installation

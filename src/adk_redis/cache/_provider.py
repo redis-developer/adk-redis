@@ -27,7 +27,7 @@ from pydantic import BaseModel
 from pydantic import Field
 from pydantic import SecretStr
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("adk_redis." + __name__)
 
 
 @dataclass
