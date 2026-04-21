@@ -81,7 +81,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/redis-developer/adk-redis"
-Documentation = "https://github.com/redis-developer/adk-redis#readme"
+Documentation = "https://redis.io/docs/latest/integrate/google-adk/"
 Repository = "https://github.com/redis-developer/adk-redis"
 Issues = "https://github.com/redis-developer/adk-redis/issues"
 Changelog = "https://github.com/redis-developer/adk-redis/blob/main/CHANGELOG.md"
