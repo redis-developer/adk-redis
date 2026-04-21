@@ -1,5 +1,7 @@
 # Integration Guide
 
+> **Canonical docs:** The full integration guide is published at [redis.io/docs/latest/integrate/google-adk/](https://redis.io/docs/latest/integrate/google-adk/). This file is a quick-reference for contributors working in the repo.
+
 Complete guide for integrating Redis Agent Memory Server with adk-redis.
 
 ## Architecture
