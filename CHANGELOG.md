@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-05-19
+
 ### Breaking
 
 - Removed `epsilon` from `RedisVectorQueryConfig`. `EPSILON` is a
