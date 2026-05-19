@@ -112,7 +112,7 @@ docker stop agent-memory-server
 docker rm agent-memory-server
 ```
 
-**See:** [Agent Memory Server Setup Guide](agent-memory-server-setup.md) for detailed configuration
+**See:** [Agent Memory Server Setup Guide](memory_server_setup.md) for detailed configuration
 
 ---
 

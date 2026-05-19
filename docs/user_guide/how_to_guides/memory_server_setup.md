@@ -22,7 +22,7 @@ Agent Memory Server provides:
 ### Prerequisites
 
 - Docker installed
-- Redis 8.4+ running (see [Redis Setup Guide](redis-setup.md))
+- Redis 8.4+ running (see [Redis Setup Guide](redis_setup.md))
 
 ### Development Mode (Single Container)
 
