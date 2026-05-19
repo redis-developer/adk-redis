@@ -81,7 +81,7 @@ services:
   redis:
     image: redis:8.4-alpine
     ports:
-      - "6379:6379"
+     - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -91,14 +91,14 @@ services:
   agent-memory-api:
     image: redislabs/agent-memory-server:0.13.2
     ports:
-      - "8000:8000"
+     - "8000:8000"
     environment:
-      - REDIS_URL=redis://redis:6379
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - GENERATION_MODEL=gemini/gemini-2.0-flash-exp
-      - EMBEDDING_MODEL=gemini/text-embedding-004
-      - EXTRACTION_DEBOUNCE_SECONDS=5
-      - DISABLE_AUTH=true
+     - REDIS_URL=redis://redis:6379
+     - GEMINI_API_KEY=${GEMINI_API_KEY}
+     - GENERATION_MODEL=gemini/gemini-2.0-flash-exp
+     - EMBEDDING_MODEL=gemini/text-embedding-004
+     - EXTRACTION_DEBOUNCE_SECONDS=5
+     - DISABLE_AUTH=true
     command: agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
     depends_on:
       redis:

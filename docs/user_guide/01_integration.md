@@ -24,9 +24,9 @@ Complete guide for integrating Redis Agent Memory Server with adk-redis.
 │              Redis Agent Memory Server                          │
 │  ┌──────────────────────┐    ┌──────────────────────────────┐  │
 │  │  Working Memory API  │    │  Long-Term Memory API        │  │
-│  │  - Session messages  │    │  - Semantic search           │  │
-│  │  - Auto-summarize    │    │  - Memory extraction         │  │
-│  │  - Context window    │    │  - Recency boosting          │  │
+│  │ - Session messages  │    │ - Semantic search           │  │
+│  │ - Auto-summarize    │    │ - Memory extraction         │  │
+│  │ - Context window    │    │ - Recency boosting          │  │
 │  └──────────┬───────────┘    └──────────┬───────────────────┘  │
 └─────────────┼────────────────────────────┼──────────────────────┘
               │                            │
@@ -34,10 +34,10 @@ Complete guide for integrating Redis Agent Memory Server with adk-redis.
               ▼                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Redis 8.4+                              │
-│  - JSON storage                                                 │
-│  - Vector search (Redis Query Engine)                           │
-│  - Full-text search                                             │
-│  - Persistence                                                  │
+│ - JSON storage                                                 │
+│ - Vector search (Redis Query Engine)                           │
+│ - Full-text search                                             │
+│ - Persistence                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

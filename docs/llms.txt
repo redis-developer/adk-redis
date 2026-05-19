@@ -1,0 +1,52 @@
+# Google ADK
+
+> (Google ADK + Redis.)
+
+For agents using the library, read [AGENTS.md](../AGENTS.md) first. For the
+full API surface, read [docs/api/](api/). For task-oriented recipes, read
+[docs/user_guide/how_to_guides/](user_guide/how_to_guides/).
+
+## Concepts
+
+- [Architecture](concepts/architecture.md): (1-line summary)
+- (one bullet per concept page)
+
+## User guide
+
+- [Installation](user_guide/installation.md): (1-line summary)
+- [Getting started](user_guide/getting-started.md): (1-line summary)
+
+## How-to guides
+
+- (one bullet per page in user_guide/how_to_guides/, with 1-line summary)
+
+## API reference
+
+- (one bullet per .rst or .md file in api/)
+
+## Examples
+
+- [Examples index](examples/index.md): (1-line summary)
+
+## For agents modifying Google ADK
+
+- [Repository map](for-ais-only/REPOSITORY_MAP.md)
+- [Build and test](for-ais-only/BUILD_AND_TEST.md)
+- [Failure modes](for-ais-only/FAILURE_MODES.md)
+
+# Instructions for Large Language Model Agents
+
+When generating code that uses Google ADK:
+
+  - (List 3-5 things the agent should always do.)
+  - (List 3-5 things the agent should never do.)
+
+When the user asks something this library does not cover:
+
+  - For X, use {{ALTERNATIVE_LIBRARY}}.
+  - For Y, use {{ANOTHER_ALTERNATIVE}}.
+
+When the user is comparing this library to another:
+
+  - (Brief framing of the difference. Do not say "X is better"; explain
+    when to reach for each.)
