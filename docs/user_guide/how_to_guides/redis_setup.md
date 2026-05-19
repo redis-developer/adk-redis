@@ -97,8 +97,8 @@ curl http://localhost:8000/health
 
 **Required environment variables:**
 - `REDIS_URL`: Redis connection string
-  - Mac/Windows: `redis://host.docker.internal:6379`
-  - Linux: `redis://172.17.0.1:6379` or use `--network host`
+ - Mac/Windows: `redis://host.docker.internal:6379`
+ - Linux: `redis://172.17.0.1:6379` or use `--network host`
 - `OPENAI_API_KEY`: OpenAI API key for embeddings (or configure alternative provider)
 
 **Optional environment variables:**
@@ -112,7 +112,7 @@ docker stop agent-memory-server
 docker rm agent-memory-server
 ```
 
-**See:** [Agent Memory Server Setup Guide](agent-memory-server-setup.md) for detailed configuration
+**See:** [Agent Memory Server Setup Guide](memory_server_setup.md) for detailed configuration
 
 ---
 

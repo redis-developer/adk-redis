@@ -88,7 +88,6 @@ class TestRedisVectorSearchToolInit:
     assert tool._config.hybrid_policy is None
     assert tool._config.batch_size is None
     assert tool._config.ef_runtime is None
-    assert tool._config.epsilon is None
     # Tool-level defaults
     assert tool._filter_expression is None
 
@@ -105,7 +104,6 @@ class TestRedisVectorSearchToolInit:
         hybrid_policy="BATCHES",
         batch_size=100,
         ef_runtime=200,
-        epsilon=0.01,
     )
     tool = RedisVectorSearchTool(
         index=mock_index,
@@ -124,7 +122,32 @@ class TestRedisVectorSearchToolInit:
     assert tool._config.hybrid_policy == "BATCHES"
     assert tool._config.batch_size == 100
     assert tool._config.ef_runtime == 200
-    assert tool._config.epsilon == 0.01
+
+
+class TestRedisVectorQueryConfigEpsilonRemoval:
+  """Regression: epsilon is invalid on KNN VectorQuery (redisvl PR #612).
+
+  EPSILON is a VECTOR_RANGE-only attribute. KNN queries that emit it inside
+  the [KNN ... EPSILON ...] bracket get rejected by Redis. The KNN config
+  must not accept the field.
+  """
+
+  def test_config_rejects_epsilon_kwarg(self):
+    """RedisVectorQueryConfig must not accept epsilon."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+      RedisVectorQueryConfig(epsilon=0.01)
+
+  def test_config_has_no_epsilon_field(self):
+    """epsilon must not appear in the model's fields."""
+    assert "epsilon" not in RedisVectorQueryConfig.model_fields
+
+  def test_to_query_kwargs_omits_epsilon(self):
+    """The kwargs dict produced for VectorQuery must not include epsilon."""
+    cfg = RedisVectorQueryConfig()
+    kwargs = cfg.to_query_kwargs(vector=[0.1, 0.2, 0.3])
+    assert "epsilon" not in kwargs
 
   def test_custom_name_and_description(self, mock_index, mock_vectorizer):
     """Test custom tool name and description."""

@@ -23,6 +23,7 @@ from adk_redis.tools.search._config import RedisTextQueryConfig
 from adk_redis.tools.search._config import RedisVectorQueryConfig
 from adk_redis.tools.search.hybrid import RedisHybridSearchTool
 from adk_redis.tools.search.range import RedisRangeSearchTool
+from adk_redis.tools.search.sql import RedisSQLSearchTool
 from adk_redis.tools.search.text import RedisTextSearchTool
 from adk_redis.tools.search.vector import RedisVectorSearchTool
 
@@ -34,6 +35,7 @@ __all__ = [
     "RedisVectorSearchTool",
     "RedisHybridSearchTool",
     "RedisRangeSearchTool",
+    "RedisSQLSearchTool",
     "RedisTextSearchTool",
     # Config classes
     "RedisVectorQueryConfig",

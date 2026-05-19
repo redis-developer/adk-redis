@@ -1,0 +1,197 @@
+site_name: Google ADK + Redis
+site_description: Redis backends for Google Agent Development Kit. Sessions, memory, tools, cache.
+site_url: https://ai.redis.io/adk/
+repo_url: https://github.com/redis-developer/adk-redis
+repo_name: redis-developer/adk-redis
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; 2026 Redis Inc.
+
+docs_dir: docs
+
+exclude_docs: |
+  _build/
+  _static/
+  _templates/
+  conf.py
+  Makefile
+  requirements.txt
+  api/python/index.rst
+
+theme:
+  name: material
+  language: en
+  logo: assets/redis-logo-script.svg
+  favicon: assets/favicon.png
+  font:
+    text: Space Grotesk
+    code: Space Mono
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.action.edit
+    - content.action.view
+    - content.tooltips
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/redis-developer/adk-redis
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/adk-redis/
+
+extra_css:
+  - stylesheets/redis-brand.css
+
+plugins:
+  - search
+  - autorefs
+  - section-index
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            docstring_section_style: table
+            inherited_members: true
+            filters:
+              - "!^_"
+  - llmstxt:
+      full_output: llms-full.txt
+      sections:
+        Concepts:
+          - concepts/*.md
+        User Guide:
+          - user_guide/*.md
+          - user_guide/how_to_guides/*.md
+        API Reference:
+          - api/*.md
+        For AI Agents:
+          - for-ais-only/*.md
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify {kwds: {case: lower}}
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+watch:
+  - src/adk_redis
+  - AGENTS.md
+
+nav:
+  - Home: index.md
+  - Concepts:
+      - concepts/index.md
+      - ADK overview: concepts/adk_overview.md
+      - Sessions: concepts/sessions.md
+      - Memory: concepts/memory.md
+      - Search: concepts/search.md
+  - User Guide:
+      - user_guide/index.md
+      - Integration: user_guide/01_integration.md
+      - How-To Guides:
+          - user_guide/how_to_guides/index.md
+          - Redis setup: user_guide/how_to_guides/redis_setup.md
+          - Memory server setup: user_guide/how_to_guides/memory_server_setup.md
+          - Session service: user_guide/how_to_guides/session_service.md
+          - Memory service: user_guide/how_to_guides/memory_service.md
+          - Search tools: user_guide/how_to_guides/search_tools.md
+  - Examples:
+      - examples/index.md
+      - Fitness coach: examples/fitness_coach.md
+      - Travel agent (hybrid): examples/travel_agent_hybrid.md
+      - Redis search tools: examples/redis_search_tools.md
+  - API Reference:
+      - api/index.md
+      - Python package:
+          - api/python/index.md
+          - Sessions: api/python/sessions.md
+          - Memory: api/python/memory.md
+          - Tools: api/python/tools.md
+          - Cache: api/python/cache.md
+  - For AI Agents:
+      - for-ais-only/index.md
+      - Repository map: for-ais-only/REPOSITORY_MAP.md
+      - Build and test: for-ais-only/BUILD_AND_TEST.md
+      - Failure modes: for-ais-only/FAILURE_MODES.md
+  - Changelog: https://github.com/redis-developer/adk-redis/releases
+

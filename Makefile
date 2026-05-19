@@ -1,4 +1,4 @@
-.PHONY: install dev test lint lint-fix format type-check clean build publish check
+.PHONY: install dev test test-unit test-integration redis-up redis-down lint lint-fix format type-check clean build publish check
 
 # Install package
 install:
@@ -8,9 +8,30 @@ install:
 dev:
 	uv pip install -e ".[all,dev]"
 
-# Run tests
+# Run all tests
 test:
 	uv run pytest
+
+# Run unit tests only (skip integration)
+test-unit:
+	uv run pytest --ignore=tests/integration
+
+# Run integration tests. Requires Redis 8.4+ at $$REDIS_URL (default redis://localhost:6399)
+test-integration:
+	uv run pytest tests/integration
+
+# Spin up (or reuse) a Redis 8.4 container on :6399 for integration tests
+redis-up:
+	@if docker ps -a --format '{{.Names}}' | grep -q '^adk-redis-it$$'; then \
+		docker start adk-redis-it >/dev/null && echo "Reusing existing adk-redis-it container"; \
+	else \
+		docker run -d --name adk-redis-it -p 6399:6379 redis:8.4 >/dev/null && echo "Started adk-redis-it on :6399"; \
+	fi
+
+# Stop and remove the integration Redis container
+redis-down:
+	@docker rm -f adk-redis-it >/dev/null 2>&1 || true
+	@echo "adk-redis-it removed"
 
 # Run tests with coverage
 test-cov:

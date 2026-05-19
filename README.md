@@ -67,6 +67,12 @@ pip install adk-redis[search]
 # LangCache (managed semantic cache service)
 pip install adk-redis[langcache]
 
+# SQL-to-Redis search tool (RedisSQLSearchTool, requires sql-redis)
+pip install adk-redis[sql]
+
+# RedisVL MCP toolset helper (`create_redisvl_mcp_toolset`)
+pip install adk-redis[mcp-search]
+
 # All library features
 pip install adk-redis[all]
 
@@ -303,7 +309,7 @@ agent = Agent(
 
 **Customizing Tool Prompts:**
 
-All search tools (`RedisVectorSearchTool`, `RedisHybridSearchTool`, `RedisTextSearchTool`, `RedisRangeSearchTool`) support custom `name` and `description` parameters to make them domain-specific:
+All search tools (`RedisVectorSearchTool`, `RedisHybridSearchTool`, `RedisTextSearchTool`, `RedisRangeSearchTool`, `RedisSQLSearchTool`) support custom `name` and `description` parameters to make them domain-specific:
 
 ```python
 # Example: Medical knowledge base
@@ -368,7 +374,7 @@ Implements ADK's `BaseSessionService` interface for conversation management:
 
 ### Search Tools
 
-Four specialized search tools for different RAG use cases:
+Five specialized search tools for different RAG use cases:
 
 | Tool | Best For | Key Features |
 |------|----------|--------------|
@@ -376,8 +382,13 @@ Four specialized search tools for different RAG use cases:
 | **`RedisHybridSearchTool`** | Combined search | Vector + text search, Redis 8.4+ native support, aggregation fallback |
 | **`RedisRangeSearchTool`** | Threshold-based retrieval | Distance-based filtering, similarity radius |
 | **`RedisTextSearchTool`** | Keyword search | Full-text search, no embeddings required |
+| **`RedisSQLSearchTool`** | SQL-style filters | `SELECT ... WHERE` against a bound index, parameterized queries (requires `adk-redis[sql]`) |
 
 > All search tools support multiple vectorizers (OpenAI, HuggingFace, Cohere, Mistral, Voyage AI, etc.) and advanced filtering.
+
+### RedisVL MCP toolset
+
+`create_redisvl_mcp_toolset(...)` returns an ADK `McpToolset` wired to RedisVL's own MCP server (`rvl mcp`). The server exposes schema-aware `search-records` and `upsert-records` tools whose descriptions include filter and return-field hints derived from the bound index. Use it when you want one Redis index served to multiple agents (Python, JS, Claude Desktop) over `stdio`, `sse`, or `streamable-http`. Requires `adk-redis[mcp-search]` and a Redis-side `rvl mcp` server (or YAML config). See [the search-tools guide](docs/user_guide/how_to_guides/search_tools.md) for the decision matrix vs the in-process tools above.
 
 ### Semantic Caching
 
@@ -423,9 +434,12 @@ llm_cache = LLMResponseCache(provider=cache_provider)
 ## Requirements
 
 - **Python** 3.10, 3.11, 3.12, or 3.13
-- **Google ADK** 1.0.0+
+- **Google ADK** 1.0.0+ (validated against 1.23.0; 2.0.0 GA support tracked in the next release)
+- **RedisVL** 0.18.2+ (when the `search`, `langcache`, `sql`, or `mcp-search` extra is installed)
 - **For memory/session services:** [Redis Agent Memory Server](https://github.com/redis/agent-memory-server)
 - **For search tools:** Redis 8.4+ or Redis Cloud with Search capability
+- **For `RedisSQLSearchTool`:** `sql-redis` (installed by `adk-redis[sql]`)
+- **For RedisVL MCP toolset:** `redisvl[mcp]` and the `rvl mcp` CLI
 
 ---
 
@@ -478,6 +492,32 @@ agent = Agent(model="gemini-2.0-flash", tools=[memory_tools])
 - `set_working_memory` - Update working memory
 
 For a complete MCP example, see the [fitness_coach_mcp example](examples/fitness_coach_mcp/).
+
+#### RedisVL MCP server
+
+In addition to Agent Memory Server MCP tools, you can connect an agent to RedisVL's own MCP server (one Redis index per server) with `create_redisvl_mcp_toolset(...)`:
+
+```python
+from pydantic import SecretStr
+from adk_redis import create_redisvl_mcp_toolset
+
+# Remote server, streamable-http (default), read-only by default.
+search_tools = create_redisvl_mcp_toolset(
+    url="http://localhost:8000/mcp",
+    auth_token=SecretStr("..."),  # optional bearer
+)
+
+# Or spawn `rvl mcp --config <path>` in-process over stdio.
+search_tools = create_redisvl_mcp_toolset(
+    transport="stdio",
+    config_path="/etc/redisvl/mcp.yaml",
+    read_only=True,
+)
+
+agent = Agent(model="gemini-2.0-flash", tools=[search_tools])
+```
+
+Available tool names: `search-records`, `upsert-records` (also exported as `REDISVL_MCP_TOOL_SEARCH` / `REDISVL_MCP_TOOL_UPSERT`).
 
 ### Travel Agent Examples Comparison
 
