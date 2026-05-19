@@ -1,6 +1,6 @@
 ---
 name: adk-redis
-version: 0.1.0
+version: 0.0.4
 description: |
   Redis backends for Google's Agent Development Kit (ADK). Use this skill
   when the user wants to back an ADK agent with Redis: persistent sessions
@@ -13,10 +13,10 @@ runtime:
   package: adk-redis
   install: "pip install adk-redis"
 links:
-  docs: https://ai.redis.io/adk/
-  llms_txt: https://ai.redis.io/adk/llms.txt
-  llms_full_txt: https://ai.redis.io/adk/llms-full.txt
+  docs: https://redis.io/docs/latest/integrate/google-adk/
   repository: https://github.com/redis-developer/adk-redis
+  pypi: https://pypi.org/project/adk-redis/
+  examples: https://github.com/redis-developer/adk-redis/tree/main/examples
 ---
 
 # adk-redis Agent Skill
@@ -69,7 +69,7 @@ from adk_redis import RedisVectorQueryConfig, RedisVectorSearchTool
 index = SearchIndex.from_existing("products", redis_url="redis://localhost:6379")
 tool = RedisVectorSearchTool(
     index=index,
-    vectorizer=HFTextVectorizer(model="sentence-transformers/all-MiniLM-L6-v2"),
+    vectorizer=HFTextVectorizer(model="redis/langcache-embed-v2"),
     config=RedisVectorQueryConfig(num_results=5),
     return_fields=["title", "price", "category"],
 )
@@ -88,18 +88,40 @@ sql_tool = RedisSQLSearchTool(index=index)
 ### 3. Persistent sessions + long-term memory
 
 ```python
+from google.adk.agents import Agent
+from google.adk.runners import Runner
+
 from adk_redis import (
-    RedisLongTermMemoryService, RedisLongTermMemoryServiceConfig,
-    RedisWorkingMemorySessionService, RedisWorkingMemorySessionServiceConfig,
+    RedisLongTermMemoryService,
+    RedisLongTermMemoryServiceConfig,
+    RedisWorkingMemorySessionService,
+    RedisWorkingMemorySessionServiceConfig,
 )
 
 session_service = RedisWorkingMemorySessionService(
-    config=RedisWorkingMemorySessionServiceConfig(api_base_url="http://localhost:8000"),
+    config=RedisWorkingMemorySessionServiceConfig(
+        api_base_url="http://localhost:8000",
+    ),
 )
 memory_service = RedisLongTermMemoryService(
-    config=RedisLongTermMemoryServiceConfig(api_base_url="http://localhost:8000", recency_boost=True),
+    config=RedisLongTermMemoryServiceConfig(
+        api_base_url="http://localhost:8000",
+        recency_boost=True,
+    ),
 )
-# Pass session_service / memory_service to your ADK Runner.
+
+root_agent = Agent(
+    model="gemini-flash-latest",
+    name="redis_memory_agent",
+    instruction="Use long-term memory to personalize responses.",
+)
+
+runner = Runner(
+    app_name="redis_memory_app",
+    agent=root_agent,
+    session_service=session_service,
+    memory_service=memory_service,
+)
 ```
 
 ### 4. RedisVL MCP toolset
@@ -118,17 +140,33 @@ mcp_tools = create_redisvl_mcp_toolset(
 ### 5. Semantic cache for LLM responses
 
 ```python
+from google.adk.agents import Agent
 from redisvl.utils.vectorize import HFTextVectorizer
+
 from adk_redis import (
-    LLMResponseCache, RedisVLCacheProvider, RedisVLCacheProviderConfig,
+    LLMResponseCache,
+    RedisVLCacheProvider,
+    RedisVLCacheProviderConfig,
+    create_llm_cache_callbacks,
 )
 
 provider = RedisVLCacheProvider(
-    config=RedisVLCacheProviderConfig(redis_url="redis://localhost:6379", ttl=3600),
-    vectorizer=HFTextVectorizer(model="sentence-transformers/all-MiniLM-L6-v2"),
+    config=RedisVLCacheProviderConfig(
+        redis_url="redis://localhost:6379",
+        ttl=3600,
+    ),
+    vectorizer=HFTextVectorizer(model="redis/langcache-embed-v2"),
 )
 llm_cache = LLMResponseCache(provider=provider)
-# Register llm_cache.before_model_callback / after_model_callback on the agent.
+before_model_cb, after_model_cb = create_llm_cache_callbacks(llm_cache)
+
+root_agent = Agent(
+    model="gemini-flash-latest",
+    name="cached_agent",
+    instruction="You are a helpful assistant with semantic caching enabled.",
+    before_model_callback=before_model_cb,
+    after_model_callback=after_model_cb,
+)
 ```
 
 ## Common gotchas
@@ -162,7 +200,8 @@ When this skill is loaded:
 
 ## Reference
 
-- API reference: https://ai.redis.io/adk/api/python/
-- User guide: https://ai.redis.io/adk/user_guide/
-- How-to guides: https://ai.redis.io/adk/user_guide/how_to_guides/
+- Docs: https://redis.io/docs/latest/integrate/google-adk/
+- Source: https://github.com/redis-developer/adk-redis
+- PyPI: https://pypi.org/project/adk-redis/
 - Runnable examples: https://github.com/redis-developer/adk-redis/tree/main/examples
+- Changelog: https://github.com/redis-developer/adk-redis/blob/main/CHANGELOG.md
