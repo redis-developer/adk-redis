@@ -20,13 +20,18 @@ test-unit:
 test-integration:
 	uv run pytest tests/integration
 
-# Spin up a Redis 8.4 container on :6399 for integration tests
+# Spin up (or reuse) a Redis 8.4 container on :6399 for integration tests
 redis-up:
-	docker run -d --name adk-redis-it -p 6399:6379 redis:8.4
+	@if docker ps -a --format '{{.Names}}' | grep -q '^adk-redis-it$$'; then \
+		docker start adk-redis-it >/dev/null && echo "Reusing existing adk-redis-it container"; \
+	else \
+		docker run -d --name adk-redis-it -p 6399:6379 redis:8.4 >/dev/null && echo "Started adk-redis-it on :6399"; \
+	fi
 
 # Stop and remove the integration Redis container
 redis-down:
-	docker rm -f adk-redis-it || true
+	@docker rm -f adk-redis-it >/dev/null 2>&1 || true
+	@echo "adk-redis-it removed"
 
 # Run tests with coverage
 test-cov:

@@ -1,52 +1,90 @@
-# Google ADK
+# adk-redis
 
-> (Google ADK + Redis.)
+> Redis backends for Google's Agent Development Kit. Provides ADK
+> `BaseSessionService` and `BaseMemoryService` implementations, five
+> RedisVL-backed search tools, MCP toolsets for RedisVL and Agent Memory
+> Server, and semantic cache providers (self-hosted RedisVL or managed
+> Redis LangCache).
 
-For agents using the library, read [AGENTS.md](../AGENTS.md) first. For the
-full API surface, read [docs/api/](api/). For task-oriented recipes, read
-[docs/user_guide/how_to_guides/](user_guide/how_to_guides/).
+For agents using the library, read [AGENTS.md](../AGENTS.md) first. For
+the full API surface, browse [the API reference](api/python/index.md).
+For task-oriented recipes, browse the
+[how-to guides](user_guide/how_to_guides/index.md).
 
 ## Concepts
 
-- [Architecture](concepts/architecture.md): (1-line summary)
-- (one bullet per concept page)
+- [ADK overview](concepts/adk_overview.md): how ADK abstractions map onto Redis.
+- [Sessions](concepts/sessions.md): working memory backed by Agent Memory Server.
+- [Memory](concepts/memory.md): long-term semantic memory with recency boosting.
+- [Search](concepts/search.md): vector, hybrid, range, text, and SQL search over RedisVL.
 
 ## User guide
 
-- [Installation](user_guide/installation.md): (1-line summary)
-- [Getting started](user_guide/getting-started.md): (1-line summary)
+- [Integration walkthrough](user_guide/01_integration.md): end-to-end wiring of services into an ADK Runner.
+- [How-to guides index](user_guide/how_to_guides/index.md): pointers to setup and task guides.
 
 ## How-to guides
 
-- (one bullet per page in user_guide/how_to_guides/, with 1-line summary)
+- [Redis setup](user_guide/how_to_guides/redis_setup.md): start Redis 8.4 locally or in Redis Cloud.
+- [Memory server setup](user_guide/how_to_guides/memory_server_setup.md): run Agent Memory Server.
+- [Session service](user_guide/how_to_guides/session_service.md): wire `RedisWorkingMemorySessionService`.
+- [Memory service](user_guide/how_to_guides/memory_service.md): wire `RedisLongTermMemoryService` and the memory tools.
+- [Search tools](user_guide/how_to_guides/search_tools.md): use the five search tools and the RedisVL MCP toolset.
 
 ## API reference
 
-- (one bullet per .rst or .md file in api/)
+- [Sessions](api/python/sessions.md): `RedisWorkingMemorySessionService`, `RedisWorkingMemorySessionServiceConfig`.
+- [Memory](api/python/memory.md): `RedisLongTermMemoryService`, `RedisLongTermMemoryServiceConfig`.
+- [Tools](api/python/tools.md): search tools, memory tools, MCP toolset helpers.
+- [Cache](api/python/cache.md): cache providers, `LLMResponseCache`, `ToolCache`, callback factories.
 
 ## Examples
 
-- [Examples index](examples/index.md): (1-line summary)
+- [Examples index](examples/index.md): runnable agents demonstrating each surface.
 
-## For agents modifying Google ADK
+## For agents modifying adk-redis
 
-- [Repository map](for-ais-only/REPOSITORY_MAP.md)
-- [Build and test](for-ais-only/BUILD_AND_TEST.md)
-- [Failure modes](for-ais-only/FAILURE_MODES.md)
+- [Repository map](for-ais-only/REPOSITORY_MAP.md): source tree and where each feature lives.
+- [Build and test](for-ais-only/BUILD_AND_TEST.md): make targets, unit and integration loops, mkdocs build.
+- [Failure modes](for-ais-only/FAILURE_MODES.md): intentional behaviors that look like bugs.
 
 # Instructions for Large Language Model Agents
 
-When generating code that uses Google ADK:
+When generating code that uses adk-redis:
 
-  - (List 3-5 things the agent should always do.)
-  - (List 3-5 things the agent should never do.)
+- Import the public surface from `adk_redis`, not from internal modules
+  (e.g., `from adk_redis import RedisVectorSearchTool`).
+- Construct services with their `Config` dataclasses
+  (`RedisLongTermMemoryServiceConfig`, etc.) so options are explicit.
+- Prefer `create_redisvl_mcp_toolset(...)` over hand-rolled
+  `StdioConnectionParams`; the helper does transport validation and
+  bearer-auth wiring.
+- Set `stopwords=None` on text-search configs if `nltk` is not installed.
+- Pin `redisvl>=0.18.2` when documenting installs; the deprecated
+  `redisvl.extensions.llmcache` path is on the way out.
 
-When the user asks something this library does not cover:
+When generating code that uses adk-redis, never:
 
-  - For X, use {{ALTERNATIVE_LIBRARY}}.
-  - For Y, use {{ANOTHER_ALTERNATIVE}}.
+- Pass `epsilon=` to `RedisVectorQueryConfig`; it is `VECTOR_RANGE`-only
+  and lives on `RedisRangeQueryConfig`.
+- Mix sync and async RedisVL `SearchIndex` instances in the same tool.
+- Cache the `MemoryAPIClient` across ADK `Runner.run` invocations; the
+  session service builds a new client per call on purpose.
 
-When the user is comparing this library to another:
+When the user asks for something this library does not cover:
 
-  - (Brief framing of the difference. Do not say "X is better"; explain
-    when to reach for each.)
+- For LangChain agents over Redis, use [`langchain-redis`](https://github.com/redis-developer/langchain-redis).
+- For LangGraph state and checkpointers, use [`langgraph-redis`](https://github.com/redis-developer/langgraph-redis).
+- For raw RedisVL search without ADK, use [`redisvl`](https://docs.redisvl.com).
+- For the Redis Agent Memory Server itself, use
+  [`agent-memory-server`](https://github.com/redis/agent-memory-server)
+  and its `agent-memory-client` SDK.
+
+When the user is comparing adk-redis to another library:
+
+- adk-redis is the ADK-native surface for Redis. It does not replace
+  RedisVL or Agent Memory Server; it adapts them to ADK's `BaseTool`,
+  `BaseSessionService`, `BaseMemoryService`, and MCP interfaces.
+- Pick this library when the agent runs on Google ADK and the data layer
+  is Redis. For other agent frameworks, the corresponding `*-redis`
+  package is the right fit.

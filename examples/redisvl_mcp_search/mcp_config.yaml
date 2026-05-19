@@ -1,0 +1,25 @@
+# RedisVL MCP server configuration for the redisvl_mcp_search demo.
+# Spawn with:
+#   rvl mcp --config mcp_config.yaml --transport streamable-http \
+#     --host 127.0.0.1 --port 8765 --read-only
+#
+# The MCP server inspects an existing Redis search index (adk_mcp_articles)
+# and serves `search-records` over BM25 fulltext on the `content` field.
+
+server:
+  # Override with REDIS_URL env var if your Redis is not on localhost:6379.
+  redis_url: ${REDIS_URL:-redis://localhost:6379}
+
+indexes:
+  articles:
+    redis_name: adk_mcp_articles
+    search:
+      type: fulltext
+      params:
+        text_scorer: BM25STD
+        # Disable nltk-based stopword removal so the server runs without nltk.
+        stopwords: null
+    runtime:
+      text_field_name: content
+      default_limit: 5
+      max_limit: 20

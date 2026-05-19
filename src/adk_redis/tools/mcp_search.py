@@ -105,6 +105,12 @@ def create_redisvl_mcp_toolset(
       agent = Agent(model="gemini-2.5-flash", tools=[toolset])
       ```
   """
+  _VALID_TRANSPORTS = ("stdio", "sse", "streamable-http")
+  if transport not in _VALID_TRANSPORTS:
+    raise ValueError(
+        f"Unknown transport {transport!r}. "
+        f"Expected one of: {', '.join(_VALID_TRANSPORTS)}."
+    )
   if url is None and config_path is None:
     raise ValueError(
         "create_redisvl_mcp_toolset requires either url or config_path."

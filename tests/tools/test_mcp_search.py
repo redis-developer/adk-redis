@@ -57,6 +57,14 @@ class TestCreateRedisVLMcpToolsetValidation:
           transport="sse", config_path="/etc/redisvl.yaml"
       )
 
+  def test_unknown_transport_raises_value_error(self):
+    """Regression: typo in `transport` must fail loudly, not silently fall through."""
+    with pytest.raises(ValueError, match="transport"):
+      create_redisvl_mcp_toolset(
+          url="http://localhost:8000/mcp",
+          transport="stdioo",  # type: ignore[arg-type]
+      )
+
 
 class TestCreateRedisVLMcpToolsetStdio:
   """Stdio transport: spawn `rvl mcp --config <path>`."""
