@@ -27,13 +27,17 @@ src/adk_redis/
     _utils.py             Internal serialization and key helpers.
   tools/
     __init__.py           Re-exports the search tools.
-    search/               RedisVL-backed vector, hybrid, range, and BM25
-                          text-search tools (one ADK FunctionTool each).
+    search/               RedisVL-backed vector, hybrid, range, BM25 text,
+                          and SQL search tools (one ADK FunctionTool each).
     memory/               ADK FunctionTool wrappers around the memory
                           service (MemoryPromptTool, SearchMemoryTool,
                           CreateMemoryTool, DeleteMemoryTool,
                           UpdateMemoryTool).
-    mcp_memory.py         MCP tool surface for the same memory operations.
+    mcp_memory.py         MCP tool surface for the same memory operations
+                          (Agent Memory Server).
+    mcp_search.py         create_redisvl_mcp_toolset(...) for RedisVL's
+                          own MCP server (rvl mcp). Supports stdio, sse,
+                          streamable-http; bearer auth on HTTP transports.
   cache/
     __init__.py           Re-exports the cache providers.
     _provider.py          Provider protocol and base class.
@@ -54,10 +58,25 @@ tests/
   memory/
     test_long_term_memory.py   RedisLongTermMemoryService end-to-end.
   tools/
-    test_vector_search.py      RedisVectorSearchTool.
+    test_vector_search.py      RedisVectorSearchTool (incl. epsilon-removal
+                               regression on RedisVectorQueryConfig).
     test_hybrid_search.py      RedisHybridSearchTool.
     test_range_search.py       RedisRangeSearchTool.
     test_text_search.py        RedisTextSearchTool.
+    test_sql_search.py         RedisSQLSearchTool.
+    test_mcp_search.py         create_redisvl_mcp_toolset (validation,
+                               three transports, bearer auth, tool filter).
+  cache/
+    test_provider.py           RedisVLCacheProvider (incl. no-DeprecationWarning
+                               regression for the cache.llm import path).
+  integration/
+    conftest.py                Skip-if-Redis-unreachable harness.
+    test_search_tools_end_to_end.py    Real Redis 8.4: vector/text/range/
+                                       native hybrid round-trips.
+    test_sql_and_cache_end_to_end.py   Real Redis 8.4: SQL SELECT with
+                                       params, cache round-trip.
+    test_adk_agent_registration.py     Tools register with google.adk.Agent
+                                       and surface via canonical_tools().
 ```
 
 ## Where features live
@@ -67,8 +86,9 @@ tests/
 | Working-memory session storage | `sessions/working_memory.py` |
 | Long-term memory + Memory Server proxy | `memory/long_term_memory.py`, `memory/_utils.py` |
 | ADK Memory tools (FunctionTool wrappers) | `tools/memory/` |
-| MCP memory tool surface | `tools/mcp_memory.py` |
-| Vector / Hybrid / Range / Text search tools | `tools/search/` |
+| MCP memory tool surface (Agent Memory Server) | `tools/mcp_memory.py` |
+| MCP search tool surface (RedisVL MCP server) | `tools/mcp_search.py` |
+| Vector / Hybrid / Range / Text / SQL search tools | `tools/search/` |
 | LLM and tool semantic caching | `cache/llm_cache.py`, `cache/tool_cache.py` |
 | Cache provider abstraction (RedisVL / LangCache) | `cache/_provider.py` |
 | ADK callback hooks for caching | `cache/callbacks.py` |

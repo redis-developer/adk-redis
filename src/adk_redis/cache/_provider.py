@@ -128,11 +128,11 @@ class RedisVLCacheProvider(BaseCacheProvider):
   def __init__(self, config: RedisVLCacheProviderConfig, vectorizer: Any):
     """Initialize the RedisVL cache provider."""
     try:
-      from redisvl.extensions.llmcache import SemanticCache
+      from redisvl.extensions.cache.llm import SemanticCache
     except ImportError as e:
       raise ImportError(
           "redisvl is required for RedisVLCacheProvider. "
-          "Install it with: pip install redisvl>=0.4.0"
+          "Install it with: pip install redisvl>=0.18.2"
       ) from e
 
     self._config = config

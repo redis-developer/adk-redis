@@ -47,13 +47,23 @@ memory = [
 
 # RedisVL-based search tools
 search = [
-    "redisvl>=0.5.0",
+    "redisvl>=0.18.2",
 ]
 
 # LangCache (managed semantic cache service)
 langcache = [
-    "redisvl>=0.11.1",
+    "redisvl>=0.18.2",
     "langcache",
+]
+
+# SQL-to-Redis search tool (RedisSQLSearchTool)
+sql = [
+    "redisvl[sql-redis]>=0.18.2",
+]
+
+# RedisVL MCP server toolset (create_redisvl_mcp_toolset)
+mcp-search = [
+    "redisvl[mcp]>=0.18.2",
 ]
 
 # Example runner dependencies
@@ -63,7 +73,7 @@ examples = [
 
 # All Redis integrations
 all = [
-    "adk-redis[memory,search,langcache]",
+    "adk-redis[memory,search,langcache,sql,mcp-search]",
 ]
 
 # Development dependencies

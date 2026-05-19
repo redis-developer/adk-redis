@@ -20,10 +20,33 @@ working-to-long-term promotion pipeline. Stay on the AMS client.
 
 ## Search tools are independent on purpose
 
-Vector, hybrid, range, and BM25 search tools live as four separate
-classes rather than one polymorphic tool with a `mode=` parameter. The
-LLM is much better at selecting between four narrow tools than at
-choosing the right value for a `mode` argument. Do not consolidate.
+Vector, hybrid, range, BM25 text, and SQL search tools live as five
+separate classes rather than one polymorphic tool with a `mode=`
+parameter. The LLM is much better at selecting between narrow tools than
+at choosing the right value for a `mode` argument. Do not consolidate.
+
+## `epsilon` is not on `RedisVectorQueryConfig`
+
+`EPSILON` is a `VECTOR_RANGE`-only attribute. Emitting it inside a KNN
+bracket makes Redis reject the query. `RedisVectorQueryConfig` therefore
+does not accept the field; only `RedisRangeQueryConfig` does. If a user
+PR adds it back to the KNN config, push back and point at the regression
+tests in `tests/tools/test_vector_search.py::TestRedisVectorQueryConfigEpsilonRemoval`.
+
+## Import semantic cache from `redisvl.extensions.cache.llm`
+
+The `redisvl.extensions.llmcache` path still works but emits a
+`DeprecationWarning`. The cache provider imports from
+`redisvl.extensions.cache.llm` (`cache/_provider.py:131`). Do not revert
+to the old path; the regression test in
+`tests/cache/test_provider.py` asserts no `DeprecationWarning` fires.
+
+## Two MCP toolset helpers exist on purpose
+
+`create_memory_mcp_toolset(...)` targets Agent Memory Server; it is the
+memory surface. `create_redisvl_mcp_toolset(...)` targets RedisVL's own
+MCP server (`rvl mcp`); it is the index/search surface. They are not
+interchangeable. Do not merge them.
 
 ## Two cache providers exist on purpose
 

@@ -49,7 +49,6 @@ class RedisVectorQueryConfig(BaseModel):
       hybrid_policy: Filter application policy - "BATCHES" or "ADHOC_BF".
       batch_size: Batch size when hybrid_policy is "BATCHES".
       ef_runtime: HNSW exploration factor at query time.
-      epsilon: Range search approximation factor for HNSW/SVS-VAMANA.
       search_window_size: SVS-VAMANA search window size.
       use_search_history: SVS-VAMANA history mode - "OFF", "ON", or "AUTO".
       search_buffer_capacity: SVS-VAMANA 2-level compression tuning.
@@ -72,7 +71,6 @@ class RedisVectorQueryConfig(BaseModel):
   hybrid_policy: str | None = Field(default=None)
   batch_size: int | None = Field(default=None, ge=1)
   ef_runtime: int | None = Field(default=None, ge=1)
-  epsilon: float | None = Field(default=None, ge=0.0)
   search_window_size: int | None = Field(default=None, ge=1)
   use_search_history: str | None = Field(default=None)
   search_buffer_capacity: int | None = Field(default=None, ge=1)
@@ -108,7 +106,6 @@ class RedisVectorQueryConfig(BaseModel):
         "hybrid_policy": self.hybrid_policy,
         "batch_size": self.batch_size,
         "ef_runtime": self.ef_runtime,
-        "epsilon": self.epsilon,
         "search_window_size": self.search_window_size,
         "use_search_history": self.use_search_history,
         "search_buffer_capacity": self.search_buffer_capacity,
