@@ -1,30 +1,53 @@
 # ADK Overview
 
-The [Google Agent Development Kit (ADK)](https://github.com/google/adk-python) is a framework for building AI agents with Google's Gemini models. `adk-redis` provides Redis-backed implementations of ADK's service interfaces.
+The [Google Agent Development Kit (ADK)](https://github.com/google/adk-python) is a framework for building AI agents with Google's Gemini models. `adk-redis` provides Redis-backed implementations of ADK's service interfaces so you can move from prototype to production without rewriting your agent.
 
-## ADK abstractions
+## Architecture
 
-| Abstraction | What it does | Redis implementation |
-|-------------|-------------|---------------------|
-| **Agent** | The reasoning core: plans, calls tools, responds | No change (ADK provides this) |
-| **Session** | Conversation state across turns | `RedisSessionService` |
-| **Memory** | Persistent knowledge across sessions | `RedisMemoryService` |
-| **Tool** | Functions the agent can call | RedisVL search tools |
+```mermaid
+flowchart TD
+    subgraph Agent [Your ADK Agent]
+        SS[Session Service<br/>working memory]
+        MS[Memory Service<br/>long-term]
+        ST[Search Tools<br/>vector · hybrid · SQL]
+        SC[Semantic Cache<br/>before/after callbacks]
+    end
 
-## Where Redis fits
+    SS & MS -->|REST / MCP| AMS
+    ST -->|RedisVL / MCP| R
+    SC -->|RedisVL / LangCache| R
 
-Redis replaces the default in-memory implementations with durable, scalable alternatives:
+    subgraph AMS [Agent Memory Server]
+        WM[Working Memory API]
+        LTM[Long-Term Memory API]
+    end
 
-- **Sessions** are stored as Redis JSON documents with optional TTL
-- **Memory** is proxied to the Redis Agent Memory Server for two-tier storage
-- **Search tools** use RedisVL for vector similarity search
-- **Caching** uses Redis for semantic LLM response caching
+    AMS --> R
 
-## When to use adk-redis
+    subgraph R [Redis 8.4+]
+        JSON[(JSON storage)]
+        VEC[(Vector index)]
+        FTS[(Full-text index)]
+    end
+```
 
-Use `adk-redis` when you are building a Google ADK agent and need:
+## ADK Interfaces
 
-- Session persistence across process restarts
-- Long-term memory that survives beyond a single conversation
-- Vector search over your own documents
-- Production deployment with Redis as the data layer
+`adk-redis` implements four ADK extension points. Each one maps to a concept page with full details.
+
+| ADK Interface | `adk-redis` implementation | Concept page |
+|---------------|---------------------------|-------------|
+| `BaseSessionService` | `RedisWorkingMemorySessionService` | [Sessions + Memory Services](sessions.md) |
+| `BaseMemoryService` | `RedisLongTermMemoryService` | [Sessions + Memory Services](sessions.md) |
+| `BaseTool` | Search tools (`RedisVectorSearchTool`, `RedisHybridSearchTool`, etc.) and memory tools (`SearchMemoryTool`, `CreateMemoryTool`, etc.) | [Search Tools](search.md), [Memory MCP + Tools](memory.md) |
+| Model callbacks | `LLMResponseCache` with `RedisVLCacheProvider` or `LangCacheProvider` | [Semantic Caching](caching.md) |
+
+## Running Your Agent
+
+ADK provides several ways to run and test agents:
+
+- **`adk web`**: browser-based UI for interactive development and debugging.
+- **`adk run`**: terminal-based interaction.
+- **`adk api_server`**: RESTful API for production deployment.
+
+See the [ADK runtime documentation](https://google.github.io/adk-docs/runtime/) for details.

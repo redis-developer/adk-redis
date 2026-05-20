@@ -1,67 +1,23 @@
-# Integration Guide
+# Quickstart
 
-> **Canonical docs:** The full integration guide is published at [redis.io/docs/latest/integrate/google-adk/](https://redis.io/docs/latest/integrate/google-adk/). This file is a quick-reference for contributors working in the repo.
+Get an ADK agent running with Redis-backed sessions and long-term memory in
+three steps. For the concepts behind each feature, see the
+[Concepts](../concepts/index.md) section.
 
-Complete guide for integrating Redis Agent Memory Server with adk-redis.
+> **Full guide on redis.io:**
+> [redis.io/docs/latest/integrate/google-adk/](https://redis.io/docs/latest/integrate/google-adk/)
 
-## Architecture
+## 1. Start infrastructure
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         ADK Application                         │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                      ADK Agent                           │   │
-│  │  ┌────────────────────┐    ┌──────────────────────────┐  │   │
-│  │  │ Session Service    │    │   Memory Service         │  │   │
-│  │  │ (Working Memory)   │    │   (Long-Term Memory)     │  │   │
-│  │  └────────┬───────────┘    └──────────┬───────────────┘  │   │
-│  └───────────┼────────────────────────────┼──────────────────┘   │
-└──────────────┼────────────────────────────┼──────────────────────┘
-               │                            │
-               │    HTTP API (port 8000)    │
-               ▼                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              Redis Agent Memory Server                          │
-│  ┌──────────────────────┐    ┌──────────────────────────────┐  │
-│  │  Working Memory API  │    │  Long-Term Memory API        │  │
-│  │ - Session messages  │    │ - Semantic search           │  │
-│  │ - Auto-summarize    │    │ - Memory extraction         │  │
-│  │ - Context window    │    │ - Recency boosting          │  │
-│  └──────────┬───────────┘    └──────────┬───────────────────┘  │
-└─────────────┼────────────────────────────┼──────────────────────┘
-              │                            │
-              │    Redis Protocol          │
-              ▼                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         Redis 8.4+                              │
-│ - JSON storage                                                 │
-│ - Vector search (Redis Query Engine)                           │
-│ - Full-text search                                             │
-│ - Persistence                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Component Responsibilities
-
-| Component | Responsibility |
-|-----------|----------------|
-| **ADK Agent** | Agent logic, tool execution, response generation |
-| **adk-redis Session Service** | Implements ADK's `BaseSessionService` interface |
-| **adk-redis Memory Service** | Implements ADK's `BaseMemoryService` interface |
-| **Agent Memory Server** | Memory extraction, summarization, vector search |
-| **Redis 8.4+** | Data storage, vector indexing, full-text search, persistence |
-
----
-
-## Complete Setup
-
-### 1. Start Infrastructure
+Follow the [Redis setup](how_to_guides/redis_setup.md) and
+[Agent Memory Server setup](how_to_guides/memory_server_setup.md) how-to guides,
+or use this minimal start:
 
 ```bash
-# Start Redis 8.4
+# Redis 8.4
 docker run -d --name redis -p 6379:6379 redis:8.4-alpine
 
-# Start Agent Memory Server
+# Agent Memory Server (dev mode)
 docker run -d --name agent-memory-server \
   -p 8000:8000 \
   -e REDIS_URL=redis://host.docker.internal:6379 \
@@ -77,53 +33,48 @@ docker run -d --name agent-memory-server \
 curl http://localhost:8000/v1/health
 ```
 
-> **Note**: Redis 8.4 includes the Redis Query Engine (evolved from RediSearch) with native support for vector search, full-text search, and JSON operations. Redis Stack is no longer needed.
+!!! note
+    On Linux, replace `host.docker.internal` with `172.17.0.1` or use
+    `--network host`.
 
-**Note:** On Linux, replace `host.docker.internal` with `172.17.0.1` or use `--network host` mode.
-
-### 2. Install Dependencies
+## 2. Install dependencies
 
 ```bash
 pip install google-adk "adk-redis[memory]"
 ```
 
-### 3. Configure Services
+## 3. Wire services into an agent
 
 ```python
 from google.adk import Agent
 from google.adk.runners import Runner
-from adk_redis.memory import RedisLongTermMemoryService, RedisLongTermMemoryServiceConfig
-from adk_redis.sessions import RedisWorkingMemorySessionService, RedisWorkingMemorySessionServiceConfig
-
-# Configure session service (Tier 1: Working Memory)
-session_config = RedisWorkingMemorySessionServiceConfig(
-    api_base_url="http://localhost:8000",
-    default_namespace="my_app",
-    model_name="gpt-4o",
-    context_window_max=8000,
-    extraction_strategy="discrete",
+from adk_redis import (
+    RedisWorkingMemorySessionService,
+    RedisWorkingMemorySessionServiceConfig,
+    RedisLongTermMemoryService,
+    RedisLongTermMemoryServiceConfig,
 )
-session_service = RedisWorkingMemorySessionService(config=session_config)
 
-# Configure memory service (Tier 2: Long-Term Memory)
-memory_config = RedisLongTermMemoryServiceConfig(
-    api_base_url="http://localhost:8000",
-    default_namespace="my_app",
-    extraction_strategy="discrete",
-    recency_boost=True,
-    semantic_weight=0.8,
-    recency_weight=0.2,
+session_service = RedisWorkingMemorySessionService(
+    config=RedisWorkingMemorySessionServiceConfig(
+        api_base_url="http://localhost:8000",
+        default_namespace="my_app",
+    )
 )
-memory_service = RedisLongTermMemoryService(config=memory_config)
 
-# Create agent
+memory_service = RedisLongTermMemoryService(
+    config=RedisLongTermMemoryServiceConfig(
+        api_base_url="http://localhost:8000",
+        default_namespace="my_app",
+    )
+)
+
 agent = Agent(
     name="memory_agent",
     model="gemini-2.0-flash",
     instruction="You are a helpful assistant with long-term memory.",
 )
 
-# Create runner with both services
 runner = Runner(
     agent=agent,
     app_name="my_app",
@@ -132,256 +83,27 @@ runner = Runner(
 )
 ```
 
----
-
-## Configuration Reference
-
-### RedisWorkingMemorySessionServiceConfig
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `api_base_url` | `str` | `http://localhost:8000` | Agent Memory Server URL |
-| `default_namespace` | `str` | `None` | Namespace for session isolation |
-| `model_name` | `str` | `None` | LLM model for summarization |
-| `context_window_max` | `int` | `None` | Max tokens before auto-summarization |
-| `extraction_strategy` | `str` | `discrete` | `discrete`, `summary`, `preferences`, `custom` |
-| `session_ttl_seconds` | `int` | `None` | Session expiration time |
-| `timeout` | `float` | `30.0` | HTTP request timeout |
-
-### RedisLongTermMemoryServiceConfig
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `api_base_url` | `str` | `http://localhost:8000` | Agent Memory Server URL |
-| `default_namespace` | `str` | `None` | Namespace for memory isolation |
-| `search_top_k` | `int` | `10` | Max memories per search |
-| `distance_threshold` | `float` | `None` | Max distance for search results (0.0-1.0) |
-| `recency_boost` | `bool` | `True` | Enable recency-aware ranking |
-| `semantic_weight` | `float` | `0.8` | Weight for semantic similarity (0.0-1.0) |
-| `recency_weight` | `float` | `0.2` | Weight for recency score (0.0-1.0) |
-| `extraction_strategy` | `str` | `discrete` | `discrete`, `summary`, `preferences`, `custom` |
-| `timeout` | `float` | `30.0` | HTTP request timeout |
-
----
-
-## Running Examples
-
-### Memory Example
+Launch the agent with the ADK runtime
+([`adk web`](https://google.github.io/adk-docs/runtime/)):
 
 ```bash
-cd examples/simple_redis_memory
-pip install "adk-redis[web]"
-
-# Set environment
-export GOOGLE_API_KEY=your-google-key
-export REDIS_MEMORY_SERVER_URL=http://localhost:8000
-
-# Run
-python main.py
+adk web my_app
 ```
 
-Open http://localhost:8080
+**Try it out:**
 
-**Test conversation:**
-1. Session 1: "Hi, I'm Alice. I love pizza and Python programming."
-2. Wait 5 seconds for memory extraction
-3. Session 2 (new session): "What do you remember about me?"
+1. "Hi, I'm Alice. I love pizza and Python."
+2. Wait 5 seconds for background memory extraction.
+3. Start a new session: "What do you remember about me?"
 
-### Search Tools Example
+## What next?
 
-```bash
-cd examples/redis_search_tools
-pip install adk-redis
-
-# Set environment
-export REDIS_URL=redis://localhost:6379
-export GOOGLE_API_KEY=your-google-key
-
-# Load data
-python load_data.py
-
-# Run agent
-adk web redis_search_tools_agent
-```
-
----
-
-## Data Flow
-
-### Session Message Flow
-
-```
-1. User sends message
-   ↓
-2. ADK Agent processes with RedisWorkingMemorySessionService
-   ↓
-3. Session service stores message in Agent Memory Server (Working Memory API)
-   ↓
-4. Agent Memory Server stores in Redis
-   ↓
-5. Background task extracts memories to Long-Term Memory
-```
-
-### Memory Search Flow
-
-```
-1. ADK Agent needs context
-   ↓
-2. RedisLongTermMemoryService.search_memory() called
-   ↓
-3. Query sent to Agent Memory Server (Long-Term Memory API)
-   ↓
-4. Agent Memory Server performs vector search in Redis
-   ↓
-5. Results ranked with recency boosting
-   ↓
-6. Memories returned to agent
-```
-
----
-
-## Three Ways to Use Memory
-
-adk-redis provides three approaches for memory integration:
-
-### 1. Memory Services (Framework-Managed)
-
-Best for: Full ADK integration with automatic memory management.
-
-```python
-from adk_redis import (
-    RedisWorkingMemorySessionService,
-    RedisLongTermMemoryService,
-)
-
-# Framework handles memory automatically
-runner = Runner(
-    agent=agent,
-    session_service=session_service,
-    memory_service=memory_service,
-)
-```
-
-### 2. REST-Based Tools (LLM-Controlled)
-
-Best for: Explicit LLM control over memory operations.
-
-```python
-from adk_redis import (
-    SearchMemoryTool,
-    GetMemoryTool,
-    CreateMemoryTool,
-    UpdateMemoryTool,
-    DeleteMemoryTool,
-    MemoryToolConfig,
-)
-
-config = MemoryToolConfig(
-    api_base_url="http://localhost:8000",
-    default_namespace="my_app",
-)
-
-agent = Agent(
-    name="memory_agent",
-    tools=[
-        SearchMemoryTool(config=config),
-        GetMemoryTool(config=config),
-        CreateMemoryTool(config=config),
-    ],
-)
-```
-
-### 3. MCP-Based Tools (Protocol-Based)
-
-Best for: MCP ecosystem integration and standardized tool discovery. Use ADK's native `McpToolset` with `SseConnectionParams` to connect to Agent Memory Server's SSE endpoint.
-
-```python
-from google.adk import Agent
-from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
-
-memory_tools = McpToolset(
-    connection_params=SseConnectionParams(url="http://localhost:8000/sse"),
-    tool_filter=["search_long_term_memory", "create_long_term_memories"],
-)
-
-agent = Agent(
-    name="memory_agent",
-    tools=[memory_tools],
-)
-```
-
-See the [fitness_coach_mcp example](../examples/fitness_coach_mcp/) for a complete MCP integration example.
-
-### Decision Matrix
-
-| Use Case | Recommended Approach |
-|----------|---------------------|
-| Full ADK integration | Memory Services |
-| LLM decides when to remember | REST Tools |
-| MCP ecosystem | MCP Tools (native `McpToolset`) |
-| Debugging/development | REST Tools |
-| Multi-agent systems | MCP Tools |
-
----
-
-## Troubleshooting
-
-### No memories found
-
-**Cause:** Memory extraction hasn't completed
-
-**Solution:** Wait 5-10 seconds after sending messages for background extraction
-
-### Connection refused
-
-**Cause:** Agent Memory Server not running
-
-**Solution:**
-```bash
-docker ps | grep agent-memory-server
-curl http://localhost:8000/v1/health
-```
-
-### Import errors
-
-**Cause:** Missing dependencies
-
-**Solution:**
-```bash
-pip install "adk-redis[memory]"
-```
-
----
-
-## Alternative: MCP Integration
-
-For MCP (Model Context Protocol) based integration, see the [fitness_coach_mcp example](../examples/fitness_coach_mcp/).
-
-MCP provides a standardized protocol for connecting agents to tools via Server-Sent Events (SSE):
-
-```python
-from google.adk import Agent
-from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
-
-# Connect to Agent Memory Server's MCP endpoint
-memory_tools = McpToolset(
-    connection_params=SseConnectionParams(url="http://localhost:9000/sse"),
-    tool_filter=["search_long_term_memory", "create_long_term_memories"],
-)
-
-agent = Agent(
-    model="gemini-2.0-flash",
-    name="my_agent",
-    tools=[memory_tools],
-)
-```
-
-**When to use MCP vs Services:**
-
-| Approach | Best For |
-|----------|----------|
-| **ADK Services** | Full framework integration, automatic memory extraction |
-| **REST Tools** | LLM-controlled memory with explicit tool calls |
-| **MCP Tools** | Standard MCP protocol, automatic tool discovery |
+| Goal | Page |
+|------|------|
+| Understand sessions, memory, search, and caching | [Concepts](../concepts/index.md) |
+| Configure session or memory services in detail | [Session service how-to](how_to_guides/session_service.md), [Memory service how-to](how_to_guides/memory_service.md) |
+| Give the LLM explicit memory tools | [Sessions + Memory MCP + Tools](../concepts/memory.md) |
+| Add vector or hybrid search | [Search tools how-to](how_to_guides/search_tools.md) |
+| Reduce LLM cost with semantic caching | [Semantic Caching](../concepts/caching.md) |
+| See a full working example | [Examples](../examples/index.md) |
+| Run or deploy your agent | [ADK runtime](https://google.github.io/adk-docs/runtime/) |

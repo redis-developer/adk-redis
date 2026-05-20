@@ -127,7 +127,7 @@ docker compose up -d
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DISABLE_AUTH` | `false` | Disable authentication (dev only) |
-| `GENERATION_MODEL` | `gpt-5` | LLM model for summarization and memory extraction |
+| `GENERATION_MODEL` | `gpt-4o` | LLM model for summarization and memory extraction |
 | `EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model for semantic search |
 | `REDISVL_VECTOR_DIMENSIONS` | `1536` | Embedding dimensions (required for some models like Ollama) |
 | `EXTRACTION_DEBOUNCE_SECONDS` | `300` | Debounce period (in seconds) for memory extraction. Lower values (e.g., 5) provide faster memory extraction, while higher values reduce API calls |

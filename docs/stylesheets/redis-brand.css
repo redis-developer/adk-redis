@@ -30,6 +30,17 @@
   --md-accent-fg-color--transparent: rgba(255, 68, 56, 0.1);
 }
 
+/* Layout: pin the left sidebar to the viewport's left edge and the right
+ * TOC to the viewport's right edge by removing Material's centered grid
+ * cap. Sidebars keep their default 12.1rem widths; the content column
+ * absorbs all remaining space. Header/tabs use the same grid so they
+ * also span full width, keeping the layout consistent. */
+@media screen and (min-width: 76.25em) {
+  .md-grid {
+    max-width: none;
+  }
+}
+
 /* Bold every top-level entry in the left sidebar. With navigation.sections,
  * group labels (Concepts, User Guide, ...) get the section-title treatment,
  * but single-page top-level items like Home stay regular weight. This rule
