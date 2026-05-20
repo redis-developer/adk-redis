@@ -1,6 +1,6 @@
 # Agent Memory Server Setup Guide
 
-> **Canonical docs:** See [redis.io/docs/latest/integrate/google-adk/](https://redis.io/docs/latest/integrate/google-adk/) for the full integration guide. This file is a quick-reference for contributors.
+> **See also:** [ADK + Redis on redis.io](https://redis.io/docs/latest/integrate/google-adk/) for additional coverage.
 
 Complete setup instructions for Redis Agent Memory Server.
 
