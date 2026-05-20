@@ -29,7 +29,8 @@ links:
   to run [Redis Agent Memory Server](https://github.com/redis/agent-memory-server).
 - The user wants to expose a Redis index to ADK via MCP. For the index
   itself, point ADK's native `McpToolset` at a `rvl mcp` server. For
-  Agent Memory Server's MCP endpoint, use `create_memory_mcp_toolset`.
+  Agent Memory Server's MCP endpoint, use ADK's native `McpToolset`
+  with `SseConnectionParams` pointed at the AMS `/sse` endpoint.
 - The user wants semantic caching for an ADK agent (self-hosted via
   RedisVL or managed via Redis LangCache).
 

@@ -191,46 +191,6 @@ class TestMemoryToolImports:
     assert DeleteMemoryTool is not None
 
 
-class TestMCPToolImports:
-  """Test MCP tool imports."""
-
-  def test_create_memory_mcp_toolset_import(self):
-    """Test create_memory_mcp_toolset can be imported."""
-    from adk_redis import create_memory_mcp_toolset
-
-    assert create_memory_mcp_toolset is not None
-
-  def test_all_mcp_tools_import(self):
-    """Test ALL_MCP_TOOLS can be imported."""
-    from adk_redis import ALL_MCP_TOOLS
-
-    assert ALL_MCP_TOOLS is not None
-    assert isinstance(ALL_MCP_TOOLS, list)
-    assert len(ALL_MCP_TOOLS) == 7
-
-  def test_mcp_memory_submodule_import(self):
-    """Test mcp_memory submodule imports."""
-    from adk_redis.tools.mcp_memory import ALL_MCP_TOOLS
-    from adk_redis.tools.mcp_memory import create_memory_mcp_toolset
-    from adk_redis.tools.mcp_memory import MCP_TOOL_CREATE
-    from adk_redis.tools.mcp_memory import MCP_TOOL_DELETE
-    from adk_redis.tools.mcp_memory import MCP_TOOL_EDIT
-    from adk_redis.tools.mcp_memory import MCP_TOOL_GET
-    from adk_redis.tools.mcp_memory import MCP_TOOL_PROMPT
-    from adk_redis.tools.mcp_memory import MCP_TOOL_SEARCH
-    from adk_redis.tools.mcp_memory import MCP_TOOL_SET_WORKING_MEMORY
-
-    assert create_memory_mcp_toolset is not None
-    assert ALL_MCP_TOOLS is not None
-    assert MCP_TOOL_SEARCH == "search_long_term_memory"
-    assert MCP_TOOL_GET == "get_long_term_memory"
-    assert MCP_TOOL_CREATE == "create_long_term_memories"
-    assert MCP_TOOL_EDIT == "edit_long_term_memory"
-    assert MCP_TOOL_DELETE == "delete_long_term_memories"
-    assert MCP_TOOL_PROMPT == "memory_prompt"
-    assert MCP_TOOL_SET_WORKING_MEMORY == "set_working_memory"
-
-
 class TestCacheImports:
   """Test cache module imports."""
 

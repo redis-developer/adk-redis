@@ -33,8 +33,7 @@ src/adk_redis/
                           service (MemoryPromptTool, SearchMemoryTool,
                           CreateMemoryTool, DeleteMemoryTool,
                           UpdateMemoryTool).
-    mcp_memory.py         MCP tool surface for the same memory operations
-                          (Agent Memory Server).
+
   cache/
     __init__.py           Re-exports the cache providers.
     _provider.py          Provider protocol and base class.
@@ -81,8 +80,7 @@ tests/
 | Working-memory session storage | `sessions/working_memory.py` |
 | Long-term memory + Memory Server proxy | `memory/long_term_memory.py`, `memory/_utils.py` |
 | ADK Memory tools (FunctionTool wrappers) | `tools/memory/` |
-| MCP memory tool surface (Agent Memory Server) | `tools/mcp_memory.py` |
-| MCP search (RedisVL `rvl mcp` server) | Use ADK's native `McpToolset` directly; no adk-redis wrapper. |
+| MCP (RedisVL or AMS) | Use ADK's native `McpToolset` directly; no adk-redis wrapper. |
 | Vector / Hybrid / Range / Text / SQL search tools | `tools/search/` |
 | LLM and tool semantic caching | `cache/llm_cache.py`, `cache/tool_cache.py` |
 | Cache provider abstraction (RedisVL / LangCache) | `cache/_provider.py` |

@@ -21,8 +21,6 @@ from adk_redis.tools.memory import MemoryPromptTool
 from adk_redis.tools.memory import MemoryToolConfig
 from adk_redis.tools.memory import SearchMemoryTool
 from adk_redis.tools.memory import UpdateMemoryTool
-from adk_redis.tools.mcp_memory import ALL_MCP_TOOLS
-from adk_redis.tools.mcp_memory import create_memory_mcp_toolset
 from adk_redis.tools.search import BaseRedisSearchTool
 from adk_redis.tools.search import RedisAggregatedHybridQueryConfig
 from adk_redis.tools.search import RedisHybridQueryConfig
@@ -60,7 +58,4 @@ __all__ = [
     "RedisRangeQueryConfig",
     "RedisTextQueryConfig",
     "MemoryToolConfig",
-    # MCP tools
-    "create_memory_mcp_toolset",
-    "ALL_MCP_TOOLS",
 ]

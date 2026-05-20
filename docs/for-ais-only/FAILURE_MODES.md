@@ -41,16 +41,15 @@ The `redisvl.extensions.llmcache` path still works but emits a
 to the old path; the regression test in
 `tests/cache/test_provider.py` asserts no `DeprecationWarning` fires.
 
-## One MCP helper, not two
+## No MCP wrapper helpers
 
-`create_memory_mcp_toolset(...)` exists for Agent Memory Server because
-AMS's MCP URL has a non-trivial `/sse` suffix and the tool-name vocabulary
-is bespoke. There is **no** matching helper for the RedisVL MCP server
-(`rvl mcp`): users wire it with ADK's native `McpToolset` plus
-`StdioConnectionParams` / `SseConnectionParams` /
-`StreamableHTTPConnectionParams`. The maintainers chose this on purpose
-to keep the MCP wiring story aligned with every other ADK catalog
-integration. Do not reintroduce a `create_redisvl_mcp_toolset` wrapper.
+There are no custom MCP wrapper helpers in this package. For both the
+RedisVL MCP server (`rvl mcp`) and Agent Memory Server's MCP endpoint,
+users wire ADK's native `McpToolset` with `StdioConnectionParams` /
+`SseConnectionParams` / `StreamableHTTPConnectionParams` directly. This
+keeps the MCP wiring story aligned with every other ADK catalog
+integration. Do not introduce `create_redisvl_mcp_toolset` or
+`create_memory_mcp_toolset` wrappers.
 
 ## Two cache providers exist on purpose
 
