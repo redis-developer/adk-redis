@@ -21,8 +21,6 @@
 
 ---
 
-## What it does
-
 `adk-redis` is the Redis layer for [Google ADK](https://github.com/google/adk-python) agents. It implements ADK's `BaseMemoryService`, `BaseSessionService`, and `BaseTool` interfaces against Redis, [RedisVL](https://docs.redisvl.com), and the [Redis Agent Memory Server](https://github.com/redis/agent-memory-server). It also ships MCP toolset helpers and semantic-cache providers.
 
 | Surface | What you get | Backed by |
