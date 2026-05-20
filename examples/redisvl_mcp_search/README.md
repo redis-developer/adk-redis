@@ -1,10 +1,15 @@
 # RedisVL MCP Search Agent
 
-The **MCP-path mirror** of [`redis_search_tools/`](../redis_search_tools/).
-Same knowledge-base corpus, same kinds of prompts, but search is served
-by a separately-running `rvl mcp` server and the agent calls it via
-ADK's standard `McpToolset` over MCP. No adk-redis wrapper involved;
-this is the same pattern every MCP integration in the ADK catalog uses.
+The **MCP-path counterpart** of [`redis_search_tools/`](../redis_search_tools/).
+A similar Redis knowledge-base corpus and the same kinds of prompts, but
+search is served by a separately-running `rvl mcp` server and the agent
+calls it via ADK's standard `McpToolset` over MCP. No adk-redis wrapper
+involved; this is the same pattern every MCP integration in the ADK
+catalog uses.
+
+(The MCP corpus is curated for hybrid demos and includes a couple of
+MCP-specific articles, so the dataset is overlapping rather than
+identical with `redis_search_tools/load_data.py`.)
 
 Use this example to compare the two deployment shapes side by side:
 

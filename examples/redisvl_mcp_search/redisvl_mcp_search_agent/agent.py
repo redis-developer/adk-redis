@@ -14,11 +14,12 @@
 
 """RedisVL MCP search agent.
 
-The MCP-path mirror of `examples/redis_search_tools/`. It targets the
-same knowledge-base corpus but routes search through a separately-running
-`rvl mcp` server via ADK's native ``McpToolset``. The server is
-configured for hybrid (BM25 + vector) search, so a single MCP tool
-covers both semantic and keyword retrieval.
+The MCP-path counterpart of `examples/redis_search_tools/`. It targets
+a similar Redis knowledge-base corpus (overlapping, with MCP-specific
+docs added in the loader) and routes search through a
+separately-running `rvl mcp` server via ADK's native ``McpToolset``.
+The server is configured for hybrid (BM25 + vector) search, so a
+single MCP tool covers both semantic and keyword retrieval.
 
 The agent does not depend on any adk-redis MCP wrapper; it uses the
 standard ADK MCP pattern shown by every catalog integration page so the

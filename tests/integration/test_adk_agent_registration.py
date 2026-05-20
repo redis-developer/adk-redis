@@ -31,17 +31,29 @@ pytest.importorskip("redisvl")
 
 from google.adk import Agent
 from google.adk.agents.readonly_context import ReadonlyContext
-from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
-from google.adk.tools.mcp_tool.mcp_session_manager import (
-    StreamableHTTPConnectionParams,
-)
-from mcp import StdioServerParameters
 from redisvl.index import SearchIndex
 
 from adk_redis import RedisSQLSearchTool
 from adk_redis import RedisTextQueryConfig
 from adk_redis import RedisTextSearchTool
+
+# google-adk exposes its MCP surface from google.adk.tools.mcp_tool only when
+# the optional `mcp` dependency is importable. The package's __init__.py
+# silently swallows ImportError on partial installs, so test it by attempting
+# the actual symbol import; gate the MCP-specific tests on that.
+try:
+  from google.adk.tools.mcp_tool import McpToolset
+  from google.adk.tools.mcp_tool.mcp_session_manager import (
+      StdioConnectionParams,
+  )
+  from google.adk.tools.mcp_tool.mcp_session_manager import (
+      StreamableHTTPConnectionParams,
+  )
+  from mcp import StdioServerParameters
+
+  _MCP_AVAILABLE = True
+except ImportError:
+  _MCP_AVAILABLE = False
 
 
 class TestSearchToolsRegisterWithAgent:
@@ -82,6 +94,10 @@ class TestSearchToolsRegisterWithAgent:
     assert "redis_text_search" in names
 
 
+@pytest.mark.skipif(
+    not _MCP_AVAILABLE,
+    reason="google-adk MCP support not available in this install",
+)
 class TestRedisVLMcpToolsetRegistersWithAgent:
   """A native ADK McpToolset against rvl mcp attaches to an Agent."""
 

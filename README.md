@@ -94,7 +94,7 @@ uv sync --all-extras
     redislabs/agent-memory-server:0.13.2 \
     agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
   ```
-  AMS supports 100+ LLM and embedding providers via [LiteLLM](https://docs.litellm.ai/). See [Agent Memory Server setup](docs/user_guide/how_to_guides/memory_server_setup.md) for the full configuration matrix.
+  On Linux, `host.docker.internal` is not routable by default; use `--network=host` and `REDIS_URL=redis://127.0.0.1:6379`, or set `REDIS_URL` to the Docker-bridge gateway (typically `redis://172.17.0.1:6379`). AMS supports 100+ LLM and embedding providers via [LiteLLM](https://docs.litellm.ai/). See [Agent Memory Server setup](docs/user_guide/how_to_guides/memory_server_setup.md) for the full configuration matrix.
 
 For Redis Cloud, Redis Enterprise, or troubleshooting, see [Redis setup](docs/user_guide/how_to_guides/redis_setup.md).
 
@@ -389,12 +389,12 @@ Apache 2.0. See [LICENSE](LICENSE).
 
 ## Helpful links
 
-- [PyPI](https://pypi.org/project/adk-redis/) — install with `pip install adk-redis`
-- [Redis setup](docs/user_guide/how_to_guides/redis_setup.md) — local, Docker, and Redis Cloud
-- [Agent Memory Server setup](docs/user_guide/how_to_guides/memory_server_setup.md) — full AMS configuration
-- [Integration walkthrough](docs/user_guide/01_integration.md) — end-to-end wiring
-- [Search tools guide](docs/user_guide/how_to_guides/search_tools.md) — in-process vs MCP, decision matrix
-- [Google ADK](https://github.com/google/adk-python) — agent framework
-- [Agent Memory Server](https://github.com/redis/agent-memory-server) — memory backend
-- [RedisVL](https://docs.redisvl.com/) — Redis Vector Library
-- [Redis LangCache](https://redis.io/langcache) — managed semantic cache
+- [PyPI](https://pypi.org/project/adk-redis/): install with `pip install adk-redis`
+- [Redis setup](docs/user_guide/how_to_guides/redis_setup.md): local, Docker, and Redis Cloud
+- [Agent Memory Server setup](docs/user_guide/how_to_guides/memory_server_setup.md): full AMS configuration
+- [Integration walkthrough](docs/user_guide/01_integration.md): end-to-end wiring
+- [Search tools guide](docs/user_guide/how_to_guides/search_tools.md): in-process vs MCP, decision matrix
+- [Google ADK](https://github.com/google/adk-python): agent framework
+- [Agent Memory Server](https://github.com/redis/agent-memory-server): memory backend
+- [RedisVL](https://docs.redisvl.com/): Redis Vector Library
+- [Redis LangCache](https://redis.io/langcache): managed semantic cache

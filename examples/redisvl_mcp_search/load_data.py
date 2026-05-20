@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Load the same knowledge base as redis_search_tools, but for MCP search.
+"""Load a Redis knowledge base for the MCP-path search demo.
 
-The corpus mirrors `examples/redis_search_tools/load_data.py` so the
-in-process and MCP demos answer the same questions on the same data.
-Documents are embedded with `redis/langcache-embed-v2` (768 dims) so the
-configured `rvl mcp` server can run vector or hybrid search against
-them.
+The corpus is curated for the MCP demo and overlaps with
+`examples/redis_search_tools/load_data.py` so the in-process and MCP
+demos answer similar questions, with MCP-specific docs added here
+(e.g., the "RedisVL MCP Server" entry). Documents are embedded with
+`redis/langcache-embed-v2` (768 dims) so the configured `rvl mcp`
+server can run vector or hybrid search against them.
 """
 
 import os
