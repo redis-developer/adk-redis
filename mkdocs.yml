@@ -1,6 +1,6 @@
 site_name: Google ADK + Redis
 site_description: Redis backends for Google Agent Development Kit. Sessions, memory, tools, cache.
-site_url: https://ai.redis.io/adk/
+site_url: https://redis-developer.github.io/adk-redis/
 repo_url: https://github.com/redis-developer/adk-redis
 repo_name: redis-developer/adk-redis
 edit_uri: edit/main/docs/

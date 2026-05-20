@@ -66,6 +66,16 @@ examples = [
     "python-dotenv",
 ]
 
+# Docs build (mkdocs + plugins used in mkdocs.yml)
+docs = [
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.27",
+    "mkdocs-llmstxt>=0.5",
+    "mkdocs-section-index>=0.3",
+    "mkdocs-autorefs>=1.2",
+    "mkdocs-macros-plugin>=1.0",
+]
+
 # All Redis integrations
 all = [
     "adk-redis[memory,search,langcache,sql]",
