@@ -8,6 +8,7 @@ on:
       - "mkdocs.yml"
       - "src/adk_redis/**"
       - "pyproject.toml"
+      - "uv.lock"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
