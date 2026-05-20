@@ -52,13 +52,15 @@ Open **http://localhost:8000** in your browser.
 
 ## How MCP Memory Works
 
-This example uses `create_memory_mcp_toolset()` to connect to the Agent Memory Server's MCP endpoint:
+This example uses ADK's native `McpToolset` to connect to the Agent Memory Server's MCP endpoint:
 
 ```python
-from adk_redis.tools.mcp_memory import create_memory_mcp_toolset
+from google.adk import Agent
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
 
-memory_tools = create_memory_mcp_toolset(
-    server_url="http://localhost:8088",
+memory_tools = McpToolset(
+    connection_params=SseConnectionParams(url="http://localhost:8088/sse"),
     tool_filter=[
         "search_long_term_memory",
         "create_long_term_memories",

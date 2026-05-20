@@ -15,7 +15,7 @@
 """Personal Fitness Coach Agent with MCP Memory Tools.
 
 This agent demonstrates MCP-based memory integration:
-- Uses create_memory_mcp_toolset() for memory operations
+- Uses ADK's native McpToolset to connect to Agent Memory Server
 - Stores semantic memories (profile, injuries, equipment, goals)
 - Stores episodic memories (workouts with event_date, milestones)
 - Searches memory before making recommendations
@@ -24,8 +24,8 @@ This agent demonstrates MCP-based memory integration:
 import os
 
 from google.adk import Agent
-
-from adk_redis.tools.mcp_memory import create_memory_mcp_toolset
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
 
 # Configuration from environment
 # MCP server runs on port 9000 (separate from REST API on 8088)
@@ -33,8 +33,9 @@ MEMORY_MCP_URL = os.getenv("MEMORY_MCP_URL", "http://localhost:9000")
 
 # Create MCP toolset for Agent Memory Server
 # Connects to the MCP server's SSE endpoint
-memory_tools = create_memory_mcp_toolset(
-    server_url=MEMORY_MCP_URL,
+sse_url = MEMORY_MCP_URL.rstrip("/")
+memory_tools = McpToolset(
+    connection_params=SseConnectionParams(url=f"{sse_url}/sse"),
     tool_filter=[
         "search_long_term_memory",
         "create_long_term_memories",

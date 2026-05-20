@@ -293,13 +293,15 @@ agent = Agent(
 
 ### 3. MCP-Based Tools (Protocol-Based)
 
-Best for: MCP ecosystem integration and standardized tool discovery.
+Best for: MCP ecosystem integration and standardized tool discovery. Use ADK's native `McpToolset` with `SseConnectionParams` to connect to Agent Memory Server's SSE endpoint.
 
 ```python
-from adk_redis import create_memory_mcp_toolset
+from google.adk import Agent
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
 
-memory_tools = create_memory_mcp_toolset(
-    server_url="http://localhost:8000",
+memory_tools = McpToolset(
+    connection_params=SseConnectionParams(url="http://localhost:8000/sse"),
     tool_filter=["search_long_term_memory", "create_long_term_memories"],
 )
 
@@ -317,7 +319,7 @@ See the [fitness_coach_mcp example](../examples/fitness_coach_mcp/) for a comple
 |----------|---------------------|
 | Full ADK integration | Memory Services |
 | LLM decides when to remember | REST Tools |
-| MCP ecosystem | MCP Tools |
+| MCP ecosystem | MCP Tools (native `McpToolset`) |
 | Debugging/development | REST Tools |
 | Multi-agent systems | MCP Tools |
 
@@ -360,11 +362,12 @@ MCP provides a standardized protocol for connecting agents to tools via Server-S
 
 ```python
 from google.adk import Agent
-from adk_redis import create_memory_mcp_toolset
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
 
 # Connect to Agent Memory Server's MCP endpoint
-memory_tools = create_memory_mcp_toolset(
-    server_url="http://localhost:9000",  # MCP server port
+memory_tools = McpToolset(
+    connection_params=SseConnectionParams(url="http://localhost:9000/sse"),
     tool_filter=["search_long_term_memory", "create_long_term_memories"],
 )
 

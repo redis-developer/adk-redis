@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.0.6] - 2026-05-20
+
+### Breaking
+
+- Removed `create_memory_mcp_toolset()` and all MCP wrapper constants
+  (`ALL_MCP_TOOLS`, `MCP_TOOL_*`) from the package. Use ADK's native
+  `McpToolset` with `SseConnectionParams` pointed at the Agent Memory
+  Server `/sse` endpoint instead. This aligns AMS MCP wiring with the
+  standard pattern used by all other ADK catalog integrations.
+
+### Changed
+
+- Updated `fitness_coach_mcp` example to use native `McpToolset` +
+  `SseConnectionParams` directly.
+
 ## [0.0.5] - 2026-05-19
 
 ### Breaking
