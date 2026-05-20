@@ -73,7 +73,6 @@ docs = [
     "mkdocs-llmstxt>=0.5",
     "mkdocs-section-index>=0.3",
     "mkdocs-autorefs>=1.2",
-    "mkdocs-macros-plugin>=1.0",
 ]
 
 # All Redis integrations
