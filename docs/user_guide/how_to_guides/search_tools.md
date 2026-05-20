@@ -114,41 +114,57 @@ WHERE category = 'electronics' AND price < :max_price
 
 with `params={"max_price": 50}`. Install with `pip install 'adk-redis[sql]'`.
 
-## RedisVL MCP toolset
+## RedisVL MCP server
 
-`create_redisvl_mcp_toolset(...)` returns an ADK `McpToolset` that talks to RedisVL's own MCP server (`rvl mcp`). The server exposes two tools per index:
+Connect an ADK agent to RedisVL's own MCP server (`rvl mcp`) using ADK's standard `McpToolset`. The server exposes two tools per index:
 
-- `search-records`: schema-aware search with filter hints embedded in the tool description.
-- `upsert-records`: write path. Suppress with `read_only=True` (the default for stdio mode).
+- `search-records`: schema-aware search (vector / fulltext / hybrid, chosen at server start). Filter and return-field hints come from the bound index schema.
+- `upsert-records`: write path. Suppress with `--read-only` on the server, or with `tool_filter=["search-records"]` on the toolset.
 
 ```python
-from pydantic import SecretStr
-from adk_redis import create_redisvl_mcp_toolset
+from google.adk import Agent
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from mcp import StdioServerParameters
 
-# Remote server (default transport is streamable-http).
-toolset = create_redisvl_mcp_toolset(
-    url="http://localhost:8000/mcp",
-    auth_token=SecretStr("..."),  # optional bearer
+# In-process stdio: spawn `rvl mcp --config <path>` next to the agent.
+agent = Agent(
+    model="gemini-2.5-flash",
+    name="redis_mcp_agent",
+    tools=[
+        McpToolset(
+            connection_params=StdioConnectionParams(
+                server_params=StdioServerParameters(
+                    command="rvl",
+                    args=[
+                        "mcp",
+                        "--config",
+                        "/etc/redisvl/mcp.yaml",
+                        "--read-only",
+                    ],
+                ),
+                timeout=30,
+            ),
+            tool_filter=["search-records"],
+        ),
+    ],
 )
-
-# In-process stdio: spawn `rvl mcp --config <path>`.
-toolset = create_redisvl_mcp_toolset(
-    transport="stdio",
-    config_path="/etc/redisvl/mcp.yaml",
-    read_only=True,
-)
-
-agent = Agent(model="gemini-2.0-flash", tools=[toolset])
 ```
 
-Install with `pip install 'adk-redis[mcp-search]'`. The server-side dependency is shipped by `redisvl[mcp]` and started with `rvl mcp --config <path> --transport streamable-http`.
+For an already-running remote server, swap `StdioConnectionParams` for `StreamableHTTPConnectionParams(url=..., headers={"Authorization": "Bearer ..."})` (or `SseConnectionParams`).
+
+Install the MCP CLI with `pip install 'redisvl[mcp]>=0.18.2'` and start the server with `rvl mcp --config <path> --transport streamable-http` (or `stdio`).
+
+!!! note
+    For other ADK language SDKs (TypeScript, etc.), see
+    [Custom MCP Tools](https://adk.dev/tools-custom/mcp-tools/).
 
 ## When to use which
 
 | Path | Use when |
 |---|---|
 | In-process tools (`RedisVectorSearchTool`, etc.) | Single Python agent, fine-grained control, no extra service to operate. |
-| `create_redisvl_mcp_toolset(...)` | Multiple agents (Python, JS, Claude Desktop) share one index, schema-aware tool descriptions, you want `--read-only` as a deployment-level guardrail. |
+| `McpToolset` against `rvl mcp` | Multiple agents (Python, JS, Claude Desktop) share one index, schema-aware tool descriptions, you want `--read-only` as a deployment-level guardrail. |
 
 ## Notes
 

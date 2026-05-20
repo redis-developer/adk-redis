@@ -35,9 +35,6 @@ src/adk_redis/
                           UpdateMemoryTool).
     mcp_memory.py         MCP tool surface for the same memory operations
                           (Agent Memory Server).
-    mcp_search.py         create_redisvl_mcp_toolset(...) for RedisVL's
-                          own MCP server (rvl mcp). Supports stdio, sse,
-                          streamable-http; bearer auth on HTTP transports.
   cache/
     __init__.py           Re-exports the cache providers.
     _provider.py          Provider protocol and base class.
@@ -64,8 +61,6 @@ tests/
     test_range_search.py       RedisRangeSearchTool.
     test_text_search.py        RedisTextSearchTool.
     test_sql_search.py         RedisSQLSearchTool.
-    test_mcp_search.py         create_redisvl_mcp_toolset (validation,
-                               three transports, bearer auth, tool filter).
   cache/
     test_provider.py           RedisVLCacheProvider (incl. no-DeprecationWarning
                                regression for the cache.llm import path).
@@ -87,7 +82,7 @@ tests/
 | Long-term memory + Memory Server proxy | `memory/long_term_memory.py`, `memory/_utils.py` |
 | ADK Memory tools (FunctionTool wrappers) | `tools/memory/` |
 | MCP memory tool surface (Agent Memory Server) | `tools/mcp_memory.py` |
-| MCP search tool surface (RedisVL MCP server) | `tools/mcp_search.py` |
+| MCP search (RedisVL `rvl mcp` server) | Use ADK's native `McpToolset` directly; no adk-redis wrapper. |
 | Vector / Hybrid / Range / Text / SQL search tools | `tools/search/` |
 | LLM and tool semantic caching | `cache/llm_cache.py`, `cache/tool_cache.py` |
 | Cache provider abstraction (RedisVL / LangCache) | `cache/_provider.py` |

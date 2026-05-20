@@ -14,9 +14,10 @@
 
 """End-to-end ADK Agent registration tests.
 
-These tests confirm the new and existing search tools register cleanly
-with ``google.adk.Agent`` and surface a usable ``FunctionDeclaration``.
-They do not call any LLM, so they run without API keys.
+These tests confirm search tools register cleanly with
+``google.adk.Agent`` and surface a usable ``FunctionDeclaration``. They
+also confirm a native ADK ``McpToolset`` pointed at the RedisVL MCP
+server attaches to an Agent. No LLM calls; runs without API keys.
 """
 
 from __future__ import annotations
@@ -30,9 +31,14 @@ pytest.importorskip("redisvl")
 
 from google.adk import Agent
 from google.adk.agents.readonly_context import ReadonlyContext
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from google.adk.tools.mcp_tool.mcp_session_manager import (
+    StreamableHTTPConnectionParams,
+)
+from mcp import StdioServerParameters
 from redisvl.index import SearchIndex
 
-from adk_redis import create_redisvl_mcp_toolset
 from adk_redis import RedisSQLSearchTool
 from adk_redis import RedisTextQueryConfig
 from adk_redis import RedisTextSearchTool
@@ -77,23 +83,37 @@ class TestSearchToolsRegisterWithAgent:
 
 
 class TestRedisVLMcpToolsetRegistersWithAgent:
-  """The MCP toolset registers as an Agent tool source."""
+  """A native ADK McpToolset against rvl mcp attaches to an Agent."""
 
   def test_streamable_http_toolset_registers(self):
-    toolset = create_redisvl_mcp_toolset(url="http://localhost:8000/mcp")
+    toolset = McpToolset(
+        connection_params=StreamableHTTPConnectionParams(
+            url="http://localhost:8000/mcp",
+        ),
+        tool_filter=["search-records"],
+    )
     agent = Agent(
         model="gemini-2.5-flash",
         name="test_agent",
         tools=[toolset],
     )
-    # The toolset is held on the agent (no LLM dispatch required).
     assert toolset in agent.tools
 
   def test_stdio_toolset_registers(self):
-    toolset = create_redisvl_mcp_toolset(
-        transport="stdio",
-        config_path="/etc/redisvl/mcp.yaml",
-        read_only=True,
+    toolset = McpToolset(
+        connection_params=StdioConnectionParams(
+            server_params=StdioServerParameters(
+                command="rvl",
+                args=[
+                    "mcp",
+                    "--config",
+                    "/etc/redisvl/mcp.yaml",
+                    "--read-only",
+                ],
+            ),
+            timeout=30,
+        ),
+        tool_filter=["search-records"],
     )
     agent = Agent(
         model="gemini-2.5-flash",

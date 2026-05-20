@@ -23,14 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   statements (with optional `params` for placeholders) against a bound
   Redis index. Installed via the new `adk-redis[sql]` extra
   (`redisvl[sql-redis]>=0.18.2`).
-- `create_redisvl_mcp_toolset(...)` (`adk_redis.tools.mcp_search`): helper
-  that returns an ADK `McpToolset` wired to RedisVL's own MCP server
-  (`rvl mcp`). Supports `stdio`, `sse`, and `streamable-http` transports;
-  bearer auth on HTTP transports; `--read-only` default for stdio.
-  Installed via the new `adk-redis[mcp-search]` extra
-  (`redisvl[mcp]>=0.18.2`).
-- Module constants `REDISVL_MCP_TOOL_SEARCH` and `REDISVL_MCP_TOOL_UPSERT`
-  for symbolic tool filtering.
+- New `examples/redisvl_mcp_search/`: the MCP-path mirror of
+  `examples/redis_search_tools/`. Same knowledge-base corpus, served by
+  a `rvl mcp` server in hybrid (BM25 + vector) mode; the agent connects
+  via ADK's standard `McpToolset`. No adk-redis wrapper is needed; users
+  wire `StdioConnectionParams` / `SseConnectionParams` /
+  `StreamableHTTPConnectionParams` directly, matching the pattern used
+  by every catalog MCP integration page.
 - `make redis-up` / `make redis-down` / `make test-integration` targets
   for the new `tests/integration/` suite. Integration tests skip
   cleanly when no Redis with the RediSearch module is reachable at
@@ -51,8 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`tests/tools/test_vector_search.py::TestRedisVectorQueryConfigEpsilonRemoval`).
 - New cache provider tests (`tests/cache/test_provider.py`) including
   a no-`DeprecationWarning` assertion on the import path.
-- New unit tests for `RedisSQLSearchTool` (`tests/tools/test_sql_search.py`)
-  and `create_redisvl_mcp_toolset` (`tests/tools/test_mcp_search.py`).
+- New unit tests for `RedisSQLSearchTool`
+  (`tests/tools/test_sql_search.py`).
 - New integration suite under `tests/integration/` that round-trips
   vector, text, range, native hybrid, and SQL queries plus a cache
   round-trip against a real Redis 8.4 container, and confirms tools

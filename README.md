@@ -31,7 +31,7 @@
 | **Long-term memory** (`RedisLongTermMemoryService`) | `BaseMemoryService` with semantic search and recency boosting | Agent Memory Server (REST) |
 | **Memory tools** (`SearchMemoryTool`, `CreateMemoryTool`, ...) | LLM-controlled memory operations | Agent Memory Server (REST) |
 | **AMS MCP toolset** (`create_memory_mcp_toolset`) | Exposes `search_long_term_memory`, `create_long_term_memories`, `edit_long_term_memory`, `delete_long_term_memories`, `get_long_term_memory`, `memory_prompt`, and `set_working_memory` over SSE | Agent Memory Server (MCP) |
-| **RedisVL MCP** (`create_redisvl_mcp_toolset`) | <ul><li>Tools exposed: `search-records`, `upsert-records` (gate writes with `--read-only`).</li><li>Search modes (one per server, chosen via YAML): `vector` KNN, `fulltext` BM25, or `hybrid` (LINEAR or RRF fusion).</li><li>Server-side query embedding via a configured RedisVL vectorizer; agents never load one locally.</li><li>Schema-aware tool descriptions: filter and return-field hints derived from the bound `IndexSchema`.</li><li>JSON filter language with tag, text, and numeric operators (`eq`, `in`, `between`, `gt`, `lt`, `ne`).</li><li>Transports: stdio, sse, streamable-http. Bearer auth on HTTP. Pagination via `limit` / `offset`.</li></ul> | `rvl mcp` server |
+| **RedisVL MCP** (native `McpToolset` against `rvl mcp`) | <ul><li>Tools exposed: `search-records`, `upsert-records` (gate writes with `--read-only`).</li><li>Search modes (one per server, chosen via YAML): `vector` KNN, `fulltext` BM25, or `hybrid` (LINEAR or RRF fusion).</li><li>Server-side query embedding via a configured RedisVL vectorizer; agents never load one locally.</li><li>Schema-aware tool descriptions: filter and return-field hints derived from the bound `IndexSchema`.</li><li>JSON filter language with tag, text, and numeric operators (`eq`, `in`, `between`, `gt`, `lt`, `ne`).</li><li>Transports: stdio, sse, streamable-http. Bearer auth on HTTP. Pagination via `limit` / `offset`.</li></ul> | `rvl mcp` server (`redisvl[mcp]`) |
 | **Search tools with REST** (5 in-process tools) | Vector, hybrid, range, text, SQL search as `BaseTool` subclasses | RedisVL (Python) |
 | **Semantic cache** (`RedisVLCacheProvider`, `LangCacheProvider`) | Skip repeat LLM calls and tool calls by semantic similarity | RedisVL `SemanticCache` or [Redis LangCache](https://redis.io/langcache) |
 
@@ -49,10 +49,12 @@ Optional extras (combine as needed):
 pip install 'adk-redis[memory]'      # sessions + long-term memory services
 pip install 'adk-redis[search]'      # RedisVL-backed search tools
 pip install 'adk-redis[sql]'         # RedisSQLSearchTool (sql-redis)
-pip install 'adk-redis[mcp-search]'  # create_redisvl_mcp_toolset helper
 pip install 'adk-redis[langcache]'   # managed semantic cache provider
 pip install 'adk-redis[all]'         # all of the above
 pip install 'adk-redis[all,examples]'  # plus dotenv etc. for running examples
+
+# For the RedisVL MCP server (used with ADK's native McpToolset):
+pip install 'redisvl[mcp]>=0.18.2'
 ```
 
 ### Verify
@@ -177,26 +179,39 @@ All five search tools accept custom `name` / `description` so the LLM sees a dom
 
 ### Search over a Redis index (MCP)
 
-Run `rvl mcp --config mcp_config.yaml` separately and let the agent connect over MCP:
+Run `rvl mcp --config mcp_config.yaml` separately, then connect the agent with ADK's standard `McpToolset`:
 
 ```python
 from google.adk import Agent
-from pydantic import SecretStr
-
-from adk_redis import create_redisvl_mcp_toolset
-
-search_tools = create_redisvl_mcp_toolset(
-    url="http://localhost:8765/mcp",
-    auth_token=SecretStr("..."),  # optional bearer
-    read_only=True,
-)
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from mcp import StdioServerParameters
 
 agent = Agent(
     model="gemini-2.5-flash",
     name="mcp_search_agent",
-    tools=[search_tools],
+    instruction="Use the search-records tool to answer questions.",
+    tools=[
+        McpToolset(
+            connection_params=StdioConnectionParams(
+                server_params=StdioServerParameters(
+                    command="rvl",
+                    args=[
+                        "mcp",
+                        "--config",
+                        "/path/to/mcp_config.yaml",
+                        "--read-only",
+                    ],
+                ),
+                timeout=30,
+            ),
+            tool_filter=["search-records"],
+        ),
+    ],
 )
 ```
+
+For an already-running remote server, swap `StdioConnectionParams` for `StreamableHTTPConnectionParams(url="http://localhost:8765/mcp", headers={"Authorization": "Bearer ..."})`.
 
 See [examples/redisvl_mcp_search/](examples/redisvl_mcp_search/) for a runnable demo (knowledge-base corpus, hybrid mode, paired with the in-process [examples/redis_search_tools/](examples/redis_search_tools/) example).
 
@@ -243,7 +258,7 @@ Two parallel paths for RAG over a Redis index. Pick by deployment shape.
 | Path | Use when |
 |---|---|
 | **In-process** | Single ADK process, fast onboarding, Python-side `FilterExpression` composition, per-tool customization. |
-| **MCP toolset** (`create_redisvl_mcp_toolset` against `rvl mcp`) | One Redis index served to multiple agents (Python, JS, Claude Desktop). Server-side `--read-only` / bearer auth. Schema-aware tool descriptions. |
+| **MCP** (ADK's `McpToolset` against `rvl mcp`) | One Redis index served to multiple agents (Python, JS, Claude Desktop). Server-side `--read-only` / bearer auth. Schema-aware tool descriptions. |
 
 ### In-process tools
 
@@ -257,14 +272,14 @@ Two parallel paths for RAG over a Redis index. Pick by deployment shape.
 
 All five accept any vectorizer supported by RedisVL (OpenAI, HuggingFace, Cohere, Mistral, Voyage AI, custom) and any `FilterExpression` from `redisvl.query.filter`.
 
-### MCP toolset
+### MCP
 
-`create_redisvl_mcp_toolset(...)` returns an ADK `McpToolset` wired to a [RedisVL MCP server](https://docs.redisvl.com) (`rvl mcp`). The server is configured per index via YAML and exposes:
+Use ADK's standard `McpToolset` against a running [RedisVL MCP server](https://docs.redisvl.com) (`rvl mcp`). The server is configured per index via YAML and exposes:
 
 - `search-records`: `vector`, `fulltext`, or `hybrid` (chosen at server start). Tool description includes filter and return-field hints derived from the bound index schema.
 - `upsert-records`: write path (suppress with `--read-only`).
 
-Supports `stdio`, `sse`, and `streamable-http` transports; bearer auth on HTTP. Requires `adk-redis[mcp-search]` and a `rvl mcp` server.
+Supports `stdio`, `sse`, and `streamable-http` transports; bearer auth on HTTP. Requires `redisvl[mcp]` and a `rvl mcp` server. See the [Quick Start MCP snippet](#search-over-a-redis-index-mcp) above for the wiring.
 
 For the full decision matrix and runnable demo, see [docs/user_guide/how_to_guides/search_tools.md](docs/user_guide/how_to_guides/search_tools.md).
 
@@ -301,11 +316,11 @@ Both honor a configurable `distance_threshold` and per-entry `ttl`.
 
 - Python 3.10, 3.11, 3.12, or 3.13
 - Google ADK 1.0+ (tested through 2.0 GA)
-- RedisVL 0.18.2+ when the `search`, `langcache`, `sql`, or `mcp-search` extra is installed
+- RedisVL 0.18.2+ when the `search`, `langcache`, or `sql` extra is installed
 - Redis 8.4+ (or Redis Cloud with Search) when using search tools or the cache providers
 - For session / memory services: a running [Agent Memory Server](https://github.com/redis/agent-memory-server)
 - For `RedisSQLSearchTool`: `sql-redis` (installed by `adk-redis[sql]`)
-- For the RedisVL MCP toolset: `redisvl[mcp]` and the `rvl mcp` CLI (installed by `adk-redis[mcp-search]`)
+- For the RedisVL MCP server: install `redisvl[mcp]>=0.18.2` and use the `rvl mcp` CLI; connect from ADK with `McpToolset`
 
 ---
 

@@ -97,10 +97,6 @@ from adk_redis.tools import UpdateMemoryTool
 # Memory tools (MCP-based)
 from adk_redis.tools.mcp_memory import ALL_MCP_TOOLS
 from adk_redis.tools.mcp_memory import create_memory_mcp_toolset
-from adk_redis.tools.mcp_search import ALL_REDISVL_MCP_TOOLS
-from adk_redis.tools.mcp_search import REDISVL_MCP_TOOL_SEARCH
-from adk_redis.tools.mcp_search import REDISVL_MCP_TOOL_UPSERT
-from adk_redis.tools.mcp_search import create_redisvl_mcp_toolset
 # Semantic caching
 from adk_redis.cache import BaseCacheProvider
 from adk_redis.cache import CacheEntry
@@ -150,10 +146,6 @@ __all__ = [
     # MCP tools
     "create_memory_mcp_toolset",
     "ALL_MCP_TOOLS",
-    "create_redisvl_mcp_toolset",
-    "ALL_REDISVL_MCP_TOOLS",
-    "REDISVL_MCP_TOOL_SEARCH",
-    "REDISVL_MCP_TOOL_UPSERT",
     # Semantic caching
     "BaseCacheProvider",
     "CacheEntry",

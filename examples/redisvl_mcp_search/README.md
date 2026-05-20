@@ -3,7 +3,8 @@
 The **MCP-path mirror** of [`redis_search_tools/`](../redis_search_tools/).
 Same knowledge-base corpus, same kinds of prompts, but search is served
 by a separately-running `rvl mcp` server and the agent calls it via
-`create_redisvl_mcp_toolset(...)` over MCP.
+ADK's standard `McpToolset` over MCP. No adk-redis wrapper involved;
+this is the same pattern every MCP integration in the ADK catalog uses.
 
 Use this example to compare the two deployment shapes side by side:
 
@@ -19,8 +20,8 @@ Use this example to compare the two deployment shapes side by side:
 ## What this sample shows
 
 - Configuring `rvl mcp` for hybrid search via a YAML config.
-- Connecting ADK to that server with `create_redisvl_mcp_toolset(...)`
-  over the `streamable-http` transport.
+- Connecting ADK to that server with ADK's native `McpToolset` + one of
+  `StdioConnectionParams` / `StreamableHTTPConnectionParams`.
 - Using a `tool_filter` to expose only `search-records` (no upserts).
 - Reading the schema-aware tool description that RedisVL produces.
 
@@ -30,9 +31,9 @@ Use this example to compare the two deployment shapes side by side:
    module enabled). Native `FT.HYBRID` requires 8.4+.
 2. **A Gemini API key**. Get one at
    [aistudio.google.com](https://aistudio.google.com/app/apikey).
-3. **The `mcp-search` extra** for the helper and the `rvl mcp` CLI; the
-   loader and the MCP server also need `sentence-transformers` (pulled
-   in by `redisvl`'s HuggingFace vectorizer dependency).
+3. **`redisvl[mcp]>=0.18.2`** for the `rvl mcp` CLI, plus
+   `sentence-transformers` (the loader and the MCP server both embed
+   docs / queries with a HuggingFace vectorizer).
 
 ## Setup
 
@@ -41,11 +42,8 @@ Use this example to compare the two deployment shapes side by side:
 From the repository root:
 
 ```bash
-uv pip install 'adk-redis[mcp-search,examples]'
+uv pip install 'adk-redis[examples]' 'redisvl[mcp]>=0.18.2' sentence-transformers
 ```
-
-This pulls in `redisvl[mcp]>=0.18.2` plus the `rvl mcp` CLI and the
-FastMCP server.
 
 ### 2. Start Redis 8.4
 
@@ -127,8 +125,10 @@ path (semantic similarity to the query embedding), then fuses with
 
 ## How it works
 
-1. **Agent constructs an MCP toolset.** `create_redisvl_mcp_toolset(...)`
-   returns an `McpToolset` wired to the running `rvl mcp` server.
+1. **Agent constructs an MCP toolset.** ADK's `McpToolset` is wired to
+   the running `rvl mcp` server with either `StdioConnectionParams`
+   (default in this example, spawns `rvl mcp --config <path>`) or
+   `StreamableHTTPConnectionParams` (`REDISVL_MCP_URL` env var).
    `tool_filter=["search-records"]` hides `upsert-records` so the agent
    cannot write.
 2. **Agent emits a query.** The LLM calls `search-records({"query":
@@ -157,14 +157,10 @@ search:
 
 ### Add a bearer token
 
-Run the server behind a proxy that injects auth, then:
-
-```bash
-export REDISVL_MCP_AUTH_TOKEN=...
-```
-
-The agent's `auth_token` argument flows through as
-`Authorization: Bearer <token>` on every MCP request.
+Run the server behind a proxy that injects auth, then set
+`REDISVL_MCP_URL` and `REDISVL_MCP_AUTH_TOKEN`. The example agent reads
+both and attaches `Authorization: Bearer <token>` to every MCP request
+via `StreamableHTTPConnectionParams(headers=...)`.
 
 ### Connect to Redis Cloud
 

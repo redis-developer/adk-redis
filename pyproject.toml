@@ -61,11 +61,6 @@ sql = [
     "redisvl[sql-redis]>=0.18.2",
 ]
 
-# RedisVL MCP server toolset (create_redisvl_mcp_toolset)
-mcp-search = [
-    "redisvl[mcp]>=0.18.2",
-]
-
 # Example runner dependencies
 examples = [
     "python-dotenv",
@@ -73,7 +68,7 @@ examples = [
 
 # All Redis integrations
 all = [
-    "adk-redis[memory,search,langcache,sql,mcp-search]",
+    "adk-redis[memory,search,langcache,sql]",
 ]
 
 # Development dependencies
