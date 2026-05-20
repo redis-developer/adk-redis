@@ -4,8 +4,7 @@ Get an ADK agent running with Redis-backed sessions and long-term memory in
 three steps. For the concepts behind each feature, see the
 [Concepts](../concepts/index.md) section.
 
-> **Full guide on redis.io:**
-> [redis.io/docs/latest/integrate/google-adk/](https://redis.io/docs/latest/integrate/google-adk/)
+> **See also:** [ADK + Redis on redis.io](https://redis.io/docs/latest/integrate/google-adk/) for additional coverage.
 
 ## 1. Start infrastructure
 
