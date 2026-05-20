@@ -33,8 +33,9 @@ MEMORY_MCP_URL = os.getenv("MEMORY_MCP_URL", "http://localhost:9000")
 
 # Create MCP toolset for Agent Memory Server
 # Connects to the MCP server's SSE endpoint
+sse_url = MEMORY_MCP_URL.rstrip("/")
 memory_tools = McpToolset(
-    connection_params=SseConnectionParams(url=f"{MEMORY_MCP_URL}/sse"),
+    connection_params=SseConnectionParams(url=f"{sse_url}/sse"),
     tool_filter=[
         "search_long_term_memory",
         "create_long_term_memories",

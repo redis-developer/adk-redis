@@ -1,0 +1,39 @@
+# Google ADK + Redis
+
+> Redis backends for Google Agent Development Kit. Sessions, memory, tools, cache.
+
+## Concepts
+
+- [Concepts](https://redis-developer.github.io/adk-redis/concepts/index.md)
+- [ADK overview](https://redis-developer.github.io/adk-redis/concepts/adk_overview/index.md)
+- [Memory](https://redis-developer.github.io/adk-redis/concepts/memory/index.md)
+- [Search](https://redis-developer.github.io/adk-redis/concepts/search/index.md)
+- [Sessions](https://redis-developer.github.io/adk-redis/concepts/sessions/index.md)
+
+## User Guide
+
+- [User Guide](https://redis-developer.github.io/adk-redis/user_guide/index.md)
+- [Integration](https://redis-developer.github.io/adk-redis/user_guide/01_integration/index.md)
+- [How-To Guides](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/index.md)
+- [Memory server setup](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/memory_server_setup/index.md)
+- [Memory service](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/memory_service/index.md)
+- [Redis setup](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/redis_setup/index.md)
+- [Search tools](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/search_tools/index.md)
+- [Session service](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/session_service/index.md)
+
+## API Reference
+
+- [API Reference](https://redis-developer.github.io/adk-redis/api/index.md)
+- [Python package](https://redis-developer.github.io/adk-redis/api/python/index.md)
+- [Cache](https://redis-developer.github.io/adk-redis/api/python/cache/index.md)
+- [Memory](https://redis-developer.github.io/adk-redis/api/python/memory/index.md)
+- [Sessions](https://redis-developer.github.io/adk-redis/api/python/sessions/index.md)
+- [Tools](https://redis-developer.github.io/adk-redis/api/python/tools/index.md)
+
+## For AI Agents
+
+- [For AI Agents](https://redis-developer.github.io/adk-redis/for-ais-only/index.md)
+- [Build and test](https://redis-developer.github.io/adk-redis/for-ais-only/BUILD_AND_TEST/index.md)
+- [Failure modes](https://redis-developer.github.io/adk-redis/for-ais-only/FAILURE_MODES/index.md)
+- [Repository map](https://redis-developer.github.io/adk-redis/for-ais-only/REPOSITORY_MAP/index.md)
+

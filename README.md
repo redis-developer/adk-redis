@@ -286,7 +286,7 @@ For the full decision matrix and runnable demo, see [docs/user_guide/how_to_guid
 
 ## Memory backends
 
-Three ways to ingest, store, and retrieve memory with Agent Memory Server, all interoperable:
+Two ways to ingest, store, and retrieve memory with Agent Memory Server, both interoperable:
 
 | Approach | What it is | Reach for it when |
 |---|---|---|
