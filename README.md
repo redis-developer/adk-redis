@@ -31,8 +31,8 @@
 | **Long-term memory** (`RedisLongTermMemoryService`) | `BaseMemoryService` with semantic search and recency boosting | Agent Memory Server (REST) |
 | **Memory tools** (`SearchMemoryTool`, `CreateMemoryTool`, ...) | LLM-controlled memory operations | Agent Memory Server (REST) |
 | **AMS MCP toolset** (`create_memory_mcp_toolset`) | Exposes `search_long_term_memory`, `create_long_term_memories`, `edit_long_term_memory`, `delete_long_term_memories`, `get_long_term_memory`, `memory_prompt`, and `set_working_memory` over SSE | Agent Memory Server (MCP) |
-| **Search tools** (5 in-process tools) | Vector, hybrid, range, text, SQL search as `BaseTool` subclasses | RedisVL (Python) |
 | **RedisVL MCP toolset** (`create_redisvl_mcp_toolset`) | Exposes `search-records` (vector / fulltext / hybrid, chosen per server) and `upsert-records` with schema-aware filter and return-field hints; transports: stdio / sse / streamable-http; supports bearer auth and `--read-only` | `rvl mcp` server |
+| **Search tools** (5 in-process tools) | Vector, hybrid, range, text, SQL search as `BaseTool` subclasses | RedisVL (Python) |
 | **Semantic cache** (`RedisVLCacheProvider`, `LangCacheProvider`) | Skip repeat LLM calls and tool calls by semantic similarity | RedisVL `SemanticCache` or [Redis LangCache](https://redis.io/langcache) |
 
 ---
