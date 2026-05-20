@@ -1,44 +1,38 @@
 # RedisVL MCP Search Agent
 
-This sample shows an ADK agent that talks to a separately-running
-**RedisVL MCP server** (`rvl mcp`) via the new
-`create_redisvl_mcp_toolset(...)` helper. The MCP server is configured
-to expose BM25 fulltext search over a small corpus of Redis articles.
+The **MCP-path mirror** of [`redis_search_tools/`](../redis_search_tools/).
+Same knowledge-base corpus, same kinds of prompts, but search is served
+by a separately-running `rvl mcp` server and the agent calls it via
+`create_redisvl_mcp_toolset(...)` over MCP.
+
+Use this example to compare the two deployment shapes side by side:
+
+| | `redis_search_tools/` | `redisvl_mcp_search/` (this) |
+|---|---|---|
+| Topology | One process: agent + index in-process | Two processes: agent connects to `rvl mcp` over MCP |
+| Tool count | 3 (semantic / keyword / range) | 1 (`search-records`, configured for hybrid) |
+| Search modes covered | vector, BM25, range | vector + BM25 fused via FT.HYBRID |
+| Where the vectorizer runs | In the agent process | In the `rvl mcp` server process |
+| Filter shape | Python `FilterExpression` | JSON filter object parsed server-side |
+| Use when | Single agent, fast onboarding, complex filters | Multi-agent / polyglot, server-side ops gates |
 
 ## What this sample shows
 
-- Configuring `rvl mcp` for a Redis search index with a YAML file.
+- Configuring `rvl mcp` for hybrid search via a YAML config.
 - Connecting ADK to that server with `create_redisvl_mcp_toolset(...)`
   over the `streamable-http` transport.
 - Using a `tool_filter` to expose only `search-records` (no upserts).
 - Reading the schema-aware tool description that RedisVL produces.
 
-## Architecture
-
-```
-                +-------------------+
-   "search-     |  rvl mcp server   |
-   records"     |  (streamable-http |
-       ^^^^^^^^>|   on :8765)       |---->  Redis 8.4+ (RediSearch)
-       MCP      +-------------------+
-       protocol             ^
-                            |
-                +-------------------+
-                | ADK agent         |
-                | (`adk web`)       |
-                | create_redisvl_   |
-                | mcp_toolset(...)  |
-                +-------------------+
-```
-
 ## Prerequisites
 
-1. **Redis 8.4** running locally or in Redis Cloud. The repo root has
-   `./scripts/start-redis.sh` for a one-shot start.
+1. **Redis 8.4** running locally (or Redis Cloud with the RediSearch
+   module enabled). Native `FT.HYBRID` requires 8.4+.
 2. **A Gemini API key**. Get one at
    [aistudio.google.com](https://aistudio.google.com/app/apikey).
-3. **The `mcp-search` extra** so the helper and `rvl mcp` CLI are
-   installed.
+3. **The `mcp-search` extra** for the helper and the `rvl mcp` CLI; the
+   loader and the MCP server also need `sentence-transformers` (pulled
+   in by `redisvl`'s HuggingFace vectorizer dependency).
 
 ## Setup
 
@@ -50,8 +44,8 @@ From the repository root:
 uv pip install 'adk-redis[mcp-search,examples]'
 ```
 
-The `mcp-search` extra pulls in `redisvl[mcp]>=0.18.2`, which provides
-the `rvl mcp` CLI and the FastMCP server.
+This pulls in `redisvl[mcp]>=0.18.2` plus the `rvl mcp` CLI and the
+FastMCP server.
 
 ### 2. Start Redis 8.4
 
@@ -62,19 +56,23 @@ docker exec redis redis-cli ping   # -> PONG
 
 ### 3. Set your Gemini API key
 
-Copy `.env.example` to `.env` and fill in `GOOGLE_API_KEY`. Optionally
-set `REDISVL_MCP_URL` if you plan to run the MCP server somewhere other
-than `http://127.0.0.1:8765/mcp`.
+Copy `.env.example` to `.env` and fill in `GOOGLE_API_KEY`. Optional:
 
-### 4. Load the article index
+- `REDIS_URL` to point the loader at a non-default Redis.
+- `REDISVL_MCP_URL` if you run the MCP server somewhere other than
+  `http://127.0.0.1:8765/mcp`.
+- `REDISVL_MCP_AUTH_TOKEN` to attach a bearer token to MCP requests.
+
+### 4. Load the knowledge base
 
 ```bash
 cd examples/redisvl_mcp_search
 python load_data.py
 ```
 
-This creates the `adk_mcp_articles` index and loads six short articles
-about Redis search, MCP, semantic caching, and agent memory.
+The loader creates the `adk_mcp_knowledge_base` index, embeds the
+documents with `redis/langcache-embed-v2` (768 dims), and writes them
+to Redis with stable keys so re-running is idempotent.
 
 ### 5. Start the RedisVL MCP server
 
@@ -87,9 +85,9 @@ rvl mcp --config mcp_config.yaml \
   --host 127.0.0.1 --port 8765
 ```
 
-The server inspects the configured index, registers its `search-records`
-tool with schema-aware filter hints, and starts listening on
-`http://127.0.0.1:8765/mcp`.
+The server inspects the configured index, registers a single hybrid
+`search-records` tool with schema-aware filter and return-field hints,
+and listens on `http://127.0.0.1:8765/mcp`.
 
 ### 6. Run the agent
 
@@ -100,35 +98,91 @@ adk web redisvl_mcp_search_agent
 ADK web opens at `http://127.0.0.1:8000`. Pick the
 `redisvl_mcp_search_agent` app from the dropdown.
 
-## Try these prompts
+## Example queries
 
-- "Find articles about FT.HYBRID."
-- "What does the MCP server expose?"
-- "Explain semantic caching."
-- "Tell me about HNSW runtime parameters."
+Mirror the prompts from `redis_search_tools/` so you can see the MCP path
+return analogous results:
 
-The agent decides on a keyword phrase, calls `search-records` over MCP,
-and summarizes the matches with title and URL citations.
+- **Semantic-leaning:** "What is Redis?", "How does RAG work?", "What is
+  a vector database?"
+- **Keyword-leaning:** "Tell me about HNSW.", "Explain BM25 scoring.",
+  "FT.HYBRID command."
+- **Mixed:** "What are RAG best practices?", "How do I build an
+  intelligent assistant?"
+
+Because the server is configured for hybrid mode, a single query
+exercises both the BM25 path (term matches in `content`) and the vector
+path (semantic similarity to the query embedding), then fuses with
+`LINEAR` weighting (50% text, 50% vector by default).
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `schema.yaml` | RedisVL index schema (text + tag + vector fields). |
+| `load_data.py` | Embeds and loads the knowledge-base corpus. |
+| `mcp_config.yaml` | `rvl mcp` server configuration: hybrid search + vectorizer + runtime field names. |
+| `redisvl_mcp_search_agent/agent.py` | The ADK agent. |
+| `.env.example` | Template for `GOOGLE_API_KEY` and optional overrides. |
 
 ## How it works
 
-`create_redisvl_mcp_toolset(...)` returns an ADK `McpToolset` with the
-right connection-params type for the transport you choose:
+1. **Agent constructs an MCP toolset.** `create_redisvl_mcp_toolset(...)`
+   returns an `McpToolset` wired to the running `rvl mcp` server.
+   `tool_filter=["search-records"]` hides `upsert-records` so the agent
+   cannot write.
+2. **Agent emits a query.** The LLM calls `search-records({"query":
+   "...", "limit": 5})`. ADK relays the call to the MCP server.
+3. **MCP server runs hybrid search.** The server embeds the query with
+   `redis/langcache-embed-v2`, builds a `HybridQuery` against the
+   configured index, runs `FT.HYBRID` on Redis, normalizes scores, and
+   returns structured results with `{title, content, url, ...}` per
+   match.
+4. **Agent summarizes.** The LLM cites each match's title and url.
 
-- `transport="stdio"` (passes a `config_path`): spawns
-  `rvl mcp --config <path> --read-only` over stdio.
-- `transport="streamable-http"` (default, passes a `url`): connects to
-  a long-running server. Bearer auth is added to headers when
-  `auth_token` is set.
-- `transport="sse"` (passes a `url`): same as streamable-http but over
-  the SSE transport.
+## Customization
 
-The agent in this sample uses the streamable-http path so the MCP server
-can stay up between agent invocations. Switch to stdio if you prefer a
-single process; the helper handles it.
+### Switch fusion method
+
+Edit `mcp_config.yaml`:
+
+```yaml
+search:
+  type: hybrid
+  params:
+    combination_method: RRF
+    rrf_window: 20
+    rrf_constant: 60
+```
+
+### Add a bearer token
+
+Run the server behind a proxy that injects auth, then:
+
+```bash
+export REDISVL_MCP_AUTH_TOKEN=...
+```
+
+The agent's `auth_token` argument flows through as
+`Authorization: Bearer <token>` on every MCP request.
+
+### Connect to Redis Cloud
+
+Set `REDIS_URL` before running both the loader and the MCP server. The
+config YAML uses `${REDIS_URL:-redis://localhost:6379}` so the override
+flows through automatically.
 
 ## Cleanup
 
 ```bash
 docker stop redis && docker rm redis
 ```
+
+## See also
+
+- [`redis_search_tools/`](../redis_search_tools/) for the in-process
+  Python version of the same demo.
+- [`redis_sql_search/`](../redis_sql_search/) for SQL-style filters
+  (in-process only; no MCP equivalent today).
+- [Search tools how-to](../../docs/user_guide/how_to_guides/search_tools.md)
+  for the full decision matrix.

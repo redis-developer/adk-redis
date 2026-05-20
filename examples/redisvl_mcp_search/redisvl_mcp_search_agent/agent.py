@@ -14,11 +14,11 @@
 
 """RedisVL MCP search agent.
 
-Connects an ADK agent to a running `rvl mcp` server via
-`create_redisvl_mcp_toolset(...)` over the streamable-http transport.
-The MCP server (configured by `../mcp_config.yaml`) exposes one
-`search-records` tool over BM25 fulltext on the `content` field of the
-`adk_mcp_articles` index.
+The MCP-path mirror of `examples/redis_search_tools/`. It targets the
+same knowledge-base corpus but routes search through a separately-running
+`rvl mcp` server via `create_redisvl_mcp_toolset(...)`. The server is
+configured for hybrid (BM25 + vector) search, so a single MCP tool
+covers both semantic and keyword retrieval.
 """
 
 import os
@@ -30,18 +30,33 @@ from pydantic import SecretStr
 
 from adk_redis import create_redisvl_mcp_toolset
 
-INSTRUCTION = """You are a Redis docs assistant. You have a single MCP tool,
-`search-records`, that runs BM25 fulltext search over a Redis index of
-articles about Redis search, caching, memory, and the MCP server itself.
+INSTRUCTION = """You are a helpful assistant with a technical knowledge base
+served via an MCP server. You have one tool: `search-records`, configured
+for hybrid search (BM25 text + vector similarity) over the
+`adk_mcp_knowledge_base` index.
 
-For any question:
+## When to call search-records
 
-1. Decide which keywords from the user's question are most likely to appear
-   in a relevant article (e.g., "HNSW", "FT.HYBRID", "semantic cache").
-2. Call `search-records` with that query. You can pass `limit` (default 5).
-3. Summarize the top matches and cite each article's title and URL.
+- Conceptual questions ("how does RAG work?") -> hybrid will lean on vector
+  similarity.
+- Technical terms / acronyms ("HNSW", "FT.HYBRID", "BM25") -> hybrid keeps
+  exact keyword matches via the BM25 component.
+- Comparative or "everything about X" questions -> hybrid combines both
+  paths and ranks by the configured fusion method (LINEAR by default).
 
-If the tool returns no matches, say so plainly. Do not fabricate articles.
+Pass a natural-language query in the `query` argument. The MCP server
+embeds it server-side using `redis/langcache-embed-v2`. Optionally pass
+`limit` (default 5).
+
+## Response style
+
+After calling `search-records`, summarize the matches for the user. Cite
+each document's title and url. If the tool returns no matches, say so
+plainly; do not fabricate results.
+
+Available document categories: redis, adk, concepts, tutorials.
+Document types: reference, tutorial, faq, api.
+Difficulty levels: beginner, intermediate, advanced.
 """
 
 

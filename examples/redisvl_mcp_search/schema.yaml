@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Article index for the RedisVL MCP search demo. Plain text + tag fields
-# so the rvl mcp server can serve BM25 fulltext search without needing a
-# vectorizer or embedding model at the server.
+# Redis index schema for the redisvl_mcp_search sample.
+#
+# Mirrors `examples/redis_search_tools/schema.yaml` so users can compare
+# the in-process Python tool path with the MCP toolset path on the same
+# knowledge base. The `rvl mcp` server reads the live index for its
+# search-records description; the schema below shapes those hints.
 
 version: "0.1.0"
 
 index:
-  name: adk_mcp_articles
-  prefix: article
+  name: adk_mcp_knowledge_base
+  prefix: mcp_doc
 
 fields:
   - name: title
@@ -29,8 +32,22 @@ fields:
   - name: content
     type: text
 
-  - name: topic
-    type: tag
-
   - name: url
     type: tag
+
+  - name: category
+    type: tag  # redis, adk, concepts, tutorials
+
+  - name: doc_type
+    type: tag  # reference, tutorial, faq, api
+
+  - name: difficulty
+    type: tag  # beginner, intermediate, advanced
+
+  - name: embedding
+    type: vector
+    attrs:
+      algorithm: hnsw
+      dims: 768
+      distance_metric: cosine
+      datatype: float32

@@ -3,23 +3,32 @@
 #   rvl mcp --config mcp_config.yaml --transport streamable-http \
 #     --host 127.0.0.1 --port 8765 --read-only
 #
-# The MCP server inspects an existing Redis search index (adk_mcp_articles)
-# and serves `search-records` over BM25 fulltext on the `content` field.
+# Configured for hybrid search (BM25 text + vector similarity) over the
+# `adk_mcp_knowledge_base` index built by load_data.py. The server embeds
+# user queries via the vectorizer block and runs FT.HYBRID on Redis 8.4+.
 
 server:
   # Override with REDIS_URL env var if your Redis is not on localhost:6379.
   redis_url: ${REDIS_URL:-redis://localhost:6379}
 
 indexes:
-  articles:
-    redis_name: adk_mcp_articles
+  knowledge_base:
+    redis_name: adk_mcp_knowledge_base
+    vectorizer:
+      class: HFTextVectorizer
+      model: redis/langcache-embed-v2
     search:
-      type: fulltext
+      type: hybrid
       params:
-        text_scorer: BM25STD
-        # Disable nltk-based stopword removal so the server runs without nltk.
+        # LINEAR fusion: 50% text BM25, 50% vector similarity. Adjust to
+        # taste. Set to "RRF" for Reciprocal Rank Fusion.
+        combination_method: LINEAR
+        linear_text_weight: 0.5
+        # Disable nltk-based stopword removal so the server runs without
+        # the optional nltk dependency.
         stopwords: null
     runtime:
       text_field_name: content
+      vector_field_name: embedding
       default_limit: 5
       max_limit: 20

@@ -34,10 +34,10 @@
 | Cross-session knowledge retrieval | search, create, update, delete | Configurable distance threshold |
 | Recency-boosted search | Namespace & user isolation | TTL-based expiration |
 | **Session Service**<br/>*Working memory via Agent Memory Server* | **Search Tools**<br/>*RAG via RedisVL* | **Tool Cache**<br/>*Avoid redundant calls* |
-| Context window management | Vector, hybrid, text, range search | Cache tool execution results |
-| Auto-summarization | Multiple vectorizers supported | Reduce API calls |
-| Background memory promotion | **MCP Tools**<br/>*Model Context Protocol* | **LangCache**<br/>*Managed semantic cache* |
-| | SSE-based tool discovery | Cloud-hosted, no local vectorizer |
+| Context window management | Vector, hybrid, range, text, SQL | Cache tool execution results |
+| Auto-summarization | In-process or via `rvl mcp` server | Reduce API calls |
+| Background memory promotion | **MCP Toolsets**<br/>*Model Context Protocol* | **LangCache**<br/>*Managed semantic cache* |
+| | AMS memory (SSE) + RedisVL search (stdio/sse/streamable-http) | Cloud-hosted, no local vectorizer |
 
 </div>
 
@@ -374,21 +374,35 @@ Implements ADK's `BaseSessionService` interface for conversation management:
 
 ### Search Tools
 
-Five specialized search tools for different RAG use cases:
+Two parallel paths for RAG over a Redis index. Pick by deployment shape, not by feature.
+
+| Path | Use when |
+|---|---|
+| **In-process** (Python `BaseTool` subclasses) | Single ADK process, fast onboarding, Python-side `FilterExpression` composition, per-tool customization. Five tools: vector, hybrid, range, text, SQL. |
+| **MCP toolset** (`create_redisvl_mcp_toolset` against `rvl mcp`) | One Redis index served to multiple agents (Python, JS, Claude Desktop). Server-side `--read-only` / bearer auth. Schema-aware tool descriptions. Two tools: `search-records`, `upsert-records`. |
+
+#### In-process tools
 
 | Tool | Best For | Key Features |
 |------|----------|--------------|
 | **`RedisVectorSearchTool`** | Semantic similarity | Vector embeddings, KNN search, metadata filtering |
-| **`RedisHybridSearchTool`** | Combined search | Vector + text search, Redis 8.4+ native support, aggregation fallback |
-| **`RedisRangeSearchTool`** | Threshold-based retrieval | Distance-based filtering, similarity radius |
-| **`RedisTextSearchTool`** | Keyword search | Full-text search, no embeddings required |
-| **`RedisSQLSearchTool`** | SQL-style filters | `SELECT ... WHERE` against a bound index, parameterized queries (requires `adk-redis[sql]`) |
+| **`RedisHybridSearchTool`** | Combined search | Vector + text search, Redis 8.4+ native `FT.HYBRID`, aggregation fallback |
+| **`RedisRangeSearchTool`** | Threshold-based retrieval | Distance-based filtering, similarity radius (no MCP equivalent) |
+| **`RedisTextSearchTool`** | Keyword search | Full-text BM25 search, no embeddings required |
+| **`RedisSQLSearchTool`** | SQL-style filters | `SELECT ... WHERE` against a bound index, `:param` placeholders (requires `adk-redis[sql]`, no MCP equivalent) |
 
-> All search tools support multiple vectorizers (OpenAI, HuggingFace, Cohere, Mistral, Voyage AI, etc.) and advanced filtering.
+All five support multiple vectorizers (OpenAI, HuggingFace, Cohere, Mistral, Voyage AI, etc.) and arbitrary `FilterExpression` objects from `redisvl.query.filter`.
 
-### RedisVL MCP toolset
+#### MCP toolset
 
-`create_redisvl_mcp_toolset(...)` returns an ADK `McpToolset` wired to RedisVL's own MCP server (`rvl mcp`). The server exposes schema-aware `search-records` and `upsert-records` tools whose descriptions include filter and return-field hints derived from the bound index. Use it when you want one Redis index served to multiple agents (Python, JS, Claude Desktop) over `stdio`, `sse`, or `streamable-http`. Requires `adk-redis[mcp-search]` and a Redis-side `rvl mcp` server (or YAML config). See [the search-tools guide](docs/user_guide/how_to_guides/search_tools.md) for the decision matrix vs the in-process tools above.
+`create_redisvl_mcp_toolset(...)` returns an ADK `McpToolset` wired to a running [RedisVL MCP server](https://docs.redisvl.com) (`rvl mcp`). The server is configured per index via YAML and exposes:
+
+- `search-records`: `vector`, `fulltext`, or `hybrid` mode (chosen at server start). Tool description includes filter and return-field hints derived from the bound index schema.
+- `upsert-records`: write path (suppress with `--read-only`).
+
+Supports `stdio`, `sse`, and `streamable-http` transports; bearer auth on HTTP. Requires `adk-redis[mcp-search]` and a `rvl mcp` server. See [`examples/redisvl_mcp_search/`](examples/redisvl_mcp_search/) for a runnable demo and [the search-tools guide](docs/user_guide/how_to_guides/search_tools.md) for the full decision matrix.
+
+> **Coverage note:** range and SQL search have **no MCP equivalent today**; if you need either, you must use the in-process tool.
 
 ### Semantic Caching
 
