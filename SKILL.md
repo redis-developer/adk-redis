@@ -27,9 +27,9 @@ links:
   hybrid, range, BM25 text, or SQL `SELECT` over a RedisVL index).
 - The user wants persistent ADK sessions or long-term memory and is willing
   to run [Redis Agent Memory Server](https://github.com/redis/agent-memory-server).
-- The user wants to expose a Redis index to ADK via MCP, either through
-  the `rvl mcp` server (`create_redisvl_mcp_toolset`) or Agent Memory
-  Server's MCP endpoint (`create_memory_mcp_toolset`).
+- The user wants to expose a Redis index to ADK via MCP. For the index
+  itself, point ADK's native `McpToolset` at a `rvl mcp` server. For
+  Agent Memory Server's MCP endpoint, use `create_memory_mcp_toolset`.
 - The user wants semantic caching for an ADK agent (self-hosted via
   RedisVL or managed via Redis LangCache).
 
@@ -50,7 +50,6 @@ Optional extras (combine as needed):
 pip install 'adk-redis[memory]'      # sessions + long-term memory services
 pip install 'adk-redis[search]'      # RedisVL-backed search tools
 pip install 'adk-redis[sql]'         # RedisSQLSearchTool (sql-redis)
-pip install 'adk-redis[mcp-search]'  # create_redisvl_mcp_toolset helper
 pip install 'adk-redis[langcache]'   # managed semantic cache provider
 pip install 'adk-redis[all]'         # all of the above
 ```
@@ -124,18 +123,25 @@ runner = Runner(
 )
 ```
 
-### 4. RedisVL MCP toolset
+### 4. RedisVL MCP (native McpToolset)
 
 ```python
-from pydantic import SecretStr
-from adk_redis import create_redisvl_mcp_toolset
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from mcp import StdioServerParameters
 
-mcp_tools = create_redisvl_mcp_toolset(
-    url="http://localhost:8000/mcp",
-    auth_token=SecretStr("..."),
-    read_only=True,
+mcp_tools = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="rvl",
+            args=["mcp", "--config", "/path/to/mcp_config.yaml", "--read-only"],
+        ),
+        timeout=30,
+    ),
+    tool_filter=["search-records"],
 )
 ```
+For a remote server, swap in `StreamableHTTPConnectionParams(url=..., headers={"Authorization": "Bearer ..."})`.
 
 ### 5. Semantic cache for LLM responses
 
@@ -177,8 +183,10 @@ root_agent = Agent(
   (KNN). It lives on `RedisRangeQueryConfig`.
 - **Stopwords**: `RedisTextQueryConfig.stopwords` defaults to `"english"`
   which requires `nltk`. Set to `None` if `nltk` is unavailable.
-- **MCP transports**: `create_redisvl_mcp_toolset` accepts only
-  `"stdio"`, `"sse"`, `"streamable-http"`; unknown values raise.
+- **MCP transports**: ADK's `McpToolset` accepts
+  `StdioConnectionParams`, `SseConnectionParams`, or
+  `StreamableHTTPConnectionParams`. Pick the connection-params class
+  for your transport rather than passing a string.
 - **Vector dtype**: must match the index schema. Default is `"float32"`.
 - **Async loops**: the session service builds a new `MemoryAPIClient` per
   call to avoid event-loop bleed across `Runner.run` invocations; do not
@@ -191,9 +199,10 @@ When this skill is loaded:
 1. Confirm whether the user already has a Redis index. If not, walk them
    through `IndexSchema.from_yaml(...)` + `SearchIndex.create(overwrite=True)`
    before introducing any search tool.
-2. Prefer the helper (`create_redisvl_mcp_toolset`) over hand-rolled
-   `StdioConnectionParams` for the RedisVL MCP path. The helper does
-   transport validation, bearer auth, and `--read-only` defaults.
+2. For the RedisVL MCP path, use ADK's native `McpToolset` with the
+   appropriate `*ConnectionParams` class. Set `tool_filter=["search-records"]`
+   to suppress writes, or pass `--read-only` to the `rvl mcp` invocation
+   in stdio mode.
 3. Never invent class or method names. Only those documented at
    `links.docs`.
 4. For breaking-change questions, consult `CHANGELOG.md` in the repo.

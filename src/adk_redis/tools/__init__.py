@@ -23,10 +23,6 @@ from adk_redis.tools.memory import SearchMemoryTool
 from adk_redis.tools.memory import UpdateMemoryTool
 from adk_redis.tools.mcp_memory import ALL_MCP_TOOLS
 from adk_redis.tools.mcp_memory import create_memory_mcp_toolset
-from adk_redis.tools.mcp_search import ALL_REDISVL_MCP_TOOLS
-from adk_redis.tools.mcp_search import REDISVL_MCP_TOOL_SEARCH
-from adk_redis.tools.mcp_search import REDISVL_MCP_TOOL_UPSERT
-from adk_redis.tools.mcp_search import create_redisvl_mcp_toolset
 from adk_redis.tools.search import BaseRedisSearchTool
 from adk_redis.tools.search import RedisAggregatedHybridQueryConfig
 from adk_redis.tools.search import RedisHybridQueryConfig
@@ -67,8 +63,4 @@ __all__ = [
     # MCP tools
     "create_memory_mcp_toolset",
     "ALL_MCP_TOOLS",
-    "create_redisvl_mcp_toolset",
-    "ALL_REDISVL_MCP_TOOLS",
-    "REDISVL_MCP_TOOL_SEARCH",
-    "REDISVL_MCP_TOOL_UPSERT",
 ]

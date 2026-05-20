@@ -22,7 +22,7 @@ The search tools use RedisVL to perform vector similarity search over a Redis in
 | `redis_text_search` | Keyword full-text search via BM25 |
 | `redis_sql_search` | SQL `SELECT` against a bound index via `redisvl.query.SQLQuery`. Requires the `adk-redis[sql]` extra. |
 
-In addition to the in-process Python tools, you can connect an agent to RedisVL's own MCP server (one index per server) with `create_redisvl_mcp_toolset(...)`. The server exposes schema-aware `search-records` and `upsert-records` tools and is useful when the same index needs to be served to multiple agents or non-Python clients. See the [search tools how-to](../user_guide/how_to_guides/search_tools.md) for the decision matrix.
+In addition to the in-process Python tools, you can connect an agent to RedisVL's own MCP server (one index per server) using ADK's standard `McpToolset` pointed at a running `rvl mcp` instance. The server exposes schema-aware `search-records` and `upsert-records` tools and is useful when the same index needs to be served to multiple agents or non-Python clients. See the [search tools how-to](../user_guide/how_to_guides/search_tools.md) for the decision matrix and code samples.
 
 ## Indexing
 

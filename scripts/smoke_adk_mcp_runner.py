@@ -44,9 +44,9 @@ from load_data import load_data  # noqa: E402
 from redisvl_mcp_search_agent.agent import root_agent  # noqa: E402
 
 PROMPTS = [
-    # Use a keyword-friendly prompt so the BM25 tokenizer matches cleanly.
-    # The corpus uses words like 'hybrid', 'caching', 'memory'.
-    "Find articles about hybrid search.",
+    # Hybrid search: semantic + keyword. The corpus is the knowledge base
+    # from redis_search_tools, embedded for vector + BM25 fusion.
+    "How does hybrid search work in Redis?",
 ]
 
 

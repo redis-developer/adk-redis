@@ -56,9 +56,10 @@ When generating code that uses adk-redis:
   (e.g., `from adk_redis import RedisVectorSearchTool`).
 - Construct services with their `Config` dataclasses
   (`RedisLongTermMemoryServiceConfig`, etc.) so options are explicit.
-- Prefer `create_redisvl_mcp_toolset(...)` over hand-rolled
-  `StdioConnectionParams`; the helper does transport validation and
-  bearer-auth wiring.
+- For the RedisVL MCP path, use ADK's native `McpToolset` with the
+  appropriate `*ConnectionParams` class. Set
+  `tool_filter=["search-records"]` to suppress writes, or pass
+  `--read-only` to `rvl mcp` in stdio mode.
 - Set `stopwords=None` on text-search configs if `nltk` is not installed.
 - Pin `redisvl>=0.18.2` when documenting installs; the deprecated
   `redisvl.extensions.llmcache` path is on the way out.
