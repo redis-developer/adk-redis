@@ -15,7 +15,7 @@
 [![Code style: pyink](https://img.shields.io/badge/code%20style-pyink-black)](https://github.com/google/pyink)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue)](https://mypy-lang.org/)
 
-**[PyPI](https://pypi.org/project/adk-redis/)** • **[Documentation](https://redis.io/docs/latest/integrate/google-adk/)** • **[Examples](examples/)** • **[Agent Memory Server](https://github.com/redis/agent-memory-server)** • **[RedisVL](https://docs.redisvl.com)**
+**[PyPI](https://pypi.org/project/adk-redis/)** • **[Documentation](https://redis-developer.github.io/adk-redis/)** • **[Examples](examples/)** • **[Agent Memory Server](https://github.com/redis/agent-memory-server)** • **[RedisVL](https://docs.redisvl.com)**
 
 </div>
 
@@ -93,9 +93,9 @@ uv sync --all-extras
     redislabs/agent-memory-server:0.13.2 \
     agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
   ```
-  On Linux, `host.docker.internal` is not routable by default; use `--network=host` and `REDIS_URL=redis://127.0.0.1:6379`, or set `REDIS_URL` to the Docker-bridge gateway (typically `redis://172.17.0.1:6379`). AMS supports 100+ LLM and embedding providers via [LiteLLM](https://docs.litellm.ai/). See [Agent Memory Server setup](docs/user_guide/how_to_guides/memory_server_setup.md) for the full configuration matrix.
+  On Linux, `host.docker.internal` is not routable by default; use `--network=host` and `REDIS_URL=redis://127.0.0.1:6379`, or set `REDIS_URL` to the Docker-bridge gateway (typically `redis://172.17.0.1:6379`). AMS supports 100+ LLM and embedding providers via [LiteLLM](https://docs.litellm.ai/). See [Agent Memory Server setup](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/memory_server_setup/) for the full configuration matrix.
 
-For Redis Cloud, Redis Enterprise, or troubleshooting, see [Redis setup](docs/user_guide/how_to_guides/redis_setup.md).
+For Redis Cloud, Redis Enterprise, or troubleshooting, see [Redis setup](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/redis_setup/).
 
 ### Sessions + long-term memory
 
@@ -280,7 +280,7 @@ Use ADK's standard `McpToolset` against a running [RedisVL MCP server](https://d
 
 Supports `stdio`, `sse`, and `streamable-http` transports; bearer auth on HTTP. Requires `redisvl[mcp]` and a `rvl mcp` server. See the [Quick Start MCP snippet](#search-over-a-redis-index-mcp) above for the wiring.
 
-For the full decision matrix and runnable demo, see [docs/user_guide/how_to_guides/search_tools.md](docs/user_guide/how_to_guides/search_tools.md).
+For the full decision matrix and runnable demo, see the [Search tools guide](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/search_tools/).
 
 ---
 
@@ -387,12 +387,14 @@ Apache 2.0. See [LICENSE](LICENSE).
 
 ## Helpful links
 
+- [Documentation](https://redis-developer.github.io/adk-redis/): full docs site (concepts, how-tos, API reference)
 - [PyPI](https://pypi.org/project/adk-redis/): install with `pip install adk-redis`
-- [Redis setup](docs/user_guide/how_to_guides/redis_setup.md): local, Docker, and Redis Cloud
-- [Agent Memory Server setup](docs/user_guide/how_to_guides/memory_server_setup.md): full AMS configuration
-- [Integration walkthrough](docs/user_guide/01_integration.md): end-to-end wiring
-- [Search tools guide](docs/user_guide/how_to_guides/search_tools.md): in-process vs MCP, decision matrix
+- [Redis setup](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/redis_setup/): local, Docker, and Redis Cloud
+- [Agent Memory Server setup](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/memory_server_setup/): full AMS configuration
+- [Quickstart](https://redis-developer.github.io/adk-redis/user_guide/01_integration/): end-to-end wiring
+- [Search tools guide](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/search_tools/): in-process vs MCP, decision matrix
 - [Google ADK](https://github.com/google/adk-python): agent framework
 - [Agent Memory Server](https://github.com/redis/agent-memory-server): memory backend
 - [RedisVL](https://docs.redisvl.com/): Redis Vector Library
 - [Redis LangCache](https://redis.io/langcache): managed semantic cache
+- [Redis ADK integration (redis.io)](https://redis.io/docs/latest/integrate/google-adk/): additional coverage on redis.io
