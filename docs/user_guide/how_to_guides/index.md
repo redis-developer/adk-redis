@@ -38,4 +38,10 @@ Task-oriented recipes for adk-redis.
 
     Expose Redis vector and lexical search as ADK tools.
 
+-   :material-cached:{ .lg .middle } **[Semantic cache](semantic_cache.md)**
+
+    ---
+
+    Skip repeat LLM calls with self-hosted (RedisVL) or managed (LangCache) caching.
+
 </div>

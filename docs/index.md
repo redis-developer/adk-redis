@@ -1,5 +1,5 @@
 ---
-description: adk-redis documentation. Redis backends for the Google Agent Development Kit.
+description: adk-redis documentation. Redis integrations for the Google Agent Development Kit.
 ---
 
 <div class="rds-hero" markdown>
@@ -8,7 +8,7 @@ description: adk-redis documentation. Redis backends for the Google Agent Develo
 
 # adk-redis
 
-Redis backends for the Google Agent Development Kit
+Redis Integrations for the Google Agent Development Kit
 { .rds-hero__tagline }
 
 </div>
@@ -23,7 +23,7 @@ pip install adk-redis
 docker run -d --name redis -p 6379:6379 redis:8
 ```
 
-→ *[Integration walkthrough](user_guide/01_integration.md)*
+→ *[Quickstart](user_guide/01_integration.md)*
 
 ---
 
@@ -47,7 +47,7 @@ docker run -d --name redis -p 6379:6379 redis:8
 
     ---
 
-    Worked agents: fitness coach, hybrid travel agent, Redis search tools.
+    Nine runnable agents covering memory, search, and caching.
 
 -   :material-api:{ .lg .middle } **[API Reference](api/index.md)**
 

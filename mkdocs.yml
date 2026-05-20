@@ -1,6 +1,6 @@
 site_name: Google ADK + Redis
-site_description: Redis backends for Google Agent Development Kit. Sessions, memory, tools, cache.
-site_url: https://ai.redis.io/adk/
+site_description: Redis integrations for Google Agent Development Kit. Sessions, memory, tools, cache.
+site_url: https://redis-developer.github.io/adk-redis/
 repo_url: https://github.com/redis-developer/adk-redis
 repo_name: redis-developer/adk-redis
 edit_uri: edit/main/docs/
@@ -162,12 +162,13 @@ nav:
   - Concepts:
       - concepts/index.md
       - ADK overview: concepts/adk_overview.md
-      - Sessions: concepts/sessions.md
-      - Memory: concepts/memory.md
-      - Search: concepts/search.md
+      - Sessions + Memory Services: concepts/sessions.md
+      - Sessions + Memory MCP + Tools: concepts/memory.md
+      - RedisVL MCP + Search Tools: concepts/search.md
+      - Semantic Caching: concepts/caching.md
   - User Guide:
       - user_guide/index.md
-      - Integration: user_guide/01_integration.md
+      - Quickstart: user_guide/01_integration.md
       - How-To Guides:
           - user_guide/how_to_guides/index.md
           - Redis setup: user_guide/how_to_guides/redis_setup.md
@@ -175,11 +176,9 @@ nav:
           - Session service: user_guide/how_to_guides/session_service.md
           - Memory service: user_guide/how_to_guides/memory_service.md
           - Search tools: user_guide/how_to_guides/search_tools.md
+          - Semantic cache: user_guide/how_to_guides/semantic_cache.md
   - Examples:
       - examples/index.md
-      - Fitness coach: examples/fitness_coach.md
-      - Travel agent (hybrid): examples/travel_agent_hybrid.md
-      - Redis search tools: examples/redis_search_tools.md
   - API Reference:
       - api/index.md
       - Python package:

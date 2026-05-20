@@ -1,6 +1,6 @@
 # adk-redis
 
-> Redis backends for Google's Agent Development Kit. Provides ADK
+> Redis integrations for Google's Agent Development Kit. Provides ADK
 > `BaseSessionService` and `BaseMemoryService` implementations, five
 > RedisVL-backed search tools, MCP toolsets for RedisVL and Agent Memory
 > Server, and semantic cache providers (self-hosted RedisVL or managed
@@ -17,10 +17,11 @@ For task-oriented recipes, browse the
 - [Sessions](concepts/sessions.md): working memory backed by Agent Memory Server.
 - [Memory](concepts/memory.md): long-term semantic memory with recency boosting.
 - [Search](concepts/search.md): vector, hybrid, range, text, and SQL search over RedisVL.
+- [Caching](concepts/caching.md): semantic caching with RedisVL or LangCache.
 
 ## User guide
 
-- [Integration walkthrough](user_guide/01_integration.md): end-to-end wiring of services into an ADK Runner.
+- [Quickstart](user_guide/01_integration.md): three steps to a running agent with Redis sessions and memory.
 - [How-to guides index](user_guide/how_to_guides/index.md): pointers to setup and task guides.
 
 ## How-to guides
@@ -28,8 +29,9 @@ For task-oriented recipes, browse the
 - [Redis setup](user_guide/how_to_guides/redis_setup.md): start Redis 8.4 locally or in Redis Cloud.
 - [Memory server setup](user_guide/how_to_guides/memory_server_setup.md): run Agent Memory Server.
 - [Session service](user_guide/how_to_guides/session_service.md): wire `RedisWorkingMemorySessionService`.
-- [Memory service](user_guide/how_to_guides/memory_service.md): wire `RedisLongTermMemoryService` and the memory tools.
+- [Memory service](user_guide/how_to_guides/memory_service.md): wire `RedisLongTermMemoryService`.
 - [Search tools](user_guide/how_to_guides/search_tools.md): use the five search tools and the RedisVL MCP toolset.
+- [Semantic cache](user_guide/how_to_guides/semantic_cache.md): add self-hosted or managed semantic caching.
 
 ## API reference
 
