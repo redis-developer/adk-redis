@@ -40,6 +40,7 @@ from adk_redis.tools.memory import UpdateMemoryTool
 
 # Configuration from environment
 MEMORY_SERVER_URL = os.getenv("MEMORY_SERVER_URL", "http://localhost:8088")
+MEMORY_BACKEND = os.getenv("REDIS_MEMORY_BACKEND", "opensource-agent-memory")
 NAMESPACE = os.getenv("NAMESPACE", "travel_agent_memory_tools")
 
 
@@ -54,7 +55,10 @@ async def after_agent(callback_context: CallbackContext):
 
 # Configure memory tools
 memory_config = MemoryToolConfig(
+    backend=MEMORY_BACKEND,
     api_base_url=MEMORY_SERVER_URL,
+    api_key=os.getenv("AGENT_MEMORY_API_KEY"),
+    store_id=os.getenv("AGENT_MEMORY_STORE_ID"),
     default_namespace=NAMESPACE,
     recency_boost=True,
     search_top_k=10,

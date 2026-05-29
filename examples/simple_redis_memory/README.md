@@ -109,11 +109,15 @@ Create `.env` in this directory:
 
 ```bash
 GOOGLE_API_KEY=your-google-api-key
+REDIS_MEMORY_BACKEND=opensource-agent-memory
 REDIS_MEMORY_SERVER_URL=http://localhost:8088
 REDIS_MEMORY_NAMESPACE=adk_agent_memory
 REDIS_MEMORY_EXTRACTION_STRATEGY=discrete
 REDIS_MEMORY_CONTEXT_WINDOW=8000
 REDIS_MEMORY_RECENCY_BOOST=true
+# Required only when REDIS_MEMORY_BACKEND=redis-agent-memory
+AGENT_MEMORY_STORE_ID=
+AGENT_MEMORY_API_KEY=
 ```
 
 ## Usage
@@ -171,7 +175,10 @@ User: What's my favorite coffee?
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `REDIS_MEMORY_BACKEND` | `opensource-agent-memory` | `opensource-agent-memory` or `redis-agent-memory` |
 | `REDIS_MEMORY_SERVER_URL` | `http://localhost:8088` | Memory server URL |
+| `AGENT_MEMORY_STORE_ID` | empty | Redis Agent Memory store ID, used only for `redis-agent-memory` |
+| `AGENT_MEMORY_API_KEY` | empty | Redis Agent Memory API key, used only for `redis-agent-memory` |
 | `REDIS_MEMORY_NAMESPACE` | `adk_agent_memory` | Namespace for isolation |
 | `REDIS_MEMORY_EXTRACTION_STRATEGY` | `discrete` | `discrete`, `summary`, `preferences` |
 | `REDIS_MEMORY_CONTEXT_WINDOW` | `8000` | Max tokens before summarization |

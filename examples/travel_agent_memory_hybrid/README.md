@@ -104,8 +104,12 @@ cd examples/travel_agent_memory_hybrid
 cat > .env << EOF
 GOOGLE_API_KEY=your-google-api-key
 TAVILY_API_KEY=your-tavily-api-key
+REDIS_MEMORY_BACKEND=opensource-agent-memory
 MEMORY_SERVER_URL=http://localhost:8088
 NAMESPACE=travel_agent_hybrid
+# Required only when REDIS_MEMORY_BACKEND=redis-agent-memory
+AGENT_MEMORY_STORE_ID=
+AGENT_MEMORY_API_KEY=
 EOF
 ```
 
@@ -578,4 +582,3 @@ uv run adk web .
 Copyright 2025 Google LLC and Redis, Inc.
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](../../LICENSE) for details.
-

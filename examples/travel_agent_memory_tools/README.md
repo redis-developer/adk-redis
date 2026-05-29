@@ -75,7 +75,8 @@ docker run -d --name agent-memory-server -p 8088:8088 \
 ```bash
 cd examples/travel_agent_memory_tools
 cp .env.example .env
-# Edit .env and add your GOOGLE_API_KEY and TAVILY_API_KEY
+# Edit .env and add your GOOGLE_API_KEY and TAVILY_API_KEY.
+# REDIS_MEMORY_BACKEND defaults to opensource-agent-memory.
 ```
 
 ### (Optional) Seed Demo User Profiles
@@ -537,4 +538,3 @@ uv run adk web .
 Copyright 2025 Google LLC and Redis, Inc.
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](../../LICENSE) for details.
-
