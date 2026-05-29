@@ -18,9 +18,13 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+import uuid
 
 from google.genai import types
 
+from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis.memory._utils import read_field
+from adk_redis.memory._utils import stable_memory_id
 from adk_redis.tools.memory._base import BaseMemoryTool
 from adk_redis.tools.memory._config import MemoryToolConfig
 
@@ -150,36 +154,65 @@ class CreateMemoryTool(BaseMemoryTool):
       memory_type = "semantic"  # Default fallback
 
     try:
-      # Use add_memory_tool which creates a memory in a session context
-      # We'll use a temporary session ID for standalone memory creation
-      import uuid
+      if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
+        session_id = f"standalone_{uuid.uuid4().hex[:8]}"
+        response = await self._get_agent_memory_server_client().add_memory_tool(
+            session_id=session_id,
+            text=content,
+            memory_type=memory_type,
+            topics=topics if topics else None,
+            namespace=namespace,
+            user_id=user_id,
+        )
 
-      session_id = f"standalone_{uuid.uuid4().hex[:8]}"
-
-      client = self._get_client()
-      response = await client.add_memory_tool(
-          session_id=session_id,
-          text=content,
-          memory_type=memory_type,
-          topics=topics if topics else None,
-          namespace=namespace,
-          user_id=user_id,
-      )
-
-      # Response is a dict with 'success' key and summary
-      if response.get("success"):
-        # Extract memory ID from summary if available, or use session_id as fallback
-        memory_id = response.get("memory_id", session_id)
-        return {
-            "status": "success",
-            "memory_id": memory_id,
-            "message": response.get("summary", "Memory created successfully"),
-        }
-      else:
+        if response.get("success"):
+          return {
+              "status": "success",
+              "memory_id": response.get("memory_id", session_id),
+              "message": response.get(
+                  "summary",
+                  "Memory created successfully",
+              ),
+          }
         return {
             "status": "error",
             "message": response.get("summary", "Failed to create memory"),
         }
+
+      memory_id = stable_memory_id(
+          "tool",
+          namespace,
+          user_id or "",
+          memory_type,
+          content,
+      )
+      record = {
+          "id": memory_id,
+          "text": content,
+          "ownerId": user_id,
+          "namespace": namespace,
+          "topics": topics if topics else None,
+          "memoryType": memory_type,
+      }
+
+      async with self._agent_memory() as agent_memory:
+        response = await agent_memory.bulk_create_long_term_memories_async(
+            memories=[record]
+        )
+
+      errors = read_field(response, "errors")
+      if errors:
+        return {
+            "status": "error",
+            "message": f"Failed to create memory: {errors}",
+        }
+
+      created = read_field(response, "created", []) or [memory_id]
+      return {
+          "status": "success",
+          "memory_id": created[0],
+          "message": "Memory created successfully",
+      }
 
     except Exception as e:
       logger.error("Failed to create memory: %s", e)

@@ -54,13 +54,19 @@ Example:
 
     # Configure memory service
     memory_config = RedisLongTermMemoryServiceConfig(
+        backend="redis-agent-memory",
         api_base_url="http://localhost:8000",
+        api_key="...",
+        store_id="...",
     )
     memory_service = RedisLongTermMemoryService(config=memory_config)
 
     # Configure session service
     session_config = RedisWorkingMemorySessionServiceConfig(
+        backend="redis-agent-memory",
         api_base_url="http://localhost:8000",
+        api_key="...",
+        store_id="...",
     )
     session_service = RedisWorkingMemorySessionService(config=session_config)
     ```

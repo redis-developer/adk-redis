@@ -21,6 +21,8 @@ from typing import Any
 
 from google.genai import types
 
+from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis.memory._utils import read_field
 from adk_redis.tools.memory._base import BaseMemoryTool
 from adk_redis.tools.memory._config import MemoryToolConfig
 
@@ -127,8 +129,8 @@ class UpdateMemoryTool(BaseMemoryTool):
     memory_id = args.get("memory_id")
     content = args.get("content")
     topics = args.get("topics")
-    self._get_namespace(args.get("namespace"))
-    self._get_user_id(args.get("user_id"))
+    namespace = args.get("namespace")
+    user_id = args.get("user_id")
 
     if not memory_id:
       return {"status": "error", "message": "memory_id is required"}
@@ -140,24 +142,49 @@ class UpdateMemoryTool(BaseMemoryTool):
       }
 
     try:
-      # Build updates dict - use 'text' instead of 'content'
-      updates = {}
-      if content:
-        updates["text"] = content
-      if topics is not None:
-        updates["topics"] = topics
+      if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
+        updates: dict[str, Any] = {}
+        if content:
+          updates["text"] = content
+        if topics is not None:
+          updates["topics"] = topics
 
-      # edit_long_term_memory only takes memory_id and updates dict
-      client = self._get_client()
-      response = await client.edit_long_term_memory(
-          memory_id=memory_id,
-          updates=updates,
-      )
+        response = (
+            await (
+                self._get_agent_memory_server_client().edit_long_term_memory(
+                    memory_id=memory_id,
+                    updates=updates,
+                )
+            )
+        )
+        return {
+            "status": "success",
+            "memory_id": response.id,
+            "message": f"Memory {response.id} updated successfully",
+        }
+
+      update_kwargs: dict[str, Any] = {}
+      if content:
+        update_kwargs["text"] = content
+      if topics is not None:
+        update_kwargs["topics"] = topics
+      if namespace:
+        update_kwargs["namespace"] = namespace
+      if user_id:
+        update_kwargs["owner_id"] = user_id
+
+      async with self._agent_memory() as agent_memory:
+        response = await agent_memory.update_long_term_memory_async(
+            memory_id=memory_id,
+            **update_kwargs,
+        )
 
       return {
           "status": "success",
-          "memory_id": response.id,
-          "message": f"Memory {response.id} updated successfully",
+          "memory_id": read_field(response, "id"),
+          "message": (
+              f"Memory {read_field(response, 'id')} updated successfully"
+          ),
       }
 
     except Exception as e:
