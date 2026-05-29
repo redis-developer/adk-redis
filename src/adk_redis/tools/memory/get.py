@@ -21,6 +21,8 @@ from typing import Any
 
 from google.genai import types
 
+from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis.memory._utils import read_field
 from adk_redis.tools.memory._base import BaseMemoryTool
 from adk_redis.tools.memory._config import MemoryToolConfig
 
@@ -110,26 +112,57 @@ class GetMemoryTool(BaseMemoryTool):
       return {"status": "error", "message": "memory_id is required"}
 
     try:
-      client = self._get_client()
-      memory = await client.get_long_term_memory(memory_id=memory_id)
+      if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
+        memory = (
+            await (
+                self._get_agent_memory_server_client().get_long_term_memory(
+                    memory_id=memory_id
+                )
+            )
+        )
+
+        return {
+            "status": "success",
+            "memory": {
+                "id": memory.id,
+                "content": memory.text,
+                "topics": memory.topics or [],
+                "entities": memory.entities or [],
+                "memory_type": memory.memory_type,
+                "namespace": memory.namespace,
+                "user_id": memory.user_id,
+                "session_id": memory.session_id,
+                "created_at": str(memory.created_at)
+                if memory.created_at
+                else None,
+                "last_accessed": str(memory.last_accessed)
+                if memory.last_accessed
+                else None,
+            },
+        }
+
+      async with self._agent_memory() as agent_memory:
+        memory = await agent_memory.get_long_term_memory_async(
+            memory_id=memory_id
+        )
+      memory_type = read_field(memory, "memory_type")
+      created_at = read_field(memory, "created_at")
+      updated_at = read_field(memory, "updated_at")
 
       return {
           "status": "success",
           "memory": {
-              "id": memory.id,
-              "content": memory.text,
-              "topics": memory.topics or [],
-              "entities": memory.entities or [],
-              "memory_type": memory.memory_type,
-              "namespace": memory.namespace,
-              "user_id": memory.user_id,
-              "session_id": memory.session_id,
-              "created_at": str(memory.created_at)
-              if memory.created_at
+              "id": read_field(memory, "id"),
+              "content": read_field(memory, "text"),
+              "topics": read_field(memory, "topics", []) or [],
+              "memory_type": str(getattr(memory_type, "value", memory_type))
+              if memory_type
               else None,
-              "last_accessed": str(memory.last_accessed)
-              if memory.last_accessed
-              else None,
+              "namespace": read_field(memory, "namespace"),
+              "user_id": read_field(memory, "owner_id"),
+              "session_id": read_field(memory, "session_id"),
+              "created_at": str(created_at) if created_at else None,
+              "updated_at": str(updated_at) if updated_at else None,
           },
       }
 

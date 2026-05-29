@@ -17,10 +17,13 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from google.genai import types
 
+from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis.memory._utils import read_field
 from adk_redis.tools.memory._base import BaseMemoryTool
 from adk_redis.tools.memory._config import MemoryToolConfig
 
@@ -122,27 +125,32 @@ class DeleteMemoryTool(BaseMemoryTool):
       return {"status": "error", "message": "memory_ids is required"}
 
     try:
-      # delete_long_term_memories only takes memory_ids
-      client = self._get_client()
-      response = await client.delete_long_term_memories(
-          memory_ids=memory_ids,
-      )
+      if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
+        response = await self._get_agent_memory_server_client().delete_long_term_memories(
+            memory_ids=memory_ids,
+        )
+        status_msg = response.status
+        match = re.search(r"deleted (\d+)", status_msg)
+        deleted_count = int(match.group(1)) if match else 0
+        is_success = "ok" in status_msg.lower()
 
-      # Response is AckResponse with 'status' field containing message like "ok, deleted 2 memories"
-      status_msg = response.status
+        return {
+            "status": "success" if is_success else "error",
+            "deleted_count": deleted_count,
+            "message": status_msg,
+        }
 
-      # Parse the deleted count from the status message
-      import re
-
-      match = re.search(r"deleted (\d+)", status_msg)
-      deleted_count = int(match.group(1)) if match else 0
-
-      is_success = "ok" in status_msg.lower()
+      async with self._agent_memory() as agent_memory:
+        response = await agent_memory.bulk_delete_long_term_memories_async(
+            memory_ids=memory_ids,
+        )
+      deleted = read_field(response, "deleted", []) or []
+      errors = read_field(response, "errors")
 
       return {
-          "status": "success" if is_success else "error",
-          "deleted_count": deleted_count,
-          "message": status_msg,
+          "status": "error" if errors else "success",
+          "deleted_count": len(deleted),
+          "message": "Deleted memories" if not errors else str(errors),
       }
 
     except Exception as e:

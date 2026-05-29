@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Redis Working Memory Session Service for ADK.
-
-This module provides session management using the Redis Agent Memory Server's
-Working Memory API, offering automatic context summarization and background
-memory extraction.
-"""
+"""Redis working memory session service for ADK."""
 
 from __future__ import annotations
 
+import base64
+from contextlib import asynccontextmanager
+from importlib import import_module
 import logging
 import time
-from typing import Any, Literal
+from typing import Any, AsyncIterator, Literal
 import uuid
 
 from google.adk.events.event import Event
@@ -36,27 +34,76 @@ from pydantic import BaseModel
 from pydantic import Field
 from typing_extensions import override
 
+from adk_redis.memory._backends import MemoryBackendName
+from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis.memory._utils import extract_text_from_event
+from adk_redis.memory._utils import is_not_found_error
+from adk_redis.memory._utils import read_field
+from adk_redis.memory._utils import timestamp_to_datetime
 
 logger = logging.getLogger("adk_redis." + __name__)
 
+_SESSION_ID_PREFIX = "adkredis"
+
+try:
+  _agent_memory_client_module = import_module("agent_memory_client")
+  _agent_memory_exceptions_module = import_module(
+      "agent_memory_client.exceptions"
+  )
+  _agent_memory_models_module = import_module("agent_memory_client.models")
+except ImportError:
+  _MemoryAPIClient: Any = None
+  _MemoryClientConfig: Any = None
+
+  class _FallbackMemoryNotFoundError(Exception):
+    """Fallback used when agent-memory-client is not installed."""
+
+  _MemoryNotFoundError: Any = _FallbackMemoryNotFoundError
+  _MemoryMessage: Any = None
+  _MemoryStrategyConfig: Any = None
+else:
+  _MemoryAPIClient = _agent_memory_client_module.MemoryAPIClient
+  _MemoryClientConfig = _agent_memory_client_module.MemoryClientConfig
+  _MemoryNotFoundError = _agent_memory_exceptions_module.MemoryNotFoundError
+  _MemoryMessage = _agent_memory_models_module.MemoryMessage
+  _MemoryStrategyConfig = _agent_memory_models_module.MemoryStrategyConfig
+
+try:
+  _redis_agent_memory_module = import_module("redis_agent_memory")
+except ImportError:
+  _AgentMemory: Any = None
+else:
+  _AgentMemory = _redis_agent_memory_module.AgentMemory
+
 
 class RedisWorkingMemorySessionServiceConfig(BaseModel):
-  """Configuration for Redis Working Memory Session Service.
+  """Configuration for Redis working memory session service.
 
   Attributes:
-      api_base_url: Base URL of the Agent Memory Server.
+      backend: Memory backend to use.
+      api_base_url: Memory API base URL.
+      api_key: Redis Agent Memory API key.
+      store_id: Redis Agent Memory store ID.
       timeout: HTTP request timeout in seconds.
-      default_namespace: Default namespace for session operations.
-      model_name: Model name for context window management and summarization.
-      context_window_max: Maximum context window tokens.
-      extraction_strategy: Memory extraction strategy.
-      extraction_strategy_config: Additional config for extraction strategy.
-      session_ttl_seconds: Optional TTL for session expiration.
+      timeout_ms: Optional SDK timeout in milliseconds.
+      default_namespace: Default namespace for session isolation.
+      model_name: Backward-compatible option retained from the previous client.
+      context_window_max: Backward-compatible option retained from the
+        previous client.
+      extraction_strategy: Backward-compatible option retained from the
+        previous client.
+      extraction_strategy_config: Backward-compatible option retained from the
+        previous client.
+      session_ttl_seconds: Backward-compatible option retained from the
+        previous client.
   """
 
+  backend: MemoryBackendName = "redis-agent-memory"
   api_base_url: str = Field(default="http://localhost:8000")
+  api_key: str | None = None
+  store_id: str | None = None
   timeout: float = Field(default=30.0, gt=0.0)
+  timeout_ms: int | None = Field(default=None, ge=1)
   default_namespace: str | None = None
   model_name: str | None = None
   context_window_max: int | None = Field(default=None, ge=1)
@@ -68,177 +115,252 @@ class RedisWorkingMemorySessionServiceConfig(BaseModel):
 
 
 class RedisWorkingMemorySessionService(BaseSessionService):
-  """Session service using Redis Agent Memory Server's Working Memory API.
+  """Session service backed by Redis memory backends.
 
-  This service provides session management backed by Agent Memory Server:
-  - Session storage in Working Memory
-  - Automatic context summarization when token limit exceeded
-  - Background memory extraction to Long-Term Memory
-  - Incremental message appending
-  - https://github.com/redis/agent-memory-server
-
-  Requires the `agent-memory-client` package to be installed.
-
-  Example:
-      ```python
-      from adk_redis import (
-          RedisWorkingMemorySessionService,
-          RedisWorkingMemorySessionServiceConfig,
-      )
-
-      config = RedisWorkingMemorySessionServiceConfig(
-          api_base_url="http://localhost:8000",
-          default_namespace="my_app",
-      )
-      session_service = RedisWorkingMemorySessionService(config=config)
-
-      # Use with ADK runner
-      runner = Runner(
-          agent=agent,
-          session_service=session_service,
-      )
-      ```
+  Redis Agent Memory stores session events by session ID. The self-hosted
+  Agent Memory Server stores sessions in Working Memory. Returned ADK
+  sessions keep the original caller-facing session ID for both backends.
   """
 
   def __init__(
       self, config: RedisWorkingMemorySessionServiceConfig | None = None
   ):
-    """Initialize the Redis Working Memory Session Service.
+    """Initialize the Redis Agent Memory session service.
 
     Args:
-        config: Configuration for the service. If None, uses defaults.
+        config: Configuration for the service. If None, defaults are used.
     """
     self._config = config or RedisWorkingMemorySessionServiceConfig()
 
-  def _get_client(self) -> Any:
-    """Get a MemoryAPIClient instance.
+  def _timeout_ms(self) -> int:
+    """Return the configured SDK timeout in milliseconds."""
+    return self._config.timeout_ms or int(self._config.timeout * 1000)
 
-    Note: We create a new client for each call instead of caching it because
-    the ADK Runner creates a new event loop for each run() call, and cached
-    async clients get tied to the first event loop and fail when it closes.
-    """
-    try:
-      from agent_memory_client import MemoryAPIClient
-      from agent_memory_client import MemoryClientConfig
-    except ImportError as e:
+  def _get_client(self) -> Any:
+    """Get a backend client for compatibility with existing tests."""
+    if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
+      return self._get_agent_memory_server_client()
+    return self._get_redis_agent_memory_client()
+
+  def _get_redis_agent_memory_client(self) -> Any:
+    """Get a Redis Agent Memory SDK client."""
+    if _AgentMemory is None:
       raise ImportError(
-          "agent-memory-client package is required for "
+          "redis-agent-memory package is required for "
           "RedisWorkingMemorySessionService. "
           "Install it with: pip install adk-redis[memory]"
-      ) from e
+      )
 
-    client_config = MemoryClientConfig(
+    return _AgentMemory(
+        self._config.api_base_url,
+        api_key=self._config.api_key,
+        store_id=self._config.store_id,
+        timeout_ms=self._timeout_ms(),
+    )
+
+  def _get_agent_memory_server_client(self) -> Any:
+    """Get a self-hosted Agent Memory Server client."""
+    if _MemoryAPIClient is None or _MemoryClientConfig is None:
+      raise ImportError(
+          "agent-memory-client package is required for the "
+          "opensource-agent-memory backend. Install it with: "
+          "pip install adk-redis[memory]"
+      )
+
+    client_config = _MemoryClientConfig(
         base_url=self._config.api_base_url,
         timeout=self._config.timeout,
         default_namespace=self._config.default_namespace,
         default_model_name=self._config.model_name,
         default_context_window_max=self._config.context_window_max,
     )
-    return MemoryAPIClient(client_config)
+    return _MemoryAPIClient(client_config)
+
+  @asynccontextmanager
+  async def _agent_memory(self) -> AsyncIterator[Any]:
+    """Yield a Redis Agent Memory client and close SDK resources."""
+    client = self._get_client()
+    if hasattr(client, "__aenter__"):
+      async with client as agent_memory:
+        yield agent_memory
+    else:
+      yield client
 
   def _get_namespace(self, app_name: str) -> str:
     """Get namespace from config or app_name."""
     return self._config.default_namespace or app_name
 
-  def _event_to_message(self, event: Event) -> Any:
-    """Convert ADK Event to MemoryMessage."""
-    from datetime import datetime
-    from datetime import timezone
+  def _encode_segment(self, value: str) -> str:
+    """Encode one storage session ID segment."""
+    encoded = base64.urlsafe_b64encode(value.encode("utf-8")).decode("ascii")
+    return encoded.rstrip("=")
 
-    from agent_memory_client.models import MemoryMessage
+  def _decode_segment(self, value: str) -> str:
+    """Decode one storage session ID segment."""
+    padding = "=" * (-len(value) % 4)
+    return base64.urlsafe_b64decode(f"{value}{padding}").decode("utf-8")
+
+  def _storage_session_id(
+      self, *, app_name: str, user_id: str, session_id: str
+  ) -> str:
+    """Build the Redis Agent Memory session ID."""
+    namespace = self._get_namespace(app_name)
+    return ":".join(
+        [
+            _SESSION_ID_PREFIX,
+            self._encode_segment(namespace),
+            self._encode_segment(user_id),
+            self._encode_segment(session_id),
+        ]
+    )
+
+  def _parse_storage_session_id(
+      self, storage_session_id: str
+  ) -> tuple[str, str, str] | None:
+    """Parse an internal storage session ID.
+
+    Returns:
+        Tuple of namespace, user_id, and ADK session_id, or None.
+    """
+    parts = storage_session_id.split(":")
+    if len(parts) != 4 or parts[0] != _SESSION_ID_PREFIX:
+      return None
+
+    try:
+      return (
+          self._decode_segment(parts[1]),
+          self._decode_segment(parts[2]),
+          self._decode_segment(parts[3]),
+      )
+    except Exception:
+      return None
+
+  def _event_role(self, event: Event) -> Any:
+    """Map an ADK event to a Redis Agent Memory role."""
+    content_role = event.content.role if event.content else None
+    if event.author == "user" or content_role == "user":
+      return "USER"
+    if content_role == "system":
+      return "SYSTEM"
+    return "ASSISTANT"
+
+  def _event_metadata(
+      self,
+      *,
+      event: Event,
+      app_name: str,
+      user_id: str,
+      session_id: str,
+  ) -> dict[str, Any]:
+    """Build portable metadata for an ADK event."""
+    metadata: dict[str, Any] = {
+        "source": "adk-redis",
+        "namespace": self._get_namespace(app_name),
+        "app_name": app_name,
+        "user_id": user_id,
+        "adk_session_id": session_id,
+        "adk_event_id": event.id,
+        "adk_author": event.author,
+    }
+    if event.actions and event.actions.state_delta:
+      metadata["state_delta"] = dict(event.actions.state_delta)
+    return metadata
+
+  def _event_actor_id(self, session: Session, event: Event) -> str:
+    """Return the Redis actor ID for an ADK event."""
+    if event.author == "user":
+      return session.user_id
+    return event.author or session.app_name
+
+  def _build_agent_memory_server_strategy(self) -> Any:
+    """Build the self-hosted memory extraction strategy config."""
+    if _MemoryStrategyConfig is None:
+      raise ImportError(
+          "agent-memory-client package is required for memory strategies. "
+          "Install it with: pip install adk-redis[memory]"
+      )
+
+    return _MemoryStrategyConfig(
+        strategy=self._config.extraction_strategy,
+        config=self._config.extraction_strategy_config,
+    )
+
+  def _event_to_agent_memory_server_message(self, event: Event) -> Any:
+    """Convert an ADK event to a self-hosted memory message."""
+    if _MemoryMessage is None:
+      raise ImportError(
+          "agent-memory-client package is required for memory messages. "
+          "Install it with: pip install adk-redis[memory]"
+      )
 
     text = extract_text_from_event(event)
     if not text:
       return None
 
     role = "user" if event.author == "user" else "assistant"
-    # Convert event timestamp (float) to datetime for MemoryMessage
-    created_at = datetime.fromtimestamp(event.timestamp, tz=timezone.utc)
-    return MemoryMessage(role=role, content=text, created_at=created_at)
+    return _MemoryMessage(
+        role=role,
+        content=text,
+        created_at=timestamp_to_datetime(event.timestamp),
+    )
 
-  def _working_memory_response_to_session(
+  def _agent_memory_server_response_to_session(
       self,
       response: Any,
       app_name: str,
       user_id: str,
   ) -> Session:
-    """Convert WorkingMemoryResponse to ADK Session."""
+    """Convert a self-hosted WorkingMemory response to an ADK Session."""
     events = []
-    for msg in response.messages or []:
-      # For assistant messages, use app_name as the author since that matches
-      # the agent name in ADK. Using session_id causes "Event from an unknown
-      # agent" warnings and breaks conversation history handling.
-      author = "user" if msg.role == "user" else app_name
-      # Set the role on Content - "user" for user messages, "model" for assistant
-      # This is required for ADK's content processor to include events in LLM context
-      role = "user" if msg.role == "user" else "model"
-      content = types.Content(role=role, parts=[types.Part(text=msg.content)])
-      # Preserve original message timestamp if available
-      timestamp = (
-          msg.created_at.timestamp()
-          if hasattr(msg, "created_at") and msg.created_at
-          else time.time()
+    for message in getattr(response, "messages", None) or []:
+      role_raw = getattr(message, "role", "")
+      author = "user" if role_raw == "user" else app_name
+      content_role = "user" if role_raw == "user" else "model"
+      content = types.Content(
+          role=content_role,
+          parts=[types.Part(text=getattr(message, "content", ""))],
       )
-      event = Event(
-          author=author,
-          content=content,
-          timestamp=timestamp,
+      created_at = getattr(message, "created_at", None)
+      timestamp = created_at.timestamp() if created_at else time.time()
+      events.append(
+          Event(
+              author=author,
+              content=content,
+              timestamp=timestamp,
+          )
       )
-      events.append(event)
 
     return Session(
-        id=response.session_id,
+        id=getattr(response, "session_id"),
         app_name=app_name,
         user_id=user_id,
         events=events,
-        state=response.data or {},
+        state=getattr(response, "data", None) or {},
         last_update_time=time.time(),
     )
 
-  @override
-  async def create_session(
+  async def _create_session_agent_memory_server(
       self,
       *,
       app_name: str,
       user_id: str,
-      state: dict[str, Any] | None = None,
-      session_id: str | None = None,
+      state: dict[str, Any] | None,
+      session_id: str | None,
   ) -> Session:
-    """Create a new session in Working Memory.
-
-    Uses get_or_create_working_memory to prevent accidental overwrites
-    of existing sessions.
-
-    Args:
-        app_name: Application name (used as namespace if not configured).
-        user_id: User identifier.
-        state: Initial session state.
-        session_id: Optional session ID (generated if not provided).
-
-    Returns:
-        The created Session.
-    """
-    from agent_memory_client.models import MemoryStrategyConfig
-
+    """Create a session in the self-hosted Agent Memory Server."""
     session_id = (
         session_id.strip()
         if session_id and session_id.strip()
         else str(uuid.uuid4())
     )
     namespace = self._get_namespace(app_name)
+    client = self._get_agent_memory_server_client()
 
-    strategy_config = MemoryStrategyConfig(
-        strategy=self._config.extraction_strategy,
-        config=self._config.extraction_strategy_config,
-    )
-
-    # Use get_or_create to prevent accidental overwrites
-    client = self._get_client()
     created, working_memory = await client.get_or_create_working_memory(
         session_id=session_id,
         namespace=namespace,
         user_id=user_id,
-        long_term_memory_strategy=strategy_config,
+        long_term_memory_strategy=self._build_agent_memory_server_strategy(),
     )
 
     if not created:
@@ -247,12 +369,12 @@ class RedisWorkingMemorySessionService(BaseSessionService):
           session_id,
           namespace,
       )
-      # Return existing session data
-      return self._working_memory_response_to_session(
-          working_memory, app_name, user_id
+      return self._agent_memory_server_response_to_session(
+          working_memory,
+          app_name,
+          user_id,
       )
 
-    # Update with initial state and TTL if provided
     if state or self._config.session_ttl_seconds:
       if state:
         working_memory.data = state
@@ -265,7 +387,237 @@ class RedisWorkingMemorySessionService(BaseSessionService):
       )
 
     logger.info("Created session %s in namespace %s", session_id, namespace)
+    return Session(
+        id=session_id,
+        app_name=app_name,
+        user_id=user_id,
+        state=state or {},
+        events=[],
+        last_update_time=time.time(),
+    )
 
+  async def _get_session_agent_memory_server(
+      self,
+      *,
+      app_name: str,
+      user_id: str,
+      session_id: str,
+      config: GetSessionConfig | None,
+  ) -> Session | None:
+    """Retrieve a session from the self-hosted Agent Memory Server."""
+    try:
+      namespace = self._get_namespace(app_name)
+      client = self._get_agent_memory_server_client()
+      _, response = await client.get_or_create_working_memory(
+          session_id=session_id,
+          namespace=namespace,
+          user_id=user_id,
+          model_name=self._config.model_name,
+          context_window_max=self._config.context_window_max,
+      )
+      session = self._agent_memory_server_response_to_session(
+          response,
+          app_name,
+          user_id,
+      )
+
+      if config:
+        if config.num_recent_events is not None:
+          session.events = session.events[-config.num_recent_events :]
+        if config.after_timestamp is not None:
+          session.events = [
+              event
+              for event in session.events
+              if event.timestamp >= config.after_timestamp
+          ]
+
+      return session
+
+    except _MemoryNotFoundError:
+      return None
+    except Exception as e:
+      logger.error("Failed to get session %s: %s", session_id, e)
+      return None
+
+  async def _list_sessions_agent_memory_server(
+      self, *, app_name: str, user_id: str | None
+  ) -> ListSessionsResponse:
+    """List sessions from the self-hosted Agent Memory Server."""
+    if user_id is None:
+      raise ValueError(
+          "user_id is required for RedisWorkingMemorySessionService"
+      )
+
+    try:
+      namespace = self._get_namespace(app_name)
+      response = await self._get_agent_memory_server_client().list_sessions(
+          namespace=namespace,
+          user_id=user_id,
+      )
+      sessions = [
+          Session(
+              id=session_id,
+              app_name=app_name,
+              user_id=user_id,
+              state={},
+              events=[],
+              last_update_time=time.time(),
+          )
+          for session_id in getattr(response, "sessions", []) or []
+      ]
+      return ListSessionsResponse(sessions=sessions)
+
+    except Exception as e:
+      logger.error("Failed to list sessions: %s", e)
+      return ListSessionsResponse(sessions=[])
+
+  async def _delete_session_agent_memory_server(
+      self, *, app_name: str, user_id: str, session_id: str
+  ) -> None:
+    """Delete a session from the self-hosted Agent Memory Server."""
+    try:
+      await self._get_agent_memory_server_client().delete_working_memory(
+          session_id=session_id,
+          namespace=self._get_namespace(app_name),
+          user_id=user_id,
+      )
+      logger.info("Deleted session %s", session_id)
+    except Exception as e:
+      logger.error("Failed to delete session %s: %s", session_id, e)
+
+  async def _append_event_to_agent_memory_server(
+      self, session: Session, event: Event
+  ) -> None:
+    """Append one ADK event to the self-hosted Agent Memory Server."""
+    message = self._event_to_agent_memory_server_message(event)
+    if not message:
+      return
+
+    await self._get_agent_memory_server_client().append_messages_to_working_memory(
+        session_id=session.id,
+        messages=[message],
+        namespace=self._get_namespace(session.app_name),
+        user_id=session.user_id,
+    )
+
+  async def _append_event_to_redis(
+      self, session: Session, event: Event
+  ) -> None:
+    """Append one ADK event to Redis Agent Memory."""
+    text = extract_text_from_event(event).strip()
+    if not text:
+      return
+
+    storage_session_id = self._storage_session_id(
+        app_name=session.app_name,
+        user_id=session.user_id,
+        session_id=session.id,
+    )
+    async with self._agent_memory() as agent_memory:
+      await agent_memory.add_session_event_async(
+          session_id=storage_session_id,
+          actor_id=self._event_actor_id(session, event),
+          role=self._event_role(event),
+          content=[{"text": text}],
+          created_at=timestamp_to_datetime(event.timestamp),
+          metadata=self._event_metadata(
+              event=event,
+              app_name=session.app_name,
+              user_id=session.user_id,
+              session_id=session.id,
+          ),
+      )
+
+  def _event_text(self, event: object) -> str:
+    """Extract text from a Redis Agent Memory session event."""
+    content = read_field(event, "content", [])
+    parts = []
+    for item in content or []:
+      text = read_field(item, "text", "")
+      if text:
+        parts.append(str(text))
+    return "\n".join(parts)
+
+  def _response_to_session(
+      self,
+      response: object,
+      *,
+      app_name: str,
+      user_id: str,
+      session_id: str,
+  ) -> Session:
+    """Convert a Redis Agent Memory session response to an ADK Session."""
+    events = []
+    state: dict[str, Any] = {}
+    response_events = read_field(response, "events", []) or []
+
+    for redis_event in response_events:
+      text = self._event_text(redis_event).strip()
+      if not text:
+        continue
+
+      role_raw = read_field(redis_event, "role", "")
+      role = str(getattr(role_raw, "value", role_raw)).lower()
+      author = "user" if role == "user" else app_name
+      content_role = "user" if role == "user" else "model"
+      content = types.Content(
+          role=content_role,
+          parts=[types.Part(text=text)],
+      )
+      created_at = read_field(redis_event, "created_at")
+      timestamp = created_at.timestamp() if created_at else time.time()
+      metadata = read_field(redis_event, "metadata", {}) or {}
+      state_delta = metadata.get("state_delta")
+      if isinstance(state_delta, dict):
+        state.update(state_delta)
+
+      events.append(
+          Event(
+              id=metadata.get("adk_event_id")
+              or read_field(redis_event, "event_id"),
+              author=metadata.get("adk_author") or author,
+              content=content,
+              timestamp=timestamp,
+          )
+      )
+
+    return Session(
+        id=session_id,
+        app_name=app_name,
+        user_id=user_id,
+        events=events,
+        state=state,
+        last_update_time=time.time(),
+    )
+
+  @override
+  async def create_session(
+      self,
+      *,
+      app_name: str,
+      user_id: str,
+      state: dict[str, Any] | None = None,
+      session_id: str | None = None,
+  ) -> Session:
+    """Create a new ADK session object.
+
+    Redis Agent Memory creates a stored session when the first event is
+    appended, so this method returns the ADK session without writing a marker
+    event.
+    """
+    if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
+      return await self._create_session_agent_memory_server(
+          app_name=app_name,
+          user_id=user_id,
+          state=state,
+          session_id=session_id,
+      )
+
+    session_id = (
+        session_id.strip()
+        if session_id and session_id.strip()
+        else str(uuid.uuid4())
+    )
     return Session(
         id=session_id,
         app_name=app_name,
@@ -284,104 +636,96 @@ class RedisWorkingMemorySessionService(BaseSessionService):
       session_id: str,
       config: GetSessionConfig | None = None,
   ) -> Session | None:
-    """Retrieve a session from Working Memory.
+    """Retrieve an ADK session from Redis Agent Memory."""
+    if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
+      return await self._get_session_agent_memory_server(
+          app_name=app_name,
+          user_id=user_id,
+          session_id=session_id,
+          config=config,
+      )
 
-    Uses get_or_create_working_memory and checks if session was newly created
-    to determine if it exists. Passes model_name and context_window_max to
-    enable automatic context summarization when token limit is exceeded.
-
-    NOTE: For ADK Runner compatibility, this method now returns the session
-    even if it was just created. The Runner expects get_session to either
-    return an existing session OR return a newly created empty session.
-    Returning None causes the Runner to fail with "Session not found".
-
-    Args:
-        app_name: Application name.
-        user_id: User identifier.
-        session_id: Session ID to retrieve.
-        config: Optional configuration for filtering events.
-
-    Returns:
-        The Session (existing or newly created).
-    """
-    from agent_memory_client.exceptions import MemoryNotFoundError
+    storage_session_id = self._storage_session_id(
+        app_name=app_name,
+        user_id=user_id,
+        session_id=session_id,
+    )
 
     try:
-      namespace = self._get_namespace(app_name)
-      # Use get_or_create to avoid deprecated get_working_memory
-      client = self._get_client()
-      created, response = await client.get_or_create_working_memory(
-          session_id=session_id,
-          namespace=namespace,
-          user_id=user_id,
-          model_name=self._config.model_name,
-          context_window_max=self._config.context_window_max,
-      )
-
-      # Return the session whether it was just created or already existed
-      # This is required for ADK Runner compatibility
-      session = self._working_memory_response_to_session(
-          response, app_name, user_id
-      )
-
-      if config:
-        if config.num_recent_events:
-          session.events = session.events[-config.num_recent_events :]
-        if config.after_timestamp:
-          session.events = [
-              e for e in session.events if e.timestamp > config.after_timestamp
-          ]
-
-      return session
-
-    except MemoryNotFoundError:
-      return None
+      async with self._agent_memory() as agent_memory:
+        response = await agent_memory.get_session_memory_async(
+            session_id=storage_session_id
+        )
     except Exception as e:
+      if is_not_found_error(e):
+        return None
       logger.error("Failed to get session %s: %s", session_id, e)
       return None
+
+    session = self._response_to_session(
+        response,
+        app_name=app_name,
+        user_id=user_id,
+        session_id=session_id,
+    )
+
+    if config:
+      if config.num_recent_events is not None:
+        session.events = session.events[-config.num_recent_events :]
+      if config.after_timestamp is not None:
+        session.events = [
+            event
+            for event in session.events
+            if event.timestamp >= config.after_timestamp
+        ]
+
+    return session
 
   @override
   async def list_sessions(
       self, *, app_name: str, user_id: str | None = None
   ) -> ListSessionsResponse:
-    """List all sessions for a user from Working Memory.
-
-    Args:
-        app_name: Application name.
-        user_id: User identifier (required for this implementation).
-
-    Returns:
-        ListSessionsResponse containing sessions (without events).
-
-    Raises:
-        ValueError: If user_id is not provided.
-    """
-    if user_id is None:
-      raise ValueError(
-          "user_id is required for RedisWorkingMemorySessionService"
-      )
-    try:
-      namespace = self._get_namespace(app_name)
-
-      # SDK method: list_sessions returns SessionListResponse
-      # with sessions: list[str] (session IDs only)
-      client = self._get_client()
-      response = await client.list_sessions(
-          namespace=namespace,
+    """List stored sessions from Redis Agent Memory."""
+    if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
+      return await self._list_sessions_agent_memory_server(
+          app_name=app_name,
           user_id=user_id,
       )
 
-      sessions = []
-      for session_id in response.sessions:
-        session = Session(
-            id=session_id,
-            app_name=app_name,
-            user_id=user_id,
-            state={},
-            events=[],
-            last_update_time=time.time(),
-        )
-        sessions.append(session)
+    namespace = self._get_namespace(app_name)
+    sessions = []
+    page_token = None
+
+    try:
+      async with self._agent_memory() as agent_memory:
+        while True:
+          response = await agent_memory.list_sessions_async(
+              limit=100,
+              page_token=page_token,
+          )
+          for storage_session_id in read_field(response, "items", []) or []:
+            parsed = self._parse_storage_session_id(storage_session_id)
+            if not parsed:
+              continue
+            stored_namespace, stored_user_id, session_id = parsed
+            if stored_namespace != namespace:
+              continue
+            if user_id is not None and stored_user_id != user_id:
+              continue
+            sessions.append(
+                Session(
+                    id=session_id,
+                    app_name=app_name,
+                    user_id=stored_user_id,
+                    state={},
+                    events=[],
+                    last_update_time=time.time(),
+                )
+            )
+
+          page_token = read_field(response, "next_page_token")
+          if not page_token:
+            break
 
       return ListSessionsResponse(sessions=sessions)
 
@@ -393,60 +737,52 @@ class RedisWorkingMemorySessionService(BaseSessionService):
   async def delete_session(
       self, *, app_name: str, user_id: str, session_id: str
   ) -> None:
-    """Delete a session from Working Memory.
-
-    Args:
-        app_name: Application name.
-        user_id: User identifier.
-        session_id: Session ID to delete.
-    """
-    try:
-      namespace = self._get_namespace(app_name)
-      client = self._get_client()
-      await client.delete_working_memory(
-          session_id=session_id,
-          namespace=namespace,
+    """Delete a session from Redis Agent Memory."""
+    if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
+      await self._delete_session_agent_memory_server(
+          app_name=app_name,
           user_id=user_id,
+          session_id=session_id,
       )
+      return
+
+    storage_session_id = self._storage_session_id(
+        app_name=app_name,
+        user_id=user_id,
+        session_id=session_id,
+    )
+    try:
+      async with self._agent_memory() as agent_memory:
+        await agent_memory.delete_session_memory_async(
+            session_id=storage_session_id
+        )
       logger.info("Deleted session %s", session_id)
     except Exception as e:
-      logger.error("Failed to delete session %s: %s", session_id, e)
+      if not is_not_found_error(e):
+        logger.error("Failed to delete session %s: %s", session_id, e)
 
   @override
   async def append_event(self, session: Session, event: Event) -> Event:
-    """Append an event to the session in Working Memory.
+    """Append an event to the ADK session and configured backend."""
+    appended_event = await super().append_event(session=session, event=event)
+    if appended_event.partial:
+      return appended_event
 
-    Uses the incremental append API to add a single message without
-    resending the full conversation history.
-
-    Args:
-        session: The session to append to.
-        event: The event to append.
-
-    Returns:
-        The appended event.
-    """
-    await super().append_event(session=session, event=event)
-    session.last_update_time = event.timestamp
-
+    session.last_update_time = appended_event.timestamp
     try:
-      message = self._event_to_message(event)
-      if message:
-        namespace = self._get_namespace(session.app_name)
-        client = self._get_client()
-        await client.append_messages_to_working_memory(
-            session_id=session.id,
-            messages=[message],
-            namespace=namespace,
-            user_id=session.user_id,
+      if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
+        await self._append_event_to_agent_memory_server(
+            session,
+            appended_event,
         )
-        logger.debug("Appended message to session %s", session.id)
+      else:
+        await self._append_event_to_redis(session, appended_event)
+      logger.debug("Appended message to session %s", session.id)
     except Exception as e:
       logger.error("Failed to append event to session %s: %s", session.id, e)
 
-    return event
+    return appended_event
 
   async def close(self) -> None:
     """Close the session service and cleanup resources."""
-    # No longer caching client, so nothing to close
     pass

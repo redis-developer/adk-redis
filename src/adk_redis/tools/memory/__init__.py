@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Redis Agent Memory tools for ADK.
+"""Redis memory tools for ADK.
 
 This module provides tools for explicit LLM-controlled memory operations
-with the Redis Agent Memory Server. These tools complement the automatic
-memory services by allowing the LLM to directly manage long-term memories.
+with Redis Agent Memory or the self-hosted Agent Memory Server. These tools
+complement the automatic memory services by allowing the LLM to directly manage
+long-term memories.
 
 Available Tools:
     - MemoryPromptTool: Enrich prompts with relevant memories
@@ -38,6 +39,7 @@ Example:
 
     # Configure all tools
     config = MemoryToolConfig(
+        backend="redis-agent-memory",
         api_base_url="http://localhost:8000",
         default_namespace="my_app",
         recency_boost=True,

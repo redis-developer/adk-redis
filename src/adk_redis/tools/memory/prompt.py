@@ -21,6 +21,8 @@ from typing import Any
 
 from google.genai import types
 
+from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis.memory._utils import read_field
 from adk_redis.tools.memory._base import BaseMemoryTool
 from adk_redis.tools.memory._config import MemoryToolConfig
 
@@ -130,26 +132,56 @@ class MemoryPromptTool(BaseMemoryTool):
       return {"status": "error", "message": "query is required"}
 
     try:
-      # memory_prompt requires either session_id or long_term_search
-      # We'll use long_term_search to search long-term memories
-      long_term_search = {
+      if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
+        response = await self._get_agent_memory_server_client().memory_prompt(
+            query=query,
+            user_id=user_id,
+            namespace=namespace,
+            long_term_search={"limit": self._config.search_top_k},
+        )
+        enriched_prompt = response.get("prompt", query)
+        if system_prompt:
+          enriched_prompt = f"{system_prompt}\n\n{enriched_prompt}"
+
+        return {
+            "status": "success",
+            "enriched_prompt": enriched_prompt,
+            "memories_used": len(response.get("memories", [])),
+        }
+
+      filters: dict[str, Any] = {"namespace": {"eq": namespace}}
+      if user_id:
+        filters["ownerId"] = {"eq": user_id}
+      request = {
+          "text": query,
           "limit": self._config.search_top_k,
+          "filter": filters,
+          "filterOp": "all",
       }
 
-      client = self._get_client()
-      response = await client.memory_prompt(
-          query=query,
-          user_id=user_id,
-          namespace=namespace,
-          long_term_search=long_term_search,
-      )
+      async with self._agent_memory() as agent_memory:
+        response = await agent_memory.search_long_term_memory_async(
+            request=request
+        )
 
-      # Extract the enriched prompt and combine with system prompt if provided
-      enriched_prompt = response.get("prompt", query)
+      memory_lines = [
+          f"- {read_field(memory, 'text')}"
+          for memory in read_field(response, "items", []) or []
+          if read_field(memory, "text")
+      ]
+      if memory_lines:
+        memory_context = "\n".join(memory_lines)
+        enriched_prompt = (
+            "Relevant long-term memories:\n"
+            f"{memory_context}\n\nCurrent query:\n{query}"
+        )
+      else:
+        enriched_prompt = query
+
       if system_prompt:
         enriched_prompt = f"{system_prompt}\n\n{enriched_prompt}"
 
-      memories_used = len(response.get("memories", []))
+      memories_used = len(memory_lines)
 
       return {
           "status": "success",
