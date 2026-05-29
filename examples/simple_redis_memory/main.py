@@ -55,7 +55,10 @@ def redis_session_factory(uri: str, **kwargs):
   """Factory function for creating RedisWorkingMemorySessionService from URI."""
   base_url = parse_base_url(uri)
   config = RedisWorkingMemorySessionServiceConfig(
+      backend=os.getenv("REDIS_MEMORY_BACKEND", "opensource-agent-memory"),
       api_base_url=base_url,
+      api_key=os.getenv("AGENT_MEMORY_API_KEY"),
+      store_id=os.getenv("AGENT_MEMORY_STORE_ID"),
       default_namespace=os.getenv("REDIS_MEMORY_NAMESPACE", "adk_agent_memory"),
       model_name=os.getenv("REDIS_MEMORY_MODEL_NAME", "gpt-4o"),
       context_window_max=int(os.getenv("REDIS_MEMORY_CONTEXT_WINDOW", "8000")),
@@ -70,7 +73,10 @@ def redis_memory_factory(uri: str, **kwargs):
   """Factory function for creating RedisLongTermMemoryService from URI."""
   base_url = parse_base_url(uri)
   config = RedisLongTermMemoryServiceConfig(
+      backend=os.getenv("REDIS_MEMORY_BACKEND", "opensource-agent-memory"),
       api_base_url=base_url,
+      api_key=os.getenv("AGENT_MEMORY_API_KEY"),
+      store_id=os.getenv("AGENT_MEMORY_STORE_ID"),
       default_namespace=os.getenv("REDIS_MEMORY_NAMESPACE", "adk_agent_memory"),
       extraction_strategy=os.getenv(
           "REDIS_MEMORY_EXTRACTION_STRATEGY", "discrete"
@@ -110,6 +116,7 @@ if __name__ == "__main__":
   port = int(os.environ.get("PORT", 8080))
   namespace = os.getenv("REDIS_MEMORY_NAMESPACE", "adk_agent_memory")
   server = os.getenv("REDIS_MEMORY_SERVER_URL", "http://localhost:8000")
+  backend = os.getenv("REDIS_MEMORY_BACKEND", "opensource-agent-memory")
   extraction = os.getenv("REDIS_MEMORY_EXTRACTION_STRATEGY", "discrete")
   context_window = os.getenv("REDIS_MEMORY_CONTEXT_WINDOW", "8000")
 
@@ -119,6 +126,7 @@ Starting Redis Memory Sample (adk-redis)
 =========================================
 ADK Server:          http://localhost:{port}
 Memory Server:       {server}
+Memory Backend:      {backend}
 Namespace:           {namespace}
 Extraction Strategy: {extraction}
 Context Window:      {context_window} tokens
