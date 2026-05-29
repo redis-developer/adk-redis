@@ -1,6 +1,9 @@
 # Sessions + Memory with MCP + Tools
 
-Use ADK's native `McpToolset` to connect your agent to the Agent Memory Server's MCP endpoint, or use the REST-based memory tools directly. The LLM decides when to search, create, update, or delete memories.
+Use ADK's native `McpToolset` to connect your agent to the Agent Memory
+Server's MCP endpoint, or use the Python memory tools directly. The Python
+tools can target Redis Agent Memory or the self-hosted Agent Memory Server.
+The LLM decides when to search, create, update, or delete memories.
 
 ## Quick Reference
 
@@ -80,9 +83,11 @@ agent = Agent(
 | `memory_prompt` | Enrich a prompt with relevant memories |
 | `set_working_memory` | Write to the current session's working memory |
 
-## Option 2: REST-Based Tools
+## Option 2: SDK-Based Tools
 
-Use the Python memory tool classes for direct REST access. No MCP server needed; the tools call the Agent Memory Server REST API.
+Use the Python memory tool classes for direct SDK access. Tools can call Redis
+Agent Memory through `redis-agent-memory`, or the self-hosted Agent Memory
+Server through `agent-memory-client`.
 
 ```python
 from google.adk import Agent
@@ -97,9 +102,11 @@ from adk_redis import (
 )
 
 config = MemoryToolConfig(
+    backend="redis-agent-memory",
     api_base_url="http://localhost:8000",
+    api_key="...",
+    store_id="...",
     default_namespace="my_app",
-    recency_boost=True,
 )
 
 agent = Agent(
@@ -115,36 +122,38 @@ agent = Agent(
 )
 ```
 
-### Available REST Tools
+### Available SDK Tools
 
 | Tool | Description |
 |------|-------------|
-| `SearchMemoryTool` | Semantic search with optional recency boost |
+| `SearchMemoryTool` | Semantic search over long-term memories |
 | `CreateMemoryTool` | Store a new memory (semantic, episodic, or message) |
 | `GetMemoryTool` | Retrieve a memory by ID |
 | `UpdateMemoryTool` | Update content, topics, or metadata |
 | `DeleteMemoryTool` | Remove memories by ID |
 | `MemoryPromptTool` | Enrich a system prompt with relevant memories |
 
-## MCP vs REST Decision
+## MCP vs SDK Decision
 
-| | MCP | REST Tools |
+| | MCP | SDK Tools |
 |---|---|---|
 | **Multi-language** | Yes (Python, TypeScript, any MCP client) | Python only |
-| **Shared server** | Yes, multiple agents connect to one MCP endpoint | Each agent connects directly to REST API |
+| **Shared server** | Yes, multiple agents connect to one MCP endpoint | Each agent connects through the SDK |
 | **Extra service** | Requires MCP server running | No extra service (direct HTTP) |
 | **Tool filtering** | `tool_filter` on `McpToolset` | Choose which tool classes to instantiate |
 
-## Configuration (REST Tools)
+## Configuration (SDK Tools)
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `api_base_url` | `http://localhost:8000` | Agent Memory Server URL |
+| `backend` | `redis-agent-memory` | `redis-agent-memory` or `opensource-agent-memory` |
+| `api_base_url` | `http://localhost:8000` | Memory backend URL |
+| `api_key` | `None` | Redis Agent Memory API key |
+| `store_id` | `None` | Redis Agent Memory store ID |
 | `timeout` | `30` | HTTP timeout in seconds |
 | `default_namespace` | `default` | Namespace for memory isolation |
 | `search_top_k` | `10` | Default max search results |
-| `recency_boost` | `True` | Bias scoring toward newer memories |
-| `distance_threshold` | `None` | Max vector distance for search results |
+| `distance_threshold` | `None` | Compatibility alias for search threshold |
 | `deduplicate` | `True` | Deduplicate when creating memories |
 
 Launch with the [ADK web UI](https://google.github.io/adk-docs/runtime/) for interactive testing:

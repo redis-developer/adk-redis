@@ -8,33 +8,18 @@ three steps. For the concepts behind each feature, see the
 
 ## 1. Start infrastructure
 
-Follow the [Redis setup](how_to_guides/redis_setup.md) and
-[Agent Memory Server setup](how_to_guides/memory_server_setup.md) how-to guides,
-or use this minimal start:
+Provide Redis Agent Memory connection settings:
 
 ```bash
-# Redis 8.4
-docker run -d --name redis -p 6379:6379 redis:8.4-alpine
-
-# Agent Memory Server (dev mode)
-docker run -d --name agent-memory-server \
-  -p 8000:8000 \
-  -e REDIS_URL=redis://host.docker.internal:6379 \
-  -e GEMINI_API_KEY=your-gemini-api-key \
-  -e GENERATION_MODEL=gemini/gemini-2.0-flash-exp \
-  -e EMBEDDING_MODEL=gemini/text-embedding-004 \
-  -e EXTRACTION_DEBOUNCE_SECONDS=5 \
-  -e DISABLE_AUTH=true \
-  redislabs/agent-memory-server:0.13.2 \
-  agent-memory api --host 0.0.0.0 --port 8000 --task-backend=asyncio
-
-# Verify
-curl http://localhost:8000/v1/health
+export REDIS_MEMORY_BACKEND="redis-agent-memory"
+export AGENT_MEMORY_SERVER_URL="https://..."
+export AGENT_MEMORY_STORE_ID="..."
+export AGENT_MEMORY_API_KEY="..."
 ```
 
-!!! note
-    On Linux, replace `host.docker.internal` with `172.17.0.1` or use
-    `--network host`.
+For the open source self-hosted Agent Memory Server, use
+`REDIS_MEMORY_BACKEND="opensource-agent-memory"` and point
+`AGENT_MEMORY_SERVER_URL` at your server.
 
 ## 2. Install dependencies
 
@@ -45,8 +30,13 @@ pip install google-adk "adk-redis[memory]"
 ## 3. Wire services into an agent
 
 ```python
+import os
+
 from google.adk import Agent
+from google.adk.agents.callback_context import CallbackContext
 from google.adk.runners import Runner
+from google.adk.tools import load_memory
+from google.adk.tools import preload_memory
 from adk_redis import (
     RedisWorkingMemorySessionService,
     RedisWorkingMemorySessionServiceConfig,
@@ -56,22 +46,35 @@ from adk_redis import (
 
 session_service = RedisWorkingMemorySessionService(
     config=RedisWorkingMemorySessionServiceConfig(
-        api_base_url="http://localhost:8000",
+        backend=os.getenv("REDIS_MEMORY_BACKEND", "redis-agent-memory"),
+        api_base_url=os.environ["AGENT_MEMORY_SERVER_URL"],
+        api_key=os.environ.get("AGENT_MEMORY_API_KEY"),
+        store_id=os.environ.get("AGENT_MEMORY_STORE_ID"),
         default_namespace="my_app",
     )
 )
 
 memory_service = RedisLongTermMemoryService(
     config=RedisLongTermMemoryServiceConfig(
-        api_base_url="http://localhost:8000",
+        backend=os.getenv("REDIS_MEMORY_BACKEND", "redis-agent-memory"),
+        api_base_url=os.environ["AGENT_MEMORY_SERVER_URL"],
+        api_key=os.environ.get("AGENT_MEMORY_API_KEY"),
+        store_id=os.environ.get("AGENT_MEMORY_STORE_ID"),
         default_namespace="my_app",
     )
 )
+
+
+async def after_agent(callback_context: CallbackContext):
+    await callback_context.add_session_to_memory()
+
 
 agent = Agent(
     name="memory_agent",
     model="gemini-2.0-flash",
     instruction="You are a helpful assistant with long-term memory.",
+    tools=[preload_memory, load_memory],
+    after_agent_callback=after_agent,
 )
 
 runner = Runner(
@@ -92,8 +95,7 @@ adk web my_app
 **Try it out:**
 
 1. "Hi, I'm Alice. I love pizza and Python."
-2. Wait 5 seconds for background memory extraction.
-3. Start a new session: "What do you remember about me?"
+2. Start a new session: "What do you remember about me?"
 
 ## What next?
 

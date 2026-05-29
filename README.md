@@ -21,13 +21,13 @@
 
 ---
 
-`adk-redis` is the Redis layer for [Google ADK](https://github.com/google/adk-python) agents. It implements ADK's `BaseMemoryService`, `BaseSessionService`, and `BaseTool` interfaces against Redis, [RedisVL](https://docs.redisvl.com), and the [Redis Agent Memory Server](https://github.com/redis/agent-memory-server). It also ships MCP toolset helpers and semantic-cache providers.
+`adk-redis` is the Redis layer for [Google ADK](https://github.com/google/adk-python) agents. It implements ADK's `BaseMemoryService`, `BaseSessionService`, and `BaseTool` interfaces against Redis, [RedisVL](https://docs.redisvl.com), Redis Agent Memory, and the [Redis Agent Memory Server](https://github.com/redis/agent-memory-server). It also ships MCP toolset helpers and semantic-cache providers.
 
 | Surface | What you get | Backed by |
 |---|---|---|
-| **Sessions** | `BaseSessionService` with auto-summarization and context-window management | Agent Memory Server |
-| **Long-term memory** | `BaseMemoryService` with semantic search and recency boosting | Agent Memory Server |
-| **Memory tools** | LLM-controlled memory CRUD operations | Agent Memory Server |
+| **Sessions** | `BaseSessionService` with durable conversation state | Redis Agent Memory or Agent Memory Server |
+| **Long-term memory** | `BaseMemoryService` with semantic search | Redis Agent Memory or Agent Memory Server |
+| **Memory tools** | LLM-controlled memory CRUD operations | Redis Agent Memory or Agent Memory Server |
 | **Search tools** | Vector, hybrid, range, text, and SQL search as `BaseTool` subclasses | RedisVL |
 | **MCP search** | `search-records` / `upsert-records` via ADK's native `McpToolset` | `rvl mcp` server |
 | **Semantic cache** | Skip repeat LLM calls by semantic similarity | RedisVL or [Redis LangCache](https://redis.io/langcache) |
@@ -52,11 +52,18 @@ pip install 'adk-redis[langcache]'   # managed semantic cache provider
 pip install 'adk-redis[all]'         # everything above
 ```
 
+Memory backends are selected with `backend`:
+
+| Backend | Use when | Client |
+|---|---|---|
+| `redis-agent-memory` | You want Redis Agent Memory managed by Redis or the Redis Agent Memory data plane | `redis-agent-memory` |
+| `opensource-agent-memory` | You want the open source self-hosted Agent Memory Server | `agent-memory-client` |
+
 ---
 
 ## Quick start
 
-**Prerequisites:** Python 3.10+, Redis 8.4+, and (for memory features) a running [Agent Memory Server](https://github.com/redis/agent-memory-server). See the [Quickstart](https://redis-developer.github.io/adk-redis/user_guide/01_integration/) for full setup steps.
+**Prerequisites:** Python 3.10+, Redis 8.4+, and one memory backend. See the [Quickstart](https://redis-developer.github.io/adk-redis/user_guide/01_integration/) for full setup steps.
 
 ```python
 from google.adk import Agent
@@ -71,13 +78,19 @@ from adk_redis import (
 
 session_service = RedisWorkingMemorySessionService(
     config=RedisWorkingMemorySessionServiceConfig(
+        backend="redis-agent-memory",
         api_base_url="http://localhost:8088",
+        api_key="...",
+        store_id="...",
         default_namespace="my_app",
     ),
 )
 memory_service = RedisLongTermMemoryService(
     config=RedisLongTermMemoryServiceConfig(
+        backend="redis-agent-memory",
         api_base_url="http://localhost:8088",
+        api_key="...",
+        store_id="...",
         default_namespace="my_app",
     ),
 )
@@ -95,6 +108,10 @@ runner = Runner(
     memory_service=memory_service,
 )
 ```
+
+For the open source self-hosted Agent Memory Server, set
+`backend="opensource-agent-memory"` and omit `api_key` and `store_id` unless your
+server requires them.
 
 → *More examples: [search tools](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/search_tools/), [MCP search](https://redis-developer.github.io/adk-redis/concepts/search/), [semantic caching](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/semantic_cache/)*
 

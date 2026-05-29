@@ -1,16 +1,16 @@
 # Session Service
 
 This guide shows how to wire `RedisWorkingMemorySessionService` into a Google
-ADK agent for durable, auto-summarizing session state backed by the
-[Agent Memory Server](memory_server_setup.md).
+ADK agent for durable session state backed by Redis Agent Memory session
+events or self-hosted Agent Memory Server working memory.
 
 For the concepts behind sessions and working memory, see
 [Sessions + Memory Services](../../concepts/sessions.md).
 
 ## Prerequisites
 
-- Agent Memory Server running on `localhost:8000`
-  (see [Memory server setup](memory_server_setup.md)).
+- Redis Agent Memory endpoint, store ID, and API key, or a self-hosted Agent
+  Memory Server endpoint.
 - `adk-redis` with the memory extra: `pip install "adk-redis[memory]"`.
 
 ## Basic usage
@@ -25,7 +25,10 @@ from adk_redis import (
 
 session_service = RedisWorkingMemorySessionService(
     config=RedisWorkingMemorySessionServiceConfig(
+        backend="redis-agent-memory",
         api_base_url="http://localhost:8000",
+        api_key="...",
+        store_id="...",
         default_namespace="my_app",
     )
 )
@@ -48,17 +51,19 @@ session = await session_service.create_session(
     user_id="alice",
 )
 
-# The session is persisted in Agent Memory Server and survives restarts
+# Events appended to the session persist in the configured backend
 ```
+
+For self-hosted Agent Memory Server, use `backend="opensource-agent-memory"` and
+omit `api_key` and `store_id` unless your deployment requires them.
 
 ## Configuration options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `api_base_url` | `http://localhost:8000` | Agent Memory Server URL |
+| `backend` | `redis-agent-memory` | `redis-agent-memory` or `opensource-agent-memory` |
+| `api_base_url` | `http://localhost:8000` | Memory backend URL |
+| `api_key` | `None` | Redis Agent Memory API key |
+| `store_id` | `None` | Redis Agent Memory store ID |
 | `default_namespace` | `None` | Namespace for session isolation |
-| `model_name` | `None` | LLM model for summarization |
-| `context_window_max` | `None` | Max tokens before auto-summarization |
-| `extraction_strategy` | `discrete` | `discrete`, `summary`, `preferences`, `custom` |
-| `session_ttl_seconds` | `None` | Session expiration time |
 | `timeout` | `30.0` | HTTP request timeout |

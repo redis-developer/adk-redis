@@ -6,11 +6,11 @@ Use `RedisWorkingMemorySessionService` and `RedisLongTermMemoryService` when you
 
 | Feature | Details |
 |---------|---------|
-| **Session storage** | Agent Memory Server working memory (Redis JSON) |
-| **Long-term memory** | Agent Memory Server with vector + full-text indexes |
-| **Auto-summarization** | Old messages are summarized when context window fills |
-| **Memory extraction** | Background promotion of facts to long-term storage |
-| **Search** | Semantic, keyword, and hybrid search across sessions |
+| **Session storage** | Redis Agent Memory session events or Agent Memory Server working memory |
+| **Long-term memory** | Redis Agent Memory records or Agent Memory Server long-term memory |
+| **Direct memory writes** | `add_memory()` stores durable semantic or episodic facts |
+| **Event memory writes** | `add_session_to_memory()` stores ADK events as `message` memories |
+| **Search** | Backend long-term search across scoped records |
 | **Multi-process** | Safe for horizontal scaling; all state lives in Redis |
 
 ## How It Works
@@ -18,14 +18,16 @@ Use `RedisWorkingMemorySessionService` and `RedisLongTermMemoryService` when you
 ```mermaid
 flowchart TD
     U([User message]) --> R[ADK Runner]
-    R -->|append_event| WM[Working Memory<br/>messages · context · data]
-    WM -->|auto-summarize| WM
-    WM -->|background extraction| LTM[Long-Term Memory<br/>vector + full-text index]
+    R -->|append_event| WM[Session Events]
+    R -->|add_memory| LTM[Long-Term Memory]
+    R -->|add_session_to_memory| MSG[Message Memories]
+    MSG --> LTM
     LTM -->|search_memory| R
     R --> A([Agent response])
 
-    subgraph AMS [Agent Memory Server]
+    subgraph RAM [Configured Memory Backend]
         WM
+        MSG
         LTM
     end
 
@@ -35,13 +37,13 @@ flowchart TD
         FT[(Full-text index)]
     end
 
-    AMS --- Redis
+    RAM --- Redis
 ```
 
-1. The ADK `Runner` calls `append_event()` after every turn, forwarding the message to the Agent Memory Server.
-2. When the conversation exceeds `context_window_max` tokens, the server summarizes older messages and stores the summary in a `context` field.
-3. A background task extracts structured memories (facts, preferences, events) and promotes them to long-term storage.
-4. On future sessions, `search_memory()` retrieves relevant memories via hybrid search.
+1. The ADK `Runner` calls `append_event()` after every turn, forwarding the message to the configured memory backend.
+2. ADK callbacks or API routes can call `add_session_to_memory()` to store session events as long-term `message` memories.
+3. Agents and callbacks can call `add_memory()` or memory tools to store durable `semantic` or `episodic` records.
+4. On future sessions, `search_memory()` retrieves relevant memories from the configured backend.
 
 ## Usage
 
@@ -58,18 +60,21 @@ from adk_redis import (
 
 session_service = RedisWorkingMemorySessionService(
     config=RedisWorkingMemorySessionServiceConfig(
+        backend="redis-agent-memory",
         api_base_url="http://localhost:8000",
+        api_key="...",
+        store_id="...",
         default_namespace="my_app",
-        model_name="gpt-4o",
-        context_window_max=8000,
     ),
 )
 
 memory_service = RedisLongTermMemoryService(
     config=RedisLongTermMemoryServiceConfig(
+        backend="redis-agent-memory",
         api_base_url="http://localhost:8000",
+        api_key="...",
+        store_id="...",
         default_namespace="my_app",
-        recency_boost=True,
     ),
 )
 
@@ -86,6 +91,10 @@ runner = Runner(
 )
 ```
 
+To use the open source self-hosted Agent Memory Server instead, set
+`backend="opensource-agent-memory"` on both configs. Redis Agent Memory is the
+default backend.
+
 Launch with the [ADK web UI](https://google.github.io/adk-docs/runtime/) for interactive testing:
 
 ```bash
@@ -98,57 +107,40 @@ adk web .
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `api_base_url` | `http://localhost:8000` | Agent Memory Server URL |
+| `backend` | `redis-agent-memory` | `redis-agent-memory` or `opensource-agent-memory` |
+| `api_base_url` | `http://localhost:8000` | Memory backend URL |
+| `api_key` | `None` | Redis Agent Memory API key |
+| `store_id` | `None` | Redis Agent Memory store ID |
 | `timeout` | `30.0` | HTTP request timeout in seconds |
 | `default_namespace` | `None` | Logical grouping for multi-tenant isolation |
-| `model_name` | `None` | Model name used for context window sizing and summarization |
-| `context_window_max` | `None` | Token limit that triggers auto-summarization |
-| `extraction_strategy` | `discrete` | How memories are extracted (`discrete`, `summary`, `preferences`, `custom`) |
-| `session_ttl_seconds` | `None` | Optional TTL; expired sessions are cleaned up by Redis |
 
 ### Memory Service (`RedisLongTermMemoryServiceConfig`)
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `api_base_url` | `http://localhost:8000` | Agent Memory Server URL |
+| `backend` | `redis-agent-memory` | `redis-agent-memory` or `opensource-agent-memory` |
+| `api_base_url` | `http://localhost:8000` | Memory backend URL |
+| `api_key` | `None` | Redis Agent Memory API key |
+| `store_id` | `None` | Redis Agent Memory store ID |
 | `timeout` | `30.0` | HTTP request timeout in seconds |
 | `default_namespace` | `None` | Namespace for memory isolation |
 | `search_top_k` | `10` | Max results returned from `search_memory()` |
-| `distance_threshold` | `None` | Max vector distance for search results (0.0-1.0) |
-| `recency_boost` | `True` | Bias search scoring toward newer memories |
-| `semantic_weight` | `0.8` | Weight for semantic similarity (0.0-1.0) |
-| `recency_weight` | `0.2` | Weight for recency score (0.0-1.0) |
-| `extraction_strategy` | `discrete` | How memories are extracted (`discrete`, `summary`, `preferences`, `custom`) |
-
-## Automatic Summarization
-
-When conversation messages exceed `context_window_max` tokens, the server:
-
-1. Summarizes older messages into a compact paragraph.
-2. Stores the summary in the `context` field of working memory.
-3. Removes the summarized messages to free space.
-4. Keeps recent messages intact.
-
-```mermaid
-flowchart LR
-    M["msg1 msg2 ... msg10"] -->|exceeds threshold| S[Summarize]
-    S --> C["context: 'User discussed trip planning...'"]
-    S --> K["msg8 msg9 msg10<br/>(recent kept)"]
-```
+| `similarity_threshold` | `None` | Min similarity for search results (0.0-1.0) |
+| `store_events_as_messages` | `True` | Store ADK events as `message` memories |
 
 ## Memory Types
 
-The server extracts three types of memories from conversations:
+Redis Agent Memory and Agent Memory Server support three memory types:
 
 | Type | Description | Example |
 |------|-------------|---------|
 | **Semantic** | Facts, preferences, general knowledge | "User prefers window seats" |
 | **Episodic** | Events with temporal context | "User visited Paris in March 2024" |
-| **Message** | Conversation records (auto-generated) | Stored from working memory messages |
+| **Message** | Conversation records | "user: I prefer window seats" |
 
 ## Cross-Process Scaling
 
-Because all state lives in the Agent Memory Server (backed by Redis), multiple processes can share sessions:
+Because all state lives in Redis, multiple processes can share sessions:
 
 - **Horizontal scaling**: deploy multiple agent replicas behind a load balancer.
 - **Seamless failover**: if one instance goes down, another picks up the session.
