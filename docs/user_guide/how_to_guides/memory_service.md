@@ -1,16 +1,16 @@
 # Memory Service
 
 This guide shows how to wire `RedisLongTermMemoryService` into a Google ADK
-agent for persistent long-term memory backed by the
-[Agent Memory Server](memory_server_setup.md).
+agent for persistent long-term memory backed by Redis Agent Memory or the
+self-hosted Agent Memory Server.
 
 For the concepts behind long-term memory, see
 [Sessions + Memory Services](../../concepts/sessions.md).
 
 ## Prerequisites
 
-- Agent Memory Server running on `localhost:8000`
-  (see [Memory server setup](memory_server_setup.md)).
+- Redis Agent Memory endpoint, store ID, and API key, or a self-hosted Agent
+  Memory Server endpoint.
 - `adk-redis` with the memory extra: `pip install "adk-redis[memory]"`.
 
 ## Basic usage
@@ -27,14 +27,20 @@ from adk_redis import (
 
 session_service = RedisWorkingMemorySessionService(
     config=RedisWorkingMemorySessionServiceConfig(
+        backend="redis-agent-memory",
         api_base_url="http://localhost:8000",
+        api_key="...",
+        store_id="...",
         default_namespace="my_app",
     )
 )
 
 memory_service = RedisLongTermMemoryService(
     config=RedisLongTermMemoryServiceConfig(
+        backend="redis-agent-memory",
         api_base_url="http://localhost:8000",
+        api_key="...",
+        store_id="...",
         default_namespace="my_app",
         recency_boost=True,
     )
@@ -54,11 +60,14 @@ runner = Runner(
 )
 ```
 
+For self-hosted Agent Memory Server, use `backend="opensource-agent-memory"` and
+omit `api_key` and `store_id` unless your deployment requires them.
+
 ## How memories flow
 
 1. The agent converses with the user in a session.
-2. The Agent Memory Server extracts key facts in the background.
-3. Facts are stored as long-term memories with vector embeddings.
+2. `add_session_to_memory()` stores event text as long-term `message` memory.
+3. Use `add_memory()` or memory tools to write durable facts and preferences.
 4. On future sessions, the runner calls `search_memory()` and injects
    relevant memories into the prompt automatically.
 
@@ -66,12 +75,12 @@ runner = Runner(
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `api_base_url` | `http://localhost:8000` | Agent Memory Server URL |
+| `backend` | `redis-agent-memory` | `redis-agent-memory` or `opensource-agent-memory` |
+| `api_base_url` | `http://localhost:8000` | Memory backend URL |
+| `api_key` | `None` | Redis Agent Memory API key |
+| `store_id` | `None` | Redis Agent Memory store ID |
 | `default_namespace` | `None` | Namespace for memory isolation |
 | `search_top_k` | `10` | Max memories per search |
-| `distance_threshold` | `None` | Max distance for results (0.0-1.0) |
-| `recency_boost` | `True` | Enable recency-aware ranking |
-| `semantic_weight` | `0.8` | Weight for semantic similarity |
-| `recency_weight` | `0.2` | Weight for recency score |
-| `extraction_strategy` | `discrete` | `discrete`, `summary`, `preferences`, `custom` |
+| `similarity_threshold` | `None` | Min similarity for results (0.0-1.0) |
+| `store_events_as_messages` | `True` | Store ADK events as `message` memories |
 | `timeout` | `30.0` | HTTP request timeout |

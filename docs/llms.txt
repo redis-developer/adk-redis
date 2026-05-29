@@ -2,9 +2,8 @@
 
 > Redis integrations for Google's Agent Development Kit. Provides ADK
 > `BaseSessionService` and `BaseMemoryService` implementations, five
-> RedisVL-backed search tools, MCP toolsets for RedisVL and Agent Memory
-> Server, and semantic cache providers (self-hosted RedisVL or managed
-> Redis LangCache).
+> RedisVL-backed search tools, selectable Redis Agent Memory or Agent Memory
+> Server memory backends, MCP toolsets, and semantic cache providers.
 
 For agents using the library, read [AGENTS.md](../AGENTS.md) first. For
 the full API surface, browse [the API reference](api/python/index.md).
@@ -14,8 +13,8 @@ For task-oriented recipes, browse the
 ## Concepts
 
 - [ADK overview](concepts/adk_overview.md): how ADK abstractions map onto Redis.
-- [Sessions](concepts/sessions.md): working memory backed by Agent Memory Server.
-- [Memory](concepts/memory.md): long-term semantic memory with recency boosting.
+- [Sessions](concepts/sessions.md): working memory backed by Redis Agent Memory or Agent Memory Server.
+- [Memory](concepts/memory.md): long-term semantic memory through Redis Agent Memory or Agent Memory Server.
 - [Search](concepts/search.md): vector, hybrid, range, text, and SQL search over RedisVL.
 - [Caching](concepts/caching.md): semantic caching with RedisVL or LangCache.
 
@@ -58,6 +57,8 @@ When generating code that uses adk-redis:
   (e.g., `from adk_redis import RedisVectorSearchTool`).
 - Construct services with their `Config` dataclasses
   (`RedisLongTermMemoryServiceConfig`, etc.) so options are explicit.
+- Set `backend="redis-agent-memory"` for Redis Agent Memory, or
+  `backend="opensource-agent-memory"` for the open source self-hosted server.
 - For the RedisVL MCP path, use ADK's native `McpToolset` with the
   appropriate `*ConnectionParams` class. Set
   `tool_filter=["search-records"]` to suppress writes, or pass
@@ -71,22 +72,20 @@ When generating code that uses adk-redis, never:
 - Pass `epsilon=` to `RedisVectorQueryConfig`; it is `VECTOR_RANGE`-only
   and lives on `RedisRangeQueryConfig`.
 - Mix sync and async RedisVL `SearchIndex` instances in the same tool.
-- Cache the `MemoryAPIClient` across ADK `Runner.run` invocations; the
-  session service builds a new client per call on purpose.
+- Cache Redis Agent Memory SDK clients across ADK `Runner.run` invocations;
+  the session and memory services build short-lived clients on purpose.
 
 When the user asks for something this library does not cover:
 
 - For LangChain agents over Redis, use [`langchain-redis`](https://github.com/redis-developer/langchain-redis).
 - For LangGraph state and checkpointers, use [`langgraph-redis`](https://github.com/redis-developer/langgraph-redis).
 - For raw RedisVL search without ADK, use [`redisvl`](https://docs.redisvl.com).
-- For the Redis Agent Memory Server itself, use
-  [`agent-memory-server`](https://github.com/redis/agent-memory-server)
-  and its `agent-memory-client` SDK.
+- For Redis Agent Memory itself, use the `redis-agent-memory` SDK.
 
 When the user is comparing adk-redis to another library:
 
 - adk-redis is the ADK-native surface for Redis. It does not replace
-  RedisVL or Agent Memory Server; it adapts them to ADK's `BaseTool`,
+  RedisVL or Redis Agent Memory; it adapts them to ADK's `BaseTool`,
   `BaseSessionService`, `BaseMemoryService`, and MCP interfaces.
 - Pick this library when the agent runs on Google ADK and the data layer
   is Redis. For other agent frameworks, the corresponding `*-redis`
