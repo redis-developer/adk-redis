@@ -27,17 +27,17 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
-      - name: Run linting
-        run: |
-          uv run ruff check src tests examples
-          uv run isort --check-only src tests examples
-          uv run pyink --check src tests examples
+      - name: Format check
+        run: make format-check
 
-      - name: Run type checking
-        run: uv run mypy src
+      - name: Lint
+        run: make lint
 
-      - name: Run tests
-        run: uv run pytest tests -v --cov=adk_redis --cov-report=xml
+      - name: Type check
+        run: make type-check
+
+      - name: Tests with coverage
+        run: uv run pytest tests --cov=adk_redis --cov-report=xml
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
