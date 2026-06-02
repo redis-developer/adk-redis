@@ -55,6 +55,35 @@ REQUIRES_REDIS = pytest.mark.skipif(
 )
 
 
+REDIS_AGENT_MEMORY_URL = os.environ.get("REDIS_AGENT_MEMORY_API_BASE_URL")
+REDIS_AGENT_MEMORY_API_KEY = os.environ.get("REDIS_AGENT_MEMORY_API_KEY")
+REDIS_AGENT_MEMORY_STORE_ID = os.environ.get("REDIS_AGENT_MEMORY_STORE_ID")
+
+REQUIRES_REDIS_AGENT_MEMORY = pytest.mark.skipif(
+    not (
+        REDIS_AGENT_MEMORY_URL
+        and REDIS_AGENT_MEMORY_API_KEY
+        and REDIS_AGENT_MEMORY_STORE_ID
+    ),
+    reason=(
+        "Redis Agent Memory env vars not set. Set "
+        "REDIS_AGENT_MEMORY_API_BASE_URL, REDIS_AGENT_MEMORY_API_KEY, and "
+        "REDIS_AGENT_MEMORY_STORE_ID to enable."
+    ),
+)
+
+
+AGENT_MEMORY_SERVER_URL = os.environ.get("AGENT_MEMORY_SERVER_URL")
+
+REQUIRES_AGENT_MEMORY_SERVER = pytest.mark.skipif(
+    not AGENT_MEMORY_SERVER_URL,
+    reason=(
+        "Agent Memory Server not configured. Set AGENT_MEMORY_SERVER_URL "
+        "(for example http://localhost:8000) to enable."
+    ),
+)
+
+
 @pytest.fixture(scope="session")
 def redis_url() -> str:
   """Redis URL for integration tests."""
@@ -65,3 +94,15 @@ def redis_url() -> str:
 def unique_index_name() -> str:
   """Unique index name to isolate test runs."""
   return f"adk_redis_it_{uuid.uuid4().hex[:8]}"
+
+
+@pytest.fixture
+def unique_namespace() -> str:
+  """Unique namespace to isolate memory-backend test runs."""
+  return f"adk_redis_it_{uuid.uuid4().hex[:8]}"
+
+
+@pytest.fixture
+def unique_user_id() -> str:
+  """Unique owner/user ID to isolate memory-backend test runs."""
+  return f"user_{uuid.uuid4().hex[:8]}"
