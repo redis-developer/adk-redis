@@ -107,8 +107,14 @@ and the corresponding PRs.
 
 ## Known starting observations
 
-These are observations from the PR #16 review, included as a starting
-point. Treat them as inputs to phase 1 / phase 2, not as conclusions.
+These are observations from the PR #16 review and a read of the public
+Redis Agent Memory docs as of 2026-06-02. Treat them as inputs to phase
+1 / phase 2, not as conclusions. Verify each one against the current
+SDK and server behavior before acting on it: managed Redis Agent Memory
+is explicitly in **preview** ("Features and behavior are subject to
+change").
+
+### Example wiring
 
 - Every memory example currently defaults to
   `REDIS_MEMORY_BACKEND=opensource-agent-memory`, which is the opposite
@@ -119,11 +125,87 @@ point. Treat them as inputs to phase 1 / phase 2, not as conclusions.
   `get_fast_api_app` consults, so they ship a custom `main.py`. Whether
   this is a permanent constraint or something that should be lifted
   upstream in ADK is worth checking during phase 1.
-- `fitness_coach_mcp` depends on the Agent Memory Server MCP endpoint.
-  Confirm during phase 1 whether the managed backend exposes an
-  equivalent today; if not, this example must stay on opensource and
-  the handover doc / example README should say so.
 - `examples/simple_redis_memory/.env.example` is empty.
+
+### Capability differences from public docs
+
+Sources: <https://redis.io/docs/latest/develop/ai/context-engine/agent-memory/api-examples/>,
+<https://redis.io/docs/latest/integrate/google-adk/redis-agent-memory/>,
+and <https://redis.github.io/agent-memory-server/>. Numbers are starting
+points; phase 1 needs to confirm each against the installed SDK and the
+current server image.
+
+- **Auto-promotion is present on managed, but the policy is opaque.**
+  The public managed docs state "the Agent Memory model will
+  automatically promote relevant short-term memories to long-term
+  memory" when events are added through the session-memory endpoint.
+  There is no documented control surface (no extraction strategy
+  selector, no debounce). Opensource exposes `extraction_strategy`
+  (`discrete` / `summary` / `preferences`) and
+  `EXTRACTION_DEBOUNCE_SECONDS`. Phase 1 needs to check whether our
+  current managed dispatch routes session events through the endpoint
+  that triggers promotion, and what `RedisLongTermMemoryServiceConfig`
+  knobs become no-ops on managed.
+- **Auto-summarization of working memory is opensource only.**
+  Opensource summarizes older turns when token count crosses
+  `context_window_max` using the configured `model_name`. The managed
+  docs do not describe an equivalent. Confirm whether the managed
+  session-memory endpoint has any size-based behavior, and document any
+  `RedisWorkingMemorySessionServiceConfig` fields that become no-ops on
+  managed.
+- **Recency-boosted search is opensource only (as documented).**
+  Opensource search exposes `semantic_weight` / `recency_weight` /
+  `recency_boost`. Managed search exposes `similarityThreshold` plus
+  rich `filter` operators (`eq`, `ne`, `in`, `all`, `gt`, `lt`, `gte`,
+  `lte`) over `sessionId`, `ownerId`, `namespace`, `topics`,
+  `memoryType`, `createdAt`. Phase 1 needs to confirm how our
+  `recency_boost` / weight config degrades on managed.
+- **MCP server endpoint is opensource only.** Opensource ships
+  `agent-memory mcp --mode sse` and our `create_memory_mcp_toolset`
+  helper targets it. Managed has no documented MCP endpoint. Until
+  that changes, `fitness_coach_mcp` and any future MCP example stays
+  on opensource, and the docs need to say so.
+- **`MemoryPromptTool` parity.** Opensource MCP exposes a
+  `memory_prompt` tool. Confirm whether our managed dispatch in
+  `src/adk_redis/tools/memory/memory_prompt_tool.py` returns equivalent
+  data via the managed search endpoint, and document any behavior
+  difference.
+- **Identifier naming.** Managed uses `ownerId` and `storeId`;
+  opensource uses `user_id` and namespaces only. Our config field is
+  `default_owner_id`. Phase 1 should confirm the mapping is consistent
+  across all six tools, both services, and the integration tests, and
+  that ADK's `user_id` flows through to `ownerId` correctly.
+- **Session state.** ADK `Session.state` is a free-form dict. Managed
+  session events have `actorId`, `role`, `content[]`, `createdAt`, and
+  per-event `metadata`, but no documented session-level state field.
+  Phase 1 should check whether session state survives a
+  `create_session` / `get_session` round trip on managed and whether
+  this needs to be called out as a known gap.
+- **Event payload fidelity.** ADK events carry function calls, tool
+  responses, partials, and other fields beyond plain text. Managed
+  session events are modeled around text content with optional
+  metadata. Confirm what our `append_event` dispatch on managed does
+  with non-text payloads and whether anything is dropped.
+- **Bulk operations.** The managed SDK exposes
+  `bulk_create_long_term_memories` and `bulk_delete_long_term_memories`.
+  Check that we use bulk where it makes sense (`add_memory` already
+  does) and whether `DeleteMemoryTool` on managed could be made
+  bulk-aware.
+- **Documentation alignment.** The public ADK integration page
+  (`redis.io/docs/.../integrate/google-adk/redis-agent-memory/`) is
+  written as if the only backend is the Agent Memory Server. It does
+  not yet describe the managed backend selector introduced by PR #16.
+  Coordinate with whoever owns that page so it matches the library
+  default once phase 2 lands.
+
+## Out of scope for this handover
+
+- Changing the library default backend.
+- Live CI coverage for managed integration tests (covered separately by
+  the integration tests added in PR #16; gating them in CI is its own
+  follow-up).
+- Updates to the external `redis.io` ADK integration page (flagged
+  above for coordination, but not owned by this repo).
 
 ## Out of scope for this handover
 
