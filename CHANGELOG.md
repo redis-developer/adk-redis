@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.0.7] - 2026-06-02
+
+### Added
+
+- Selectable memory backend support across all ADK memory surfaces.
+  `RedisLongTermMemoryService`, `RedisWorkingMemorySessionService`,
+  and the six memory tools (`SearchMemoryTool`, `CreateMemoryTool`,
+  `GetMemoryTool`, `UpdateMemoryTool`, `DeleteMemoryTool`,
+  `MemoryPromptTool`) now accept a `backend` field:
+  - `backend="redis-agent-memory"` (default) routes through the managed
+    `redis-agent-memory` SDK.
+  - `backend="opensource-agent-memory"` keeps the self-hosted Agent
+    Memory Server path through `agent-memory-client`.
+- `RedisLongTermMemoryService` now implements the newer ADK write hooks
+  `add_events_to_memory()` and `add_memory()`, verified against upstream
+  `google/adk-python@ae95a97`. Older ADK versions that only call
+  `add_session_to_memory()` and `search_memory()` keep working.
+- New spec at `docs/specs/redis-agent-memory-default.md` describing the
+  dual-backend design, config surface, and test scope.
+- Examples (`simple_redis_memory`, `travel_agent_memory_hybrid`,
+  `travel_agent_memory_tools`) surface a `REDIS_MEMORY_BACKEND` env
+  var in `.env.example`, README, and agent wiring so users can switch
+  backends without code changes.
+- `tests/integration/test_memory_backends_end_to_end.py`: live
+  round-trip coverage for both backends. Skips when
+  `REDIS_AGENT_MEMORY_API_BASE_URL` / `REDIS_AGENT_MEMORY_API_KEY` /
+  `REDIS_AGENT_MEMORY_STORE_ID` or `AGENT_MEMORY_SERVER_URL` are not
+  set.
+
+### Changed
+
+- `memory` extra now installs both `agent-memory-client>=0.14.0` and
+  `redis-agent-memory>=0.0.4`.
+- CI workflow (`.github/workflows/ci.yml`) now invokes the
+  `format-check`, `lint`, and `type-check` Make targets so the
+  Makefile is the single source of truth for local and CI checks.
+
+### Docs
+
+- Updated `docs/concepts/memory.md`, `docs/concepts/sessions.md`, and
+  the `docs/user_guide/` how-to guides for `memory_service`,
+  `session_service`, `memory_server_setup`, and `redis_setup` to
+  reflect the backend choice.
+
 ## [0.0.6] - 2026-05-20
 
 ### Breaking
