@@ -52,16 +52,29 @@ uv run python main.py
 
 Open http://localhost:8080 in your browser.
 
-## Demo script
+## Try it
 
-With `main.py` running in another terminal:
+**Session 1** — share a few facts:
 
-```bash
-uv run python demo_conversation.py
+```
+Hi! My name is Alex.
+My favorite color is teal.
+I have a cat named Sammy.
 ```
 
-The script creates two sessions and asks the agent to recall information from
-the first session.
+Wait for a reply after each message.
+
+**Session 2** — click **New Session** (keep the same `userId`, e.g. `user`) and
+ask:
+
+```
+What do you remember about me?
+What is my favorite color?
+```
+
+Cross-session recall uses long-term memory (`preload_memory` / `load_memory`).
+Facts are stored automatically after each turn via the agent's `after_agent`
+callback — there is no separate seed step.
 
 ## Configuration
 
