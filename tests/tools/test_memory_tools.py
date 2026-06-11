@@ -120,7 +120,7 @@ async def test_create_memory_tool_writes_record(config, fake_client):
   assert result["status"] == "success"
   assert fake_client.created_records[0]["text"] == "User likes tea."
   assert fake_client.created_records[0]["ownerId"] == "alice"
-  assert fake_client.created_records[0]["namespace"] == "test_ns"
+  assert fake_client.created_records[0]["namespace"] == "test-ns"
   assert fake_client.created_records[0]["memoryType"] == "semantic"
 
 
@@ -135,7 +135,7 @@ async def test_search_memory_tool_uses_owner_and_namespace_filter(
 
   assert result["status"] == "success"
   assert fake_client.search_request["filter"] == {
-      "namespace": {"eq": "test_ns"},
+      "namespace": {"eq": "test-ns"},
       "ownerId": {"eq": "alice"},
   }
 

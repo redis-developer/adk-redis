@@ -176,7 +176,7 @@ class TestRedisLongTermMemoryServiceMethods:
 
     assert fake_client.search_request["filter"] == {
         "ownerId": {"eq": "alice"},
-        "namespace": {"eq": "test_ns"},
+        "namespace": {"eq": "test-ns"},
     }
     assert result.memories[0].id == "memory-1"
     assert (
@@ -208,7 +208,7 @@ class TestRedisLongTermMemoryServiceMethods:
             "id": "memory-1",
             "text": "The user prefers window seats.",
             "ownerId": "alice",
-            "namespace": "test_ns",
+            "namespace": "test-ns",
             "sessionId": None,
             "topics": ["travel", "app"],
             "memoryType": "semantic",
