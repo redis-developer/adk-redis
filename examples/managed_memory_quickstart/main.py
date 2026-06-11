@@ -88,11 +88,7 @@ registry = get_service_registry()
 registry.register_session_service("redis-working-memory", redis_session_factory)
 registry.register_memory_service("redis-long-term-memory", redis_memory_factory)
 
-api_host = (
-    _api_base_url()
-    .replace("http://", "")
-    .replace("https://", "")
-)
+api_host = _api_base_url().replace("http://", "").replace("https://", "")
 SESSION_SERVICE_URI = f"redis-working-memory://{api_host}"
 MEMORY_SERVICE_URI = f"redis-long-term-memory://{api_host}"
 

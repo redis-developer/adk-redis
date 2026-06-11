@@ -22,12 +22,12 @@ import hashlib
 import re
 from typing import Any, TYPE_CHECKING
 
-_MANAGED_IDENTIFIER_RE = re.compile(r"[^A-Za-z0-9-]+")
-
 from google.genai import types
 
 if TYPE_CHECKING:
   from google.adk.events.event import Event
+
+_MANAGED_IDENTIFIER_RE = re.compile(r"[^A-Za-z0-9-]+")
 
 
 def extract_text_from_event(event: "Event") -> str:
