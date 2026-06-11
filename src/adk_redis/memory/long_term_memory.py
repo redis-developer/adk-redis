@@ -36,9 +36,11 @@ from typing_extensions import override
 
 from adk_redis.memory._backends import MemoryBackendName
 from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis.memory._backends import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory._utils import extract_text_from_content
 from adk_redis.memory._utils import extract_text_from_event
 from adk_redis.memory._utils import read_field
+from adk_redis.memory._utils import sanitize_managed_identifier
 from adk_redis.memory._utils import stable_memory_id
 
 logger = logging.getLogger("adk_redis." + __name__)
@@ -231,8 +233,15 @@ class RedisLongTermMemoryService(BaseMemoryService):
     if custom_metadata:
       namespace = custom_metadata.get("namespace")
       if isinstance(namespace, str) and namespace:
-        return namespace
-    return self._config.default_namespace or app_name
+        resolved = namespace
+      else:
+        resolved = self._config.default_namespace or app_name
+    else:
+      resolved = self._config.default_namespace or app_name
+
+    if self._config.backend == REDIS_AGENT_MEMORY_BACKEND:
+      return sanitize_managed_identifier(resolved)
+    return resolved
 
   def _search_threshold(self) -> float | None:
     """Return the configured search threshold."""
