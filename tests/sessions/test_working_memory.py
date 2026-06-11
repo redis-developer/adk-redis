@@ -49,7 +49,9 @@ class FakeAgentMemory:
 
   async def get_session_memory_async(self, *, session_id):
     if self.get_response is None:
-      raise RuntimeError("not found")
+      error = RuntimeError("not found")
+      error.status_code = 404  # type: ignore[attr-defined]
+      raise error
     return self.get_response
 
   async def delete_session_memory_async(self, *, session_id):
@@ -154,19 +156,35 @@ class TestRedisWorkingMemorySessionServiceMethods:
     with patch.object(service, "_get_client", return_value=fake_client):
       yield service
 
-  def test_storage_session_id_round_trips(self, service):
-    """Test storage session IDs preserve ADK scope."""
+  def test_storage_session_id_uses_managed_safe_hex(self, service):
+    """Test managed storage session IDs fit API charset and length limits."""
     storage_id = service._storage_session_id(
         app_name="app",
         user_id="alice",
         session_id="session-1",
     )
 
-    assert service._parse_storage_session_id(storage_id) == (
-        "test_ns",
-        "alice",
-        "session-1",
+    assert len(storage_id) == 64
+    assert storage_id.isalnum()
+    assert (
+        service._storage_session_id(
+            app_name="app",
+            user_id="alice",
+            session_id="session-1",
+        )
+        == storage_id
     )
+
+  def test_storage_session_id_hashes_uuid_session_ids(self, service):
+    """Test ADK UUID session IDs map to deterministic managed storage IDs."""
+    storage_id = service._storage_session_id(
+        app_name="app",
+        user_id="user",
+        session_id="28a7d6e2-0f0f-43b6-b22c-47e03635ed34",
+    )
+
+    assert len(storage_id) == 64
+    assert storage_id.isalnum()
 
   @pytest.mark.asyncio
   async def test_append_event_writes_session_event(self, service, fake_client):
@@ -193,8 +211,23 @@ class TestRedisWorkingMemorySessionServiceMethods:
     stored = fake_client.added_events[0]
     assert stored["actor_id"] == "alice"
     assert stored["content"] == [{"text": "I prefer window seats."}]
-    assert stored["metadata"]["namespace"] == "test_ns"
+    assert stored["metadata"]["namespace"] == "test-ns"
     assert stored["metadata"]["adk_event_id"] == "event-1"
+
+  @pytest.mark.asyncio
+  async def test_get_session_returns_empty_before_first_event(
+      self, service, fake_client
+  ):
+    """Test get_session returns an empty session before Redis materializes it."""
+    session = await service.get_session(
+        app_name="app",
+        user_id="alice",
+        session_id="fa58803d-9a11-4466-8f3f-40baf61b41c0",
+    )
+
+    assert session is not None
+    assert session.id == "fa58803d-9a11-4466-8f3f-40baf61b41c0"
+    assert session.events == []
 
   @pytest.mark.asyncio
   async def test_get_session_reconstructs_adk_events(
@@ -238,6 +271,40 @@ class TestRedisWorkingMemorySessionServiceMethods:
     assert session.events[0].content.parts[0].text == "I prefer window seats."
 
   @pytest.mark.asyncio
+  async def test_list_sessions_resolves_storage_ids_from_metadata(
+      self, service, fake_client
+  ):
+    """Test list_sessions resolves managed storage IDs from event metadata."""
+    storage_id = service._storage_session_id(
+        app_name="app",
+        user_id="alice",
+        session_id="28a7d6e2-0f0f-43b6-b22c-47e03635ed34",
+    )
+    fake_client.get_response = SimpleNamespace(
+        session_id=storage_id,
+        owner_id="alice",
+        events=[
+            SimpleNamespace(
+                metadata={
+                    "namespace": "test-ns",
+                    "user_id": "alice",
+                    "adk_session_id": "28a7d6e2-0f0f-43b6-b22c-47e03635ed34",
+                }
+            )
+        ],
+    )
+    fake_client.list_response = SimpleNamespace(
+        items=[storage_id],
+        next_page_token=None,
+    )
+
+    response = await service.list_sessions(app_name="app", user_id="alice")
+
+    assert [session.id for session in response.sessions] == [
+        "28a7d6e2-0f0f-43b6-b22c-47e03635ed34"
+    ]
+
+  @pytest.mark.asyncio
   async def test_list_sessions_filters_internal_ids(self, service, fake_client):
     """Test list_sessions filters by namespace and user."""
     storage_id = service._storage_session_id(
@@ -245,14 +312,31 @@ class TestRedisWorkingMemorySessionServiceMethods:
         user_id="alice",
         session_id="session-1",
     )
+    fake_client.get_response = SimpleNamespace(
+        session_id=storage_id,
+        owner_id="alice",
+        events=[
+            SimpleNamespace(
+                metadata={
+                    "namespace": "test-ns",
+                    "user_id": "alice",
+                    "adk_session_id": "session-1",
+                }
+            )
+        ],
+    )
     fake_client.list_response = SimpleNamespace(
-        items=[storage_id, "external-session"],
+        items=[storage_id],
         next_page_token=None,
     )
 
     response = await service.list_sessions(app_name="app", user_id="alice")
 
     assert [session.id for session in response.sessions] == ["session-1"]
+    response_other_user = await service.list_sessions(
+        app_name="app", user_id="bob"
+    )
+    assert response_other_user.sessions == []
 
   @pytest.mark.asyncio
   async def test_close_completes_without_error(self, service):
