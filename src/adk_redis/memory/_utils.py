@@ -19,7 +19,10 @@ from __future__ import annotations
 from datetime import datetime
 from datetime import timezone
 import hashlib
+import re
 from typing import Any, TYPE_CHECKING
+
+_MANAGED_IDENTIFIER_RE = re.compile(r"[^A-Za-z0-9-]+")
 
 from google.genai import types
 
@@ -113,6 +116,24 @@ def read_field(value: object, name: str, default: Any = None) -> Any:
   if isinstance(value, dict):
     return value.get(name, default)
   return getattr(value, name, default)
+
+
+def sanitize_managed_identifier(value: str) -> str:
+  """Normalize a value for managed Redis Agent Memory identifiers.
+
+  Managed APIs accept only alphanumeric characters and hyphens in fields
+  such as namespace, sessionId, and actorId.
+
+  Args:
+      value: Raw identifier from ADK app names, namespaces, or authors.
+
+  Returns:
+      Sanitized identifier with unsupported characters replaced by hyphens.
+  """
+  sanitized = _MANAGED_IDENTIFIER_RE.sub("-", value.strip()).strip("-")
+  if not sanitized:
+    raise ValueError("Managed identifier must not be empty after sanitization")
+  return sanitized
 
 
 def is_not_found_error(exc: Exception) -> bool:

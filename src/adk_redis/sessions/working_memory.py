@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import base64
 from contextlib import asynccontextmanager
+import hashlib
 from importlib import import_module
 import logging
 import time
@@ -36,14 +37,17 @@ from typing_extensions import override
 
 from adk_redis.memory._backends import MemoryBackendName
 from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis.memory._backends import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory._utils import extract_text_from_event
 from adk_redis.memory._utils import is_not_found_error
 from adk_redis.memory._utils import read_field
+from adk_redis.memory._utils import sanitize_managed_identifier
 from adk_redis.memory._utils import timestamp_to_datetime
 
 logger = logging.getLogger("adk_redis." + __name__)
 
 _SESSION_ID_PREFIX = "adkredis"
+_MANAGED_SESSION_ID_LEN = 64
 
 try:
   _agent_memory_client_module = import_module("agent_memory_client")
@@ -188,7 +192,10 @@ class RedisWorkingMemorySessionService(BaseSessionService):
 
   def _get_namespace(self, app_name: str) -> str:
     """Get namespace from config or app_name."""
-    return self._config.default_namespace or app_name
+    namespace = self._config.default_namespace or app_name
+    if self._config.backend == REDIS_AGENT_MEMORY_BACKEND:
+      return sanitize_managed_identifier(namespace)
+    return namespace
 
   def _encode_segment(self, value: str) -> str:
     """Encode one storage session ID segment."""
@@ -203,16 +210,33 @@ class RedisWorkingMemorySessionService(BaseSessionService):
   def _storage_session_id(
       self, *, app_name: str, user_id: str, session_id: str
   ) -> str:
-    """Build the Redis Agent Memory session ID."""
+    """Build a managed Redis Agent Memory session ID.
+
+    Managed session IDs must be 1-64 chars and contain only alphanumeric
+    characters and hyphens. Encode ADK scope as a deterministic SHA-256 hex
+    digest so UUID session IDs and namespaces remain isolated per store.
+    """
     namespace = self._get_namespace(app_name)
-    return ":".join(
-        [
-            _SESSION_ID_PREFIX,
-            self._encode_segment(namespace),
-            self._encode_segment(user_id),
-            self._encode_segment(session_id),
-        ]
-    )
+    return hashlib.sha256(
+        f"{namespace}\0{user_id}\0{session_id}".encode("utf-8")
+    ).hexdigest()[:_MANAGED_SESSION_ID_LEN]
+
+  def _session_scope_from_response(
+      self, response: object
+  ) -> tuple[str, str, str] | None:
+    """Extract ADK session scope from a Redis Agent Memory session response."""
+    for redis_event in read_field(response, "events", []) or []:
+      metadata = read_field(redis_event, "metadata", {}) or {}
+      namespace = metadata.get("namespace")
+      stored_user_id = metadata.get("user_id")
+      adk_session_id = metadata.get("adk_session_id")
+      if namespace and stored_user_id and adk_session_id:
+        return (
+            str(namespace),
+            str(stored_user_id),
+            str(adk_session_id),
+        )
+    return None
 
   def _parse_storage_session_id(
       self, storage_session_id: str
@@ -269,8 +293,12 @@ class RedisWorkingMemorySessionService(BaseSessionService):
   def _event_actor_id(self, session: Session, event: Event) -> str:
     """Return the Redis actor ID for an ADK event."""
     if event.author == "user":
-      return session.user_id
-    return event.author or session.app_name
+      actor_id = session.user_id
+    else:
+      actor_id = event.author or session.app_name
+    if self._config.backend == REDIS_AGENT_MEMORY_BACKEND:
+      return sanitize_managed_identifier(actor_id)
+    return actor_id
 
   def _build_agent_memory_server_strategy(self) -> Any:
     """Build the self-hosted memory extraction strategy config."""
@@ -658,7 +686,16 @@ class RedisWorkingMemorySessionService(BaseSessionService):
         )
     except Exception as e:
       if is_not_found_error(e):
-        return None
+        # Managed sessions are materialized on first append_event. Return an
+        # empty ADK session so runners can start a new conversation.
+        return Session(
+            id=session_id,
+            app_name=app_name,
+            user_id=user_id,
+            state={},
+            events=[],
+            last_update_time=time.time(),
+        )
       logger.error("Failed to get session %s: %s", session_id, e)
       return None
 
@@ -705,9 +742,19 @@ class RedisWorkingMemorySessionService(BaseSessionService):
           )
           for storage_session_id in read_field(response, "items", []) or []:
             parsed = self._parse_storage_session_id(storage_session_id)
-            if not parsed:
-              continue
-            stored_namespace, stored_user_id, session_id = parsed
+            if parsed:
+              stored_namespace, stored_user_id, session_id = parsed
+            else:
+              try:
+                stored = await agent_memory.get_session_memory_async(
+                    session_id=storage_session_id
+                )
+              except Exception:
+                continue
+              scope = self._session_scope_from_response(stored)
+              if not scope:
+                continue
+              stored_namespace, stored_user_id, session_id = scope
             if stored_namespace != namespace:
               continue
             if user_id is not None and stored_user_id != user_id:

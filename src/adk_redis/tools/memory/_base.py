@@ -24,6 +24,8 @@ from typing import Any, AsyncIterator
 from google.adk.tools.base_tool import BaseTool
 
 from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis.memory._backends import REDIS_AGENT_MEMORY_BACKEND
+from adk_redis.memory._utils import sanitize_managed_identifier
 from adk_redis.tools.memory._config import MemoryToolConfig
 
 logger = logging.getLogger("adk_redis." + __name__)
@@ -177,7 +179,10 @@ class BaseMemoryTool(BaseTool):
     Returns:
         The namespace to use (override or default).
     """
-    return namespace or self._config.default_namespace
+    resolved = namespace or self._config.default_namespace
+    if self._config.backend == REDIS_AGENT_MEMORY_BACKEND:
+      return sanitize_managed_identifier(resolved)
+    return resolved
 
   def _get_user_id(self, user_id: str | None = None) -> str | None:
     """Get the user ID to use for operations.
