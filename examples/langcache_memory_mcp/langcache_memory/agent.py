@@ -34,14 +34,23 @@ from google.adk.tools.mcp_tool.mcp_session_manager import (
 LANGCACHE_MCP_URL = os.getenv(
     "LANGCACHE_MCP_URL", "http://localhost:9100/v1/stores/test-store/mcp"
 )
-# The store's Bearer token (omit only for an auth-disabled / local server).
+# The per-store API key, sent in X-API-Key (cloud-context-engine convention).
+# Omit only for an auth-disabled / local server.
 LANGCACHE_MCP_TOKEN = os.getenv("LANGCACHE_MCP_TOKEN")
+# Optional IdP bearer JWT, sent in Authorization when the store has an IdP.
+LANGCACHE_MCP_JWT = os.getenv("LANGCACHE_MCP_JWT")
 
-_headers = (
-    {"Authorization": f"Bearer {LANGCACHE_MCP_TOKEN}"}
-    if LANGCACHE_MCP_TOKEN
-    else None
-)
+
+def _mcp_headers() -> dict[str, str] | None:
+  headers: dict[str, str] = {}
+  if LANGCACHE_MCP_TOKEN:
+    headers["X-API-Key"] = LANGCACHE_MCP_TOKEN
+  if LANGCACHE_MCP_JWT:
+    headers["Authorization"] = f"Bearer {LANGCACHE_MCP_JWT}"
+  return headers or None
+
+
+_headers = _mcp_headers()
 
 memory_tools = McpToolset(
     connection_params=StreamableHTTPConnectionParams(

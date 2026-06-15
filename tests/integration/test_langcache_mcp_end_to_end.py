@@ -40,7 +40,10 @@ import uuid
 import pytest
 
 LANGCACHE_MCP_URL = os.environ.get("LANGCACHE_MCP_URL")
+# The per-store API key, sent in X-API-Key (cloud-context-engine convention).
 LANGCACHE_MCP_TOKEN = os.environ.get("LANGCACHE_MCP_TOKEN")
+# Optional IdP bearer JWT, sent in Authorization when the store has an IdP.
+LANGCACHE_MCP_JWT = os.environ.get("LANGCACHE_MCP_JWT")
 
 REQUIRES_LANGCACHE_MCP = pytest.mark.skipif(
     not LANGCACHE_MCP_URL,
@@ -66,9 +69,12 @@ EXPECTED_TOOLS = {
 
 
 def _headers() -> dict[str, str] | None:
+  headers: dict[str, str] = {}
   if LANGCACHE_MCP_TOKEN:
-    return {"Authorization": f"Bearer {LANGCACHE_MCP_TOKEN}"}
-  return None
+    headers["X-API-Key"] = LANGCACHE_MCP_TOKEN
+  if LANGCACHE_MCP_JWT:
+    headers["Authorization"] = f"Bearer {LANGCACHE_MCP_JWT}"
+  return headers or None
 
 
 async def test_adk_mcptoolset_discovers_langcache_tools():
