@@ -57,14 +57,13 @@ pytestmark = REQUIRES_LANGCACHE_MCP
 
 # The full Phase 1 tool surface the langcache MCP server exposes.
 EXPECTED_TOOLS = {
-    "get_current_datetime",
     "create_long_term_memories",
     "search_long_term_memory",
     "get_long_term_memory",
     "edit_long_term_memory",
     "delete_long_term_memories",
-    "get_working_memory",
-    "set_working_memory",
+    "get_session_memory",
+    "set_session_memory",
 }
 
 
