@@ -63,7 +63,7 @@ EXPECTED_TOOLS = {
     "edit_long_term_memory",
     "delete_long_term_memories",
     "get_session_memory",
-    "set_session_memory",
+    "add_session_event",
 }
 
 
