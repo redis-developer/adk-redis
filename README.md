@@ -15,7 +15,7 @@
 [![Code style: pyink](https://img.shields.io/badge/code%20style-pyink-black)](https://github.com/google/pyink)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue)](https://mypy-lang.org/)
 
-**[PyPI](https://pypi.org/project/adk-redis/)** • **[Documentation](https://redis-developer.github.io/adk-redis/)** • **[Examples](examples/)** • **[Agent Memory Server](https://github.com/redis/agent-memory-server)** • **[RedisVL](https://docs.redisvl.com)**
+**[PyPI](https://pypi.org/project/adk-redis/)** • **[Documentation](https://redis-developer.github.io/adk-redis/)** • **[Examples](examples/)** • **[Redis Agent Memory](https://redis.io/docs/latest/integrate/google-adk/redis-agent-memory/)** • **[RedisVL](https://docs.redisvl.com)**
 
 </div>
 
