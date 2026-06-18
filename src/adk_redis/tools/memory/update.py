@@ -129,8 +129,8 @@ class UpdateMemoryTool(BaseMemoryTool):
     memory_id = args.get("memory_id")
     content = args.get("content")
     topics = args.get("topics")
-    namespace = args.get("namespace")
-    user_id = args.get("user_id")
+    namespace = self._get_namespace(args.get("namespace"))
+    user_id = self._get_user_id(args.get("user_id"))
 
     if not memory_id:
       return {"status": "error", "message": "memory_id is required"}
@@ -149,13 +149,10 @@ class UpdateMemoryTool(BaseMemoryTool):
         if topics is not None:
           updates["topics"] = topics
 
-        response = (
-            await (
-                self._get_agent_memory_server_client().edit_long_term_memory(
-                    memory_id=memory_id,
-                    updates=updates,
-                )
-            )
+        client = self._get_agent_memory_server_client()
+        response = await client.edit_long_term_memory(
+            memory_id=memory_id,
+            updates=updates,
         )
         return {
             "status": "success",

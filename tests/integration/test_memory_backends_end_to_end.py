@@ -31,6 +31,8 @@ from google.adk.memory.memory_entry import MemoryEntry
 from google.genai import types
 import pytest
 
+from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis import RedisLongTermMemoryService
 from adk_redis import RedisLongTermMemoryServiceConfig
 from adk_redis import RedisWorkingMemorySessionService
@@ -77,7 +79,7 @@ class TestRedisAgentMemoryBackendEndToEnd:
   def _long_term(self, namespace: str) -> RedisLongTermMemoryService:
     return RedisLongTermMemoryService(
         config=RedisLongTermMemoryServiceConfig(
-            backend="redis-agent-memory",
+            backend=REDIS_AGENT_MEMORY_BACKEND,
             api_base_url=REDIS_AGENT_MEMORY_URL,
             api_key=REDIS_AGENT_MEMORY_API_KEY,
             store_id=REDIS_AGENT_MEMORY_STORE_ID,
@@ -105,7 +107,7 @@ class TestRedisAgentMemoryBackendEndToEnd:
   ) -> None:
     sessions = RedisWorkingMemorySessionService(
         config=RedisWorkingMemorySessionServiceConfig(
-            backend="redis-agent-memory",
+            backend=REDIS_AGENT_MEMORY_BACKEND,
             api_base_url=REDIS_AGENT_MEMORY_URL,
             api_key=REDIS_AGENT_MEMORY_API_KEY,
             store_id=REDIS_AGENT_MEMORY_STORE_ID,
@@ -138,7 +140,7 @@ class TestAgentMemoryServerBackendEndToEnd:
   ) -> None:
     service = RedisLongTermMemoryService(
         config=RedisLongTermMemoryServiceConfig(
-            backend="opensource-agent-memory",
+            backend=OPENSOURCE_AGENT_MEMORY_BACKEND,
             api_base_url=AGENT_MEMORY_SERVER_URL,
             default_namespace=unique_namespace,
             search_top_k=5,

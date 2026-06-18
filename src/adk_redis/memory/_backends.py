@@ -18,8 +18,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-REDIS_AGENT_MEMORY_BACKEND = "redis-agent-memory"
-OPENSOURCE_AGENT_MEMORY_BACKEND = "opensource-agent-memory"
+REDIS_AGENT_MEMORY_BACKEND: Literal["redis-agent-memory"] = "redis-agent-memory"
+OPENSOURCE_AGENT_MEMORY_BACKEND: Literal["opensource-agent-memory"] = (
+    "opensource-agent-memory"
+)
 
 MemoryBackendName = Literal[
     "redis-agent-memory",

@@ -73,6 +73,10 @@ Example:
 """
 
 from adk_redis._version import __version__
+# Memory backend names
+from adk_redis.memory import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis.memory import REDIS_AGENT_MEMORY_BACKEND
+from adk_redis.memory import MemoryBackendName
 # Memory services
 from adk_redis.memory import RedisLongTermMemoryService
 from adk_redis.memory import RedisLongTermMemoryServiceConfig
@@ -117,6 +121,10 @@ from adk_redis.cache import create_tool_cache_callbacks
 __all__ = [
     # Version
     "__version__",
+    # Memory backend names
+    "MemoryBackendName",
+    "OPENSOURCE_AGENT_MEMORY_BACKEND",
+    "REDIS_AGENT_MEMORY_BACKEND",
     # Memory services
     "RedisLongTermMemoryService",
     "RedisLongTermMemoryServiceConfig",
