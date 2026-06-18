@@ -116,8 +116,9 @@ REDIS_MEMORY_EXTRACTION_STRATEGY=discrete
 REDIS_MEMORY_CONTEXT_WINDOW=8000
 REDIS_MEMORY_RECENCY_BOOST=true
 # Required only when REDIS_MEMORY_BACKEND=redis-agent-memory
-AGENT_MEMORY_STORE_ID=
-AGENT_MEMORY_API_KEY=
+# See the managed setup guide for where to obtain these values.
+REDIS_AGENT_MEMORY_STORE_ID=
+REDIS_AGENT_MEMORY_API_KEY=
 ```
 
 ## Usage
@@ -177,8 +178,8 @@ User: What's my favorite coffee?
 |----------|---------|-------------|
 | `REDIS_MEMORY_BACKEND` | `opensource-agent-memory` | `opensource-agent-memory` or `redis-agent-memory` |
 | `REDIS_MEMORY_SERVER_URL` | `http://localhost:8088` | Memory server URL |
-| `AGENT_MEMORY_STORE_ID` | empty | Redis Agent Memory store ID, used only for `redis-agent-memory` |
-| `AGENT_MEMORY_API_KEY` | empty | Redis Agent Memory API key, used only for `redis-agent-memory` |
+| `REDIS_AGENT_MEMORY_STORE_ID` | empty | Managed store ID, used only for `redis-agent-memory` (legacy `AGENT_MEMORY_STORE_ID` still accepted) |
+| `REDIS_AGENT_MEMORY_API_KEY` | empty | Managed API key, used only for `redis-agent-memory` (legacy `AGENT_MEMORY_API_KEY` still accepted) |
 | `REDIS_MEMORY_NAMESPACE` | `adk_agent_memory` | Namespace for isolation |
 | `REDIS_MEMORY_EXTRACTION_STRATEGY` | `discrete` | `discrete`, `summary`, `preferences` |
 | `REDIS_MEMORY_CONTEXT_WINDOW` | `8000` | Max tokens before summarization |

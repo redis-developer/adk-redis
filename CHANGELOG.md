@@ -69,10 +69,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `session_service`, `memory_server_setup`, and `redis_setup` to
   reflect the backend choice.
 - New how-to `docs/user_guide/how_to_guides/managed_memory_setup.md` for the
-  managed Redis Agent Memory backend, wired into the nav and how-to index.
+  managed Redis Agent Memory backend, wired into the nav and how-to index. Adds
+  a Prerequisites/install line and a "Get credentials" section pointing to the
+  Redis Cloud Agent Memory create-service, view-service, and use-API pages.
 - Reconciled environment variable names to the canonical `REDIS_AGENT_MEMORY_*`
-  (with `AGENT_MEMORY_*` fallbacks) across `docs/user_guide/01_integration.md`
-  and the integration tests.
+  (with `AGENT_MEMORY_*` fallbacks) across `docs/user_guide/01_integration.md`,
+  the `simple_redis_memory` example (`main.py` + README), and the integration
+  tests.
 - README documents the `managed_memory_quickstart` example and clarifies which
   examples run via `python main.py` versus `adk web`.
 

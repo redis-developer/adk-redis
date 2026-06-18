@@ -52,6 +52,24 @@ def parse_base_url(uri: str) -> str:
   )
 
 
+def get_managed_credential(*env_names: str) -> str | None:
+  """Return the first set value among the given environment variables.
+
+  Args:
+    *env_names: Environment variable names in priority order. The canonical
+      ``REDIS_AGENT_MEMORY_*`` name should come first, with any legacy
+      ``AGENT_MEMORY_*`` name as a fallback.
+
+  Returns:
+    The first non-empty value, or ``None`` if none are set.
+  """
+  for name in env_names:
+    value = os.getenv(name)
+    if value:
+      return value
+  return None
+
+
 def redis_session_factory(uri: str, **kwargs):
   """Factory function for creating RedisWorkingMemorySessionService from URI."""
   base_url = parse_base_url(uri)
@@ -60,8 +78,12 @@ def redis_session_factory(uri: str, **kwargs):
           "REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND
       ),
       api_base_url=base_url,
-      api_key=os.getenv("AGENT_MEMORY_API_KEY"),
-      store_id=os.getenv("AGENT_MEMORY_STORE_ID"),
+      api_key=get_managed_credential(
+          "REDIS_AGENT_MEMORY_API_KEY", "AGENT_MEMORY_API_KEY"
+      ),
+      store_id=get_managed_credential(
+          "REDIS_AGENT_MEMORY_STORE_ID", "AGENT_MEMORY_STORE_ID"
+      ),
       default_namespace=os.getenv("REDIS_MEMORY_NAMESPACE", "adk_agent_memory"),
       model_name=os.getenv("REDIS_MEMORY_MODEL_NAME", "gpt-4o"),
       context_window_max=int(os.getenv("REDIS_MEMORY_CONTEXT_WINDOW", "8000")),
@@ -80,8 +102,12 @@ def redis_memory_factory(uri: str, **kwargs):
           "REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND
       ),
       api_base_url=base_url,
-      api_key=os.getenv("AGENT_MEMORY_API_KEY"),
-      store_id=os.getenv("AGENT_MEMORY_STORE_ID"),
+      api_key=get_managed_credential(
+          "REDIS_AGENT_MEMORY_API_KEY", "AGENT_MEMORY_API_KEY"
+      ),
+      store_id=get_managed_credential(
+          "REDIS_AGENT_MEMORY_STORE_ID", "AGENT_MEMORY_STORE_ID"
+      ),
       default_namespace=os.getenv("REDIS_MEMORY_NAMESPACE", "adk_agent_memory"),
       extraction_strategy=os.getenv(
           "REDIS_MEMORY_EXTRACTION_STRATEGY", "discrete"
