@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.0.7] - 2026-06-02
+## [0.0.7] - 2026-06-18
 
 ### Added
 
@@ -35,6 +35,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `REDIS_AGENT_MEMORY_API_BASE_URL` / `REDIS_AGENT_MEMORY_API_KEY` /
   `REDIS_AGENT_MEMORY_STORE_ID` or `AGENT_MEMORY_SERVER_URL` are not
   set.
+- Public backend selectors `REDIS_AGENT_MEMORY_BACKEND`,
+  `OPENSOURCE_AGENT_MEMORY_BACKEND`, and the `MemoryBackendName` type are
+  re-exported from `adk_redis` and `adk_redis.memory` for typo-safe backend
+  selection.
+- New `managed_memory_quickstart` example demonstrating the managed
+  `redis-agent-memory` backend wired through `get_service_registry()`.
+
+### Fixed
+
+- `UpdateMemoryTool` now applies the configured `default_namespace`,
+  `default_owner_id`, and `default_user_id` when the caller omits them on the
+  managed `redis-agent-memory` backend.
+- `RedisLongTermMemoryService` derives the events memory ID from event ids and
+  timestamps instead of `len(events)`, preventing collisions between distinct
+  event batches of equal length.
+- Session and namespace identifiers are sanitized for the managed backend,
+  which rejects `-` and `:` characters and enforces length limits; empty
+  sessions are returned before the first event so the first message can flow.
 
 ### Changed
 
@@ -50,6 +68,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the `docs/user_guide/` how-to guides for `memory_service`,
   `session_service`, `memory_server_setup`, and `redis_setup` to
   reflect the backend choice.
+- New how-to `docs/user_guide/how_to_guides/managed_memory_setup.md` for the
+  managed Redis Agent Memory backend, wired into the nav and how-to index. Adds
+  a Prerequisites/install line and a "Get credentials" section pointing to the
+  Redis Cloud Agent Memory create-service, view-service, and use-API pages.
+- Reconciled environment variable names to the canonical `REDIS_AGENT_MEMORY_*`
+  (with `AGENT_MEMORY_*` fallbacks) across `docs/user_guide/01_integration.md`,
+  the `simple_redis_memory` example (`main.py` + README), and the integration
+  tests.
+- README documents the `managed_memory_quickstart` example and clarifies which
+  examples run via `python main.py` versus `adk web`.
 
 ## [0.0.6] - 2026-05-20
 

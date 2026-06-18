@@ -8,10 +8,17 @@ The managed backend is a hosted Redis Agent Memory data plane: there is no
 local Agent Memory Server, worker, or Docker setup to run. You connect to it
 with an API base URL, an API key, and a store ID.
 
+## Prerequisites
+
+- Python 3.10+
+- `adk-redis` with the memory extra: `pip install "adk-redis[memory]"`.
+- A managed Redis Agent Memory service on Redis Cloud (see
+  [Get credentials](#get-credentials) below).
+
 ## Credentials
 
-The managed backend requires three values from your Redis Agent Memory
-deployment:
+The managed backend requires three values from your managed Redis Agent Memory
+service:
 
 | Value | Config field | Environment variable |
 |-------|--------------|----------------------|
@@ -22,6 +29,24 @@ deployment:
 These are the same variable names used by the
 [managed memory quickstart example](https://github.com/redis-developer/adk-redis/tree/main/examples/managed_memory_quickstart)
 and the integration tests.
+
+### Get credentials
+
+Managed Redis Agent Memory is provisioned through Redis Cloud:
+
+1. **Create the service.** In the Redis Cloud console, create an Agent Memory
+   service. Quick create sets one up against a Free 30MB database if you do not
+   already have one. See
+   [Create an Agent Memory service](https://redis.io/docs/latest/operate/rc/context-engine/agent-memory/create-service/).
+   The service API key is shown **only once** at creation time, so copy it
+   immediately. If you lose it, generate a new one.
+2. **Find the endpoint and store ID.** Open the service's **Configuration** page
+   (General settings). The **Endpoint** is your `REDIS_AGENT_MEMORY_API_BASE_URL`
+   and the **Store ID** is your `REDIS_AGENT_MEMORY_STORE_ID`. See
+   [View and manage Agent Memory service](https://redis.io/docs/latest/operate/rc/context-engine/agent-memory/view-service/).
+3. **Manage API keys.** Generate or rotate the API key
+   (`REDIS_AGENT_MEMORY_API_KEY`) from the service's **API keys** tab. See
+   [Use the Agent Memory API](https://redis.io/docs/latest/operate/rc/context-engine/agent-memory/use-agent-memory/).
 
 ```bash
 export REDIS_MEMORY_BACKEND="redis-agent-memory"

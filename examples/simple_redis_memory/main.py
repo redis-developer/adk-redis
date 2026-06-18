@@ -33,6 +33,7 @@ from google.adk.cli.service_registry import get_service_registry
 import uvicorn
 
 from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory import RedisLongTermMemoryService
 from adk_redis.memory import RedisLongTermMemoryServiceConfig
 from adk_redis.sessions import RedisWorkingMemorySessionService
@@ -52,16 +53,72 @@ def parse_base_url(uri: str) -> str:
   )
 
 
+def get_managed_credential(*env_names: str) -> str | None:
+  """Return the first set value among the given environment variables.
+
+  Args:
+    *env_names: Environment variable names in priority order. The canonical
+      ``REDIS_AGENT_MEMORY_*`` name should come first, with any legacy
+      ``AGENT_MEMORY_*`` name as a fallback.
+
+  Returns:
+    The first non-empty value, or ``None`` if none are set.
+  """
+  for name in env_names:
+    value = os.getenv(name)
+    if value:
+      return value
+  return None
+
+
+def resolve_managed_credentials(backend: str) -> tuple[str | None, str | None]:
+  """Resolve the managed API key and store ID for the selected backend.
+
+  The managed ``redis-agent-memory`` backend requires both values; this raises
+  if either is missing so the failure is loud and actionable rather than a
+  cryptic auth error on the first request. The opensource backend ignores them,
+  so they are returned as ``None`` without validation.
+
+  Args:
+    backend: The selected memory backend name.
+
+  Returns:
+    A ``(api_key, store_id)`` tuple.
+
+  Raises:
+    ValueError: If the managed backend is selected but a value is missing.
+  """
+  api_key = get_managed_credential(
+      "REDIS_AGENT_MEMORY_API_KEY", "AGENT_MEMORY_API_KEY"
+  )
+  store_id = get_managed_credential(
+      "REDIS_AGENT_MEMORY_STORE_ID", "AGENT_MEMORY_STORE_ID"
+  )
+  if backend == REDIS_AGENT_MEMORY_BACKEND:
+    missing = []
+    if not api_key:
+      missing.append("REDIS_AGENT_MEMORY_API_KEY")
+    if not store_id:
+      missing.append("REDIS_AGENT_MEMORY_STORE_ID")
+    if missing:
+      raise ValueError(
+          f"Backend '{REDIS_AGENT_MEMORY_BACKEND}' requires "
+          f"{' and '.join(missing)}. Set them in your .env. See the managed "
+          "memory setup guide for where to obtain these values."
+      )
+  return api_key, store_id
+
+
 def redis_session_factory(uri: str, **kwargs):
   """Factory function for creating RedisWorkingMemorySessionService from URI."""
   base_url = parse_base_url(uri)
+  backend = os.getenv("REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND)
+  api_key, store_id = resolve_managed_credentials(backend)
   config = RedisWorkingMemorySessionServiceConfig(
-      backend=os.getenv(
-          "REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND
-      ),
+      backend=backend,
       api_base_url=base_url,
-      api_key=os.getenv("AGENT_MEMORY_API_KEY"),
-      store_id=os.getenv("AGENT_MEMORY_STORE_ID"),
+      api_key=api_key,
+      store_id=store_id,
       default_namespace=os.getenv("REDIS_MEMORY_NAMESPACE", "adk_agent_memory"),
       model_name=os.getenv("REDIS_MEMORY_MODEL_NAME", "gpt-4o"),
       context_window_max=int(os.getenv("REDIS_MEMORY_CONTEXT_WINDOW", "8000")),
@@ -75,13 +132,13 @@ def redis_session_factory(uri: str, **kwargs):
 def redis_memory_factory(uri: str, **kwargs):
   """Factory function for creating RedisLongTermMemoryService from URI."""
   base_url = parse_base_url(uri)
+  backend = os.getenv("REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND)
+  api_key, store_id = resolve_managed_credentials(backend)
   config = RedisLongTermMemoryServiceConfig(
-      backend=os.getenv(
-          "REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND
-      ),
+      backend=backend,
       api_base_url=base_url,
-      api_key=os.getenv("AGENT_MEMORY_API_KEY"),
-      store_id=os.getenv("AGENT_MEMORY_STORE_ID"),
+      api_key=api_key,
+      store_id=store_id,
       default_namespace=os.getenv("REDIS_MEMORY_NAMESPACE", "adk_agent_memory"),
       extraction_strategy=os.getenv(
           "REDIS_MEMORY_EXTRACTION_STRATEGY", "discrete"
