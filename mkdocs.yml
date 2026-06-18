@@ -172,6 +172,7 @@ nav:
       - How-To Guides:
           - user_guide/how_to_guides/index.md
           - Redis setup: user_guide/how_to_guides/redis_setup.md
+          - Managed memory setup: user_guide/how_to_guides/managed_memory_setup.md
           - Memory server setup: user_guide/how_to_guides/memory_server_setup.md
           - Session service: user_guide/how_to_guides/session_service.md
           - Memory service: user_guide/how_to_guides/memory_service.md

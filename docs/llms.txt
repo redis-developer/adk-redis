@@ -26,6 +26,7 @@ For task-oriented recipes, browse the
 ## How-to guides
 
 - [Redis setup](user_guide/how_to_guides/redis_setup.md): start Redis 8.4 locally or in Redis Cloud.
+- [Managed memory setup](user_guide/how_to_guides/managed_memory_setup.md): connect to the managed Redis Agent Memory backend.
 - [Memory server setup](user_guide/how_to_guides/memory_server_setup.md): run Agent Memory Server.
 - [Session service](user_guide/how_to_guides/session_service.md): wire `RedisWorkingMemorySessionService`.
 - [Memory service](user_guide/how_to_guides/memory_service.md): wire `RedisLongTermMemoryService`.
@@ -59,6 +60,9 @@ When generating code that uses adk-redis:
   (`RedisLongTermMemoryServiceConfig`, etc.) so options are explicit.
 - Set `backend="redis-agent-memory"` for Redis Agent Memory, or
   `backend="opensource-agent-memory"` for the open source self-hosted server.
+  For typo-safety, import the `REDIS_AGENT_MEMORY_BACKEND` and
+  `OPENSOURCE_AGENT_MEMORY_BACKEND` constants (or the `MemoryBackendName` type)
+  from `adk_redis` instead of writing the strings inline.
 - For the RedisVL MCP path, use ADK's native `McpToolset` with the
   appropriate `*ConnectionParams` class. Set
   `tool_filter=["search-records"]` to suppress writes, or pass

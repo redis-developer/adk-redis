@@ -12,14 +12,17 @@ Provide Redis Agent Memory connection settings:
 
 ```bash
 export REDIS_MEMORY_BACKEND="redis-agent-memory"
-export AGENT_MEMORY_SERVER_URL="https://..."
-export AGENT_MEMORY_STORE_ID="..."
-export AGENT_MEMORY_API_KEY="..."
+export REDIS_AGENT_MEMORY_API_BASE_URL="https://..."
+export REDIS_AGENT_MEMORY_STORE_ID="..."
+export REDIS_AGENT_MEMORY_API_KEY="..."
 ```
 
-For the open source self-hosted Agent Memory Server, use
-`REDIS_MEMORY_BACKEND="opensource-agent-memory"` and point
-`AGENT_MEMORY_SERVER_URL` at your server.
+These are the same variable names used by the
+[managed memory quickstart](how_to_guides/managed_memory_setup.md) and the
+integration tests. For the open source self-hosted Agent Memory Server, use
+`REDIS_MEMORY_BACKEND="opensource-agent-memory"`, point
+`REDIS_AGENT_MEMORY_API_BASE_URL` at your server, and omit the API key and
+store ID unless your deployment requires them.
 
 ## 2. Install dependencies
 
@@ -38,28 +41,33 @@ from google.adk.runners import Runner
 from google.adk.tools import load_memory
 from google.adk.tools import preload_memory
 from adk_redis import (
+    REDIS_AGENT_MEMORY_BACKEND,
     RedisWorkingMemorySessionService,
     RedisWorkingMemorySessionServiceConfig,
     RedisLongTermMemoryService,
     RedisLongTermMemoryServiceConfig,
 )
 
+# REDIS_AGENT_MEMORY_BACKEND and OPENSOURCE_AGENT_MEMORY_BACKEND are typo-safe
+# aliases for the "redis-agent-memory" and "opensource-agent-memory" strings.
+backend = os.getenv("REDIS_MEMORY_BACKEND", REDIS_AGENT_MEMORY_BACKEND)
+
 session_service = RedisWorkingMemorySessionService(
     config=RedisWorkingMemorySessionServiceConfig(
-        backend=os.getenv("REDIS_MEMORY_BACKEND", "redis-agent-memory"),
-        api_base_url=os.environ["AGENT_MEMORY_SERVER_URL"],
-        api_key=os.environ.get("AGENT_MEMORY_API_KEY"),
-        store_id=os.environ.get("AGENT_MEMORY_STORE_ID"),
+        backend=backend,
+        api_base_url=os.environ["REDIS_AGENT_MEMORY_API_BASE_URL"],
+        api_key=os.environ.get("REDIS_AGENT_MEMORY_API_KEY"),
+        store_id=os.environ.get("REDIS_AGENT_MEMORY_STORE_ID"),
         default_namespace="my_app",
     )
 )
 
 memory_service = RedisLongTermMemoryService(
     config=RedisLongTermMemoryServiceConfig(
-        backend=os.getenv("REDIS_MEMORY_BACKEND", "redis-agent-memory"),
-        api_base_url=os.environ["AGENT_MEMORY_SERVER_URL"],
-        api_key=os.environ.get("AGENT_MEMORY_API_KEY"),
-        store_id=os.environ.get("AGENT_MEMORY_STORE_ID"),
+        backend=backend,
+        api_base_url=os.environ["REDIS_AGENT_MEMORY_API_BASE_URL"],
+        api_key=os.environ.get("REDIS_AGENT_MEMORY_API_KEY"),
+        store_id=os.environ.get("REDIS_AGENT_MEMORY_STORE_ID"),
         default_namespace="my_app",
     )
 )
