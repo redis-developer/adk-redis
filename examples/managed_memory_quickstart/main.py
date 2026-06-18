@@ -28,6 +28,7 @@ from google.adk.cli.fast_api import get_fast_api_app
 from google.adk.cli.service_registry import get_service_registry
 import uvicorn
 
+from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory import RedisLongTermMemoryService
 from adk_redis.memory import RedisLongTermMemoryServiceConfig
 from adk_redis.sessions import RedisWorkingMemorySessionService
@@ -35,7 +36,7 @@ from adk_redis.sessions import RedisWorkingMemorySessionServiceConfig
 
 load_dotenv()
 
-_BACKEND = "redis-agent-memory"
+_BACKEND = REDIS_AGENT_MEMORY_BACKEND
 
 
 def _api_base_url() -> str:

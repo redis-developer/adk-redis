@@ -14,10 +14,16 @@
 
 """Redis memory services for ADK."""
 
+from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis.memory._backends import REDIS_AGENT_MEMORY_BACKEND
+from adk_redis.memory._backends import MemoryBackendName
 from adk_redis.memory.long_term_memory import RedisLongTermMemoryService
 from adk_redis.memory.long_term_memory import RedisLongTermMemoryServiceConfig
 
 __all__ = [
+    "MemoryBackendName",
+    "OPENSOURCE_AGENT_MEMORY_BACKEND",
+    "REDIS_AGENT_MEMORY_BACKEND",
     "RedisLongTermMemoryService",
     "RedisLongTermMemoryServiceConfig",
 ]

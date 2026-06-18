@@ -19,6 +19,8 @@ from unittest.mock import patch
 
 import pytest
 
+from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.tools.memory import CreateMemoryTool
 from adk_redis.tools.memory import DeleteMemoryTool
 from adk_redis.tools.memory import MemoryToolConfig
@@ -104,15 +106,15 @@ def fake_client():
 def test_memory_tool_config_accepts_opensource_backend():
   """Memory tool config accepts the self-hosted backend value."""
   assert (
-      MemoryToolConfig(backend="opensource-agent-memory").backend
-      == "opensource-agent-memory"
+      MemoryToolConfig(backend=OPENSOURCE_AGENT_MEMORY_BACKEND).backend
+      == OPENSOURCE_AGENT_MEMORY_BACKEND
   )
 
 
 @pytest.mark.asyncio
 async def test_create_memory_tool_writes_record(config, fake_client):
   """CreateMemoryTool writes a Redis Agent Memory record."""
-  assert config.backend == "redis-agent-memory"
+  assert config.backend == REDIS_AGENT_MEMORY_BACKEND
   tool = CreateMemoryTool(config=config)
   with patch.object(tool, "_get_client", return_value=fake_client):
     result = await tool.run_async(args={"content": "User likes tea."})
@@ -153,6 +155,8 @@ async def test_update_memory_tool_calls_update(config, fake_client):
   assert fake_client.update_kwargs == {
       "memory_id": "memory-1",
       "text": "Updated",
+      "namespace": "test-ns",
+      "owner_id": "alice",
   }
 
 
@@ -173,7 +177,7 @@ async def test_create_memory_tool_can_use_agent_memory_server_backend():
   """CreateMemoryTool can write through the self-hosted backend."""
   fake_client = FakeAgentMemoryServerClient()
   config = MemoryToolConfig(
-      backend="opensource-agent-memory",
+      backend=OPENSOURCE_AGENT_MEMORY_BACKEND,
       default_namespace="test_ns",
       default_user_id="alice",
   )

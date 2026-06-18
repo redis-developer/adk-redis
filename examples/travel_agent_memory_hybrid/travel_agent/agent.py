@@ -37,6 +37,7 @@ from tools.calendar_export import CalendarExportTool
 from tools.itinerary_planner import ItineraryPlannerTool
 from tools.tavily_search import TavilySearchTool
 
+from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis.tools.memory import CreateMemoryTool
 from adk_redis.tools.memory import DeleteMemoryTool
 from adk_redis.tools.memory import MemoryToolConfig
@@ -45,7 +46,9 @@ from adk_redis.tools.memory import UpdateMemoryTool
 
 # Configuration from environment
 MEMORY_SERVER_URL = os.getenv("MEMORY_SERVER_URL", "http://localhost:8088")
-MEMORY_BACKEND = os.getenv("REDIS_MEMORY_BACKEND", "opensource-agent-memory")
+MEMORY_BACKEND = os.getenv(
+    "REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND
+)
 NAMESPACE = os.getenv("NAMESPACE", "travel_agent_memory_hybrid")
 
 

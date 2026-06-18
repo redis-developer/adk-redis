@@ -24,6 +24,8 @@ from google.adk.sessions.session import Session
 from google.genai import types
 import pytest
 
+from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.sessions import RedisWorkingMemorySessionService
 from adk_redis.sessions import RedisWorkingMemorySessionServiceConfig
 
@@ -79,7 +81,7 @@ class TestRedisWorkingMemorySessionServiceConfig:
   def test_default_values(self):
     """Test default configuration values."""
     config = RedisWorkingMemorySessionServiceConfig()
-    assert config.backend == "redis-agent-memory"
+    assert config.backend == REDIS_AGENT_MEMORY_BACKEND
     assert config.api_base_url == "http://localhost:8000"
     assert config.api_key is None
     assert config.store_id is None
@@ -117,9 +119,9 @@ class TestRedisWorkingMemorySessionServiceConfig:
   def test_opensource_backend_value(self):
     """Test the self-hosted backend value is accepted."""
     config = RedisWorkingMemorySessionServiceConfig(
-        backend="opensource-agent-memory"
+        backend=OPENSOURCE_AGENT_MEMORY_BACKEND
     )
-    assert config.backend == "opensource-agent-memory"
+    assert config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND
 
 
 class TestRedisWorkingMemorySessionServiceInit:
@@ -350,7 +352,7 @@ class TestRedisWorkingMemorySessionServiceMethods:
     fake_client.list_response = SimpleNamespace(sessions=["session-1"])
     service = RedisWorkingMemorySessionService(
         RedisWorkingMemorySessionServiceConfig(
-            backend="opensource-agent-memory",
+            backend=OPENSOURCE_AGENT_MEMORY_BACKEND,
             default_namespace="test_ns",
         )
     )

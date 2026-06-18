@@ -32,6 +32,7 @@ from google.adk.cli.fast_api import get_fast_api_app
 from google.adk.cli.service_registry import get_service_registry
 import uvicorn
 
+from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis.memory import RedisLongTermMemoryService
 from adk_redis.memory import RedisLongTermMemoryServiceConfig
 from adk_redis.sessions import RedisWorkingMemorySessionService
@@ -55,7 +56,9 @@ def redis_session_factory(uri: str, **kwargs):
   """Factory function for creating RedisWorkingMemorySessionService from URI."""
   base_url = parse_base_url(uri)
   config = RedisWorkingMemorySessionServiceConfig(
-      backend=os.getenv("REDIS_MEMORY_BACKEND", "opensource-agent-memory"),
+      backend=os.getenv(
+          "REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND
+      ),
       api_base_url=base_url,
       api_key=os.getenv("AGENT_MEMORY_API_KEY"),
       store_id=os.getenv("AGENT_MEMORY_STORE_ID"),
@@ -73,7 +76,9 @@ def redis_memory_factory(uri: str, **kwargs):
   """Factory function for creating RedisLongTermMemoryService from URI."""
   base_url = parse_base_url(uri)
   config = RedisLongTermMemoryServiceConfig(
-      backend=os.getenv("REDIS_MEMORY_BACKEND", "opensource-agent-memory"),
+      backend=os.getenv(
+          "REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND
+      ),
       api_base_url=base_url,
       api_key=os.getenv("AGENT_MEMORY_API_KEY"),
       store_id=os.getenv("AGENT_MEMORY_STORE_ID"),
@@ -116,7 +121,7 @@ if __name__ == "__main__":
   port = int(os.environ.get("PORT", 8080))
   namespace = os.getenv("REDIS_MEMORY_NAMESPACE", "adk_agent_memory")
   server = os.getenv("REDIS_MEMORY_SERVER_URL", "http://localhost:8000")
-  backend = os.getenv("REDIS_MEMORY_BACKEND", "opensource-agent-memory")
+  backend = os.getenv("REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND)
   extraction = os.getenv("REDIS_MEMORY_EXTRACTION_STRATEGY", "discrete")
   context_window = os.getenv("REDIS_MEMORY_CONTEXT_WINDOW", "8000")
 

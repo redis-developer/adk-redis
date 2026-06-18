@@ -56,8 +56,12 @@ REQUIRES_REDIS = pytest.mark.skipif(
 
 
 REDIS_AGENT_MEMORY_URL = os.environ.get("REDIS_AGENT_MEMORY_API_BASE_URL")
-REDIS_AGENT_MEMORY_API_KEY = os.environ.get("REDIS_AGENT_MEMORY_API_KEY")
-REDIS_AGENT_MEMORY_STORE_ID = os.environ.get("REDIS_AGENT_MEMORY_STORE_ID")
+REDIS_AGENT_MEMORY_API_KEY = os.environ.get(
+    "REDIS_AGENT_MEMORY_API_KEY"
+) or os.environ.get("AGENT_MEMORY_API_KEY")
+REDIS_AGENT_MEMORY_STORE_ID = os.environ.get(
+    "REDIS_AGENT_MEMORY_STORE_ID"
+) or os.environ.get("AGENT_MEMORY_STORE_ID")
 
 REQUIRES_REDIS_AGENT_MEMORY = pytest.mark.skipif(
     not (
@@ -67,8 +71,9 @@ REQUIRES_REDIS_AGENT_MEMORY = pytest.mark.skipif(
     ),
     reason=(
         "Redis Agent Memory env vars not set. Set "
-        "REDIS_AGENT_MEMORY_API_BASE_URL, REDIS_AGENT_MEMORY_API_KEY, and "
-        "REDIS_AGENT_MEMORY_STORE_ID to enable."
+        "REDIS_AGENT_MEMORY_API_BASE_URL, REDIS_AGENT_MEMORY_API_KEY "
+        "(or AGENT_MEMORY_API_KEY), and REDIS_AGENT_MEMORY_STORE_ID "
+        "(or AGENT_MEMORY_STORE_ID) to enable."
     ),
 )
 
