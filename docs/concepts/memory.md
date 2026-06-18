@@ -11,8 +11,8 @@ The LLM decides when to search, create, update, or delete memories.
 |---------|---------|
 | **Protocol** | MCP (via SSE or Streamable HTTP) or REST-based ADK tools |
 | **Control** | LLM-driven: the agent chooses when to remember and recall |
-| **Session storage** | Agent Memory Server working memory |
-| **Long-term memory** | Agent Memory Server with vector + full-text indexes |
+| **Session storage** | Redis Agent Memory or Agent Memory Server working memory |
+| **Long-term memory** | Redis Agent Memory or Agent Memory Server with vector + full-text indexes |
 | **Language support** | MCP works with Python, TypeScript, and any MCP-compatible client |
 
 ## How It Works
@@ -25,7 +25,7 @@ flowchart TD
     MCP -->|MCP| MCPS[McpToolset<br/>search · create · prompt]
     MCP -->|REST| REST[Memory Tools<br/>SearchMemoryTool · CreateMemoryTool]
 
-    MCPS --> AMS[Agent Memory Server]
+    MCPS --> AMS["Redis Agent Memory<br/>or Agent Memory Server"]
     REST --> AMS
 
     AMS --> WM[Working Memory]
@@ -44,6 +44,12 @@ flowchart TD
 ```
 
 Unlike the [services approach](sessions.md), where the framework handles memory automatically, here the LLM explicitly calls memory tools during reasoning. This gives you fine-grained control over what gets stored and retrieved.
+
+!!! note "MCP requires the self-hosted server"
+    The SDK tools (Option 2) target either Redis Agent Memory
+    (`redis-agent-memory`) or the self-hosted Agent Memory Server
+    (`opensource-agent-memory`). The MCP path (Option 1) is provided only by the
+    self-hosted Agent Memory Server; the managed backend has no MCP endpoint.
 
 ## Option 1: MCP Tools
 
@@ -101,8 +107,10 @@ from adk_redis import (
     MemoryToolConfig,
 )
 
+from adk_redis import REDIS_AGENT_MEMORY_BACKEND
+
 config = MemoryToolConfig(
-    backend="redis-agent-memory",
+    backend=REDIS_AGENT_MEMORY_BACKEND,  # alias for "redis-agent-memory"
     api_base_url="http://localhost:8000",
     api_key="...",
     store_id="...",
@@ -155,6 +163,11 @@ agent = Agent(
 | `search_top_k` | `10` | Default max search results |
 | `distance_threshold` | `None` | Compatibility alias for search threshold |
 | `deduplicate` | `True` | Deduplicate when creating memories |
+
+For `backend`, you can pass the `"redis-agent-memory"` /
+`"opensource-agent-memory"` strings directly, or import the typo-safe
+`REDIS_AGENT_MEMORY_BACKEND` / `OPENSOURCE_AGENT_MEMORY_BACKEND` constants (or
+the `MemoryBackendName` type) from `adk_redis`.
 
 Launch with the [ADK web UI](https://google.github.io/adk-docs/runtime/) for interactive testing:
 

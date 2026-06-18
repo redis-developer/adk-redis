@@ -14,6 +14,12 @@ Task-oriented recipes for adk-redis.
 
     Stand up a local Redis 8 instance for ADK agents.
 
+-   :material-cloud:{ .lg .middle } **[Managed memory setup](managed_memory_setup.md)**
+
+    ---
+
+    Connect to the managed Redis Agent Memory backend (the library default).
+
 -   :material-server-network:{ .lg .middle } **[Memory server setup](memory_server_setup.md)**
 
     ---

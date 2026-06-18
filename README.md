@@ -119,11 +119,14 @@ server requires them.
 
 ## Examples
 
-All examples run via `adk web` and ship with a README and `.env.example`. See the [Examples index](https://redis-developer.github.io/adk-redis/examples/) for descriptions.
+Each example ships with a README and `.env.example`. Memory and session
+examples that register services through `get_service_registry()` run via
+`python main.py`; tools-only and search examples run via `adk web`. See each
+example's README and the [Examples index](https://redis-developer.github.io/adk-redis/examples/) for the runner and backend each uses.
 
 | Category | Examples |
 |---|---|
-| **Memory and sessions** | [`simple_redis_memory`](examples/simple_redis_memory/) · [`travel_agent_memory_hybrid`](examples/travel_agent_memory_hybrid/) · [`travel_agent_memory_tools`](examples/travel_agent_memory_tools/) · [`fitness_coach_mcp`](examples/fitness_coach_mcp/) |
+| **Memory and sessions** | [`managed_memory_quickstart`](examples/managed_memory_quickstart/) · [`simple_redis_memory`](examples/simple_redis_memory/) · [`travel_agent_memory_hybrid`](examples/travel_agent_memory_hybrid/) · [`travel_agent_memory_tools`](examples/travel_agent_memory_tools/) · [`fitness_coach_mcp`](examples/fitness_coach_mcp/) |
 | **Search** | [`redis_search_tools`](examples/redis_search_tools/) · [`redis_sql_search`](examples/redis_sql_search/) · [`redisvl_mcp_search`](examples/redisvl_mcp_search/) |
 | **Caching** | [`semantic_cache`](examples/semantic_cache/) · [`langcache_cache`](examples/langcache_cache/) |
 
