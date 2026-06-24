@@ -15,9 +15,9 @@ src/adk_redis/
                           session, search, tool, and cache classes).
   _version.py             Build-time version string.
   sessions/
-    __init__.py           Re-exports RedisWorkingMemorySessionService.
-    working_memory.py     ADK BaseSessionService implementation backed by
-                          Redis Agent Memory Server working memory.
+    __init__.py           Re-exports RedisSessionMemoryService.
+    session_memory.py     ADK BaseSessionService implementation backed by
+                          Redis Agent Memory or Agent Memory Server.
   memory/
     __init__.py           Re-exports RedisLongTermMemoryService and the
                           memory tools (Memory Prompt / Search / Create /
@@ -50,7 +50,7 @@ tests/
   test_imports.py              Smoke test for every public re-export.
   test_version.py              `__version__` is set.
   sessions/
-    test_working_memory.py     RedisWorkingMemorySessionService end-to-end.
+    test_session_memory.py     RedisSessionMemoryService end-to-end.
   memory/
     test_long_term_memory.py   RedisLongTermMemoryService end-to-end.
   tools/
@@ -77,7 +77,7 @@ tests/
 
 | Feature | Module(s) |
 |---|---|
-| Working-memory session storage | `sessions/working_memory.py` |
+| Session storage (session memory) | `sessions/session_memory.py` |
 | Long-term memory + Memory Server proxy | `memory/long_term_memory.py`, `memory/_utils.py` |
 | ADK Memory tools (FunctionTool wrappers) | `tools/memory/` |
 | MCP (RedisVL or AMS) | Use ADK's native `McpToolset` directly; no adk-redis wrapper. |
@@ -92,9 +92,10 @@ tests/
   `FunctionTool` plus a thin RedisVL query. Tools are independent; copy
   the closest existing one. Wire it through `tools/__init__.py` and the
   re-export in `adk_redis/__init__.py`.
-- **The session service.** `sessions/working_memory.py` implements ADK's
-  `BaseSessionService`. It calls Agent Memory Server working-memory
-  endpoints; do not reach into Redis directly from the session layer.
+- **The session service.** `sessions/session_memory.py` implements ADK's
+  `BaseSessionService`. It calls the configured memory backend (Redis Agent
+  Memory or the self-hosted Agent Memory Server working-memory endpoints); do
+  not reach into Redis directly from the session layer.
 - **The memory service.** `memory/long_term_memory.py` implements ADK's
   `BaseMemoryService`. The memory tools under `tools/memory/` are thin
   `FunctionTool` wrappers and must keep parameter names aligned with

@@ -28,14 +28,14 @@ For task-oriented recipes, browse the
 - [Redis setup](user_guide/how_to_guides/redis_setup.md): start Redis 8.4 locally or in Redis Cloud.
 - [Managed memory setup](user_guide/how_to_guides/managed_memory_setup.md): connect to the managed Redis Agent Memory backend.
 - [Memory server setup](user_guide/how_to_guides/memory_server_setup.md): run Agent Memory Server.
-- [Session service](user_guide/how_to_guides/session_service.md): wire `RedisWorkingMemorySessionService`.
+- [Session service](user_guide/how_to_guides/session_service.md): wire `RedisSessionMemoryService`.
 - [Memory service](user_guide/how_to_guides/memory_service.md): wire `RedisLongTermMemoryService`.
 - [Search tools](user_guide/how_to_guides/search_tools.md): use the five search tools and the RedisVL MCP toolset.
 - [Semantic cache](user_guide/how_to_guides/semantic_cache.md): add self-hosted or managed semantic caching.
 
 ## API reference
 
-- [Sessions](api/python/sessions.md): `RedisWorkingMemorySessionService`, `RedisWorkingMemorySessionServiceConfig`.
+- [Sessions](api/python/sessions.md): `RedisSessionMemoryService`, `RedisSessionMemoryServiceConfig`.
 - [Memory](api/python/memory.md): `RedisLongTermMemoryService`, `RedisLongTermMemoryServiceConfig`.
 - [Tools](api/python/tools.md): search tools, memory tools, MCP toolset helpers.
 - [Cache](api/python/cache.md): cache providers, `LLMResponseCache`, `ToolCache`, callback factories.

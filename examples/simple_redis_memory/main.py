@@ -15,7 +15,7 @@
 """Redis Memory Sample: Working Memory Sessions + Long-Term Memory.
 
 This sample demonstrates using BOTH Redis Agent Memory Server services:
-1. RedisWorkingMemorySessionService - For session management with auto-summarization
+1. RedisSessionMemoryService - For session management with auto-summarization
 2. RedisLongTermMemoryService - For persistent long-term memory search
 
 This provides the complete two-tier memory architecture:
@@ -36,8 +36,8 @@ from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory import RedisLongTermMemoryService
 from adk_redis.memory import RedisLongTermMemoryServiceConfig
-from adk_redis.sessions import RedisWorkingMemorySessionService
-from adk_redis.sessions import RedisWorkingMemorySessionServiceConfig
+from adk_redis.sessions import RedisSessionMemoryService
+from adk_redis.sessions import RedisSessionMemoryServiceConfig
 
 load_dotenv()
 
@@ -110,11 +110,11 @@ def resolve_managed_credentials(backend: str) -> tuple[str | None, str | None]:
 
 
 def redis_session_factory(uri: str, **kwargs):
-  """Factory function for creating RedisWorkingMemorySessionService from URI."""
+  """Factory function for creating RedisSessionMemoryService from URI."""
   base_url = parse_base_url(uri)
   backend = os.getenv("REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND)
   api_key, store_id = resolve_managed_credentials(backend)
-  config = RedisWorkingMemorySessionServiceConfig(
+  config = RedisSessionMemoryServiceConfig(
       backend=backend,
       api_base_url=base_url,
       api_key=api_key,
@@ -126,7 +126,7 @@ def redis_session_factory(uri: str, **kwargs):
           "REDIS_MEMORY_EXTRACTION_STRATEGY", "discrete"
       ),
   )
-  return RedisWorkingMemorySessionService(config=config)
+  return RedisSessionMemoryService(config=config)
 
 
 def redis_memory_factory(uri: str, **kwargs):
@@ -194,7 +194,7 @@ Extraction Strategy: {extraction}
 Context Window:      {context_window} tokens
 
 Services:
-  - Session:  RedisWorkingMemorySessionService (auto-summarization)
+  - Session:  RedisSessionMemoryService (auto-summarization)
   - Memory:   RedisLongTermMemoryService (semantic search)
 
 Two-Tier Architecture:

@@ -15,7 +15,7 @@
 """Travel Agent Hybrid: Full Session + Memory Services with Memory Tools.
 
 This example demonstrates the HYBRID approach combining:
-1. RedisWorkingMemorySessionService - For session management with auto-summarization
+1. RedisSessionMemoryService - For session management with auto-summarization
 2. RedisLongTermMemoryService - For persistent long-term memory search
 3. Memory Tools - For explicit LLM-controlled memory operations
 
@@ -36,8 +36,8 @@ import uvicorn
 from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis.memory import RedisLongTermMemoryService
 from adk_redis.memory import RedisLongTermMemoryServiceConfig
-from adk_redis.sessions import RedisWorkingMemorySessionService
-from adk_redis.sessions import RedisWorkingMemorySessionServiceConfig
+from adk_redis.sessions import RedisSessionMemoryService
+from adk_redis.sessions import RedisSessionMemoryServiceConfig
 
 load_dotenv()
 
@@ -54,9 +54,9 @@ def parse_base_url(uri: str) -> str:
 
 
 def redis_session_factory(uri: str, **kwargs):
-  """Factory function for creating RedisWorkingMemorySessionService from URI."""
+  """Factory function for creating RedisSessionMemoryService from URI."""
   base_url = parse_base_url(uri)
-  config = RedisWorkingMemorySessionServiceConfig(
+  config = RedisSessionMemoryServiceConfig(
       backend=os.getenv(
           "REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND
       ),
@@ -70,7 +70,7 @@ def redis_session_factory(uri: str, **kwargs):
           "REDIS_MEMORY_EXTRACTION_STRATEGY", "discrete"
       ),
   )
-  return RedisWorkingMemorySessionService(config=config)
+  return RedisSessionMemoryService(config=config)
 
 
 def redis_memory_factory(uri: str, **kwargs):
@@ -138,7 +138,7 @@ Extraction Strategy: {extraction}
 Context Window:      {context_window} tokens
 
 Services (Framework-Managed):
-  - Session:  RedisWorkingMemorySessionService (auto-summarization)
+  - Session:  RedisSessionMemoryService (auto-summarization)
   - Memory:   RedisLongTermMemoryService (semantic search)
 
 Tools (LLM-Controlled):

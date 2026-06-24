@@ -94,12 +94,12 @@ from google.adk.runners import Runner
 from adk_redis import (
     RedisLongTermMemoryService,
     RedisLongTermMemoryServiceConfig,
-    RedisWorkingMemorySessionService,
-    RedisWorkingMemorySessionServiceConfig,
+    RedisSessionMemoryService,
+    RedisSessionMemoryServiceConfig,
 )
 
-session_service = RedisWorkingMemorySessionService(
-    config=RedisWorkingMemorySessionServiceConfig(
+session_service = RedisSessionMemoryService(
+    config=RedisSessionMemoryServiceConfig(
         api_base_url="http://localhost:8000",
     ),
 )

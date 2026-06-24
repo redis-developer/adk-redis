@@ -14,7 +14,7 @@
 
 """Managed Redis Agent Memory quickstart.
 
-Registers RedisWorkingMemorySessionService and RedisLongTermMemoryService
+Registers RedisSessionMemoryService and RedisLongTermMemoryService
 against the managed redis-agent-memory backend, then serves the agent via ADK's
 FastAPI runner.
 """
@@ -31,8 +31,8 @@ import uvicorn
 from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory import RedisLongTermMemoryService
 from adk_redis.memory import RedisLongTermMemoryServiceConfig
-from adk_redis.sessions import RedisWorkingMemorySessionService
-from adk_redis.sessions import RedisWorkingMemorySessionServiceConfig
+from adk_redis.sessions import RedisSessionMemoryService
+from adk_redis.sessions import RedisSessionMemoryServiceConfig
 
 load_dotenv()
 
@@ -55,9 +55,9 @@ def parse_base_url(uri: str) -> str:
 
 
 def redis_session_factory(uri: str, **kwargs):
-  """Factory for RedisWorkingMemorySessionService."""
+  """Factory for RedisSessionMemoryService."""
   base_url = parse_base_url(uri)
-  config = RedisWorkingMemorySessionServiceConfig(
+  config = RedisSessionMemoryServiceConfig(
       backend=_BACKEND,
       api_base_url=base_url,
       api_key=os.environ["REDIS_AGENT_MEMORY_API_KEY"],
@@ -66,7 +66,7 @@ def redis_session_factory(uri: str, **kwargs):
           "REDIS_MEMORY_NAMESPACE", "managed_memory_quickstart"
       ),
   )
-  return RedisWorkingMemorySessionService(config=config)
+  return RedisSessionMemoryService(config=config)
 
 
 def redis_memory_factory(uri: str, **kwargs):
@@ -117,7 +117,7 @@ Store ID:       {os.environ["REDIS_AGENT_MEMORY_STORE_ID"]}
 Namespace:      {namespace}
 
 Services:
-  - Session: RedisWorkingMemorySessionService
+  - Session: RedisSessionMemoryService
   - Memory:  RedisLongTermMemoryService
 """
   )

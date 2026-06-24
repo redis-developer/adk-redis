@@ -17,7 +17,7 @@ backend="opensource-agent-memory"  # self-hosted, uses agent-memory-client
 
 The public class names stay unchanged:
 
-- `RedisWorkingMemorySessionService`
+- `RedisSessionMemoryService`
 - `RedisLongTermMemoryService`
 - `MemoryToolConfig`
 - `SearchMemoryTool`, `CreateMemoryTool`, `GetMemoryTool`,

@@ -15,7 +15,7 @@ and `adk-redis`. Each example ships with a README and `.env.example`.
 
 ### Runner notes
 
-- **`python main.py`** — Required when registering `RedisWorkingMemorySessionService`
+- **`python main.py`** — Required when registering `RedisSessionMemoryService`
   and/or `RedisLongTermMemoryService` through `get_service_registry()`. ADK's
   `get_fast_api_app` reads those registrations; `adk web` does not.
 - **`adk web .`** — Works when memory is wired as agent tools in `agent.py`

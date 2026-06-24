@@ -37,7 +37,7 @@ flowchart TD
 
 | ADK Interface | `adk-redis` implementation | Concept page |
 |---------------|---------------------------|-------------|
-| `BaseSessionService` | `RedisWorkingMemorySessionService` | [Sessions + Memory Services](sessions.md) |
+| `BaseSessionService` | `RedisSessionMemoryService` | [Sessions + Memory Services](sessions.md) |
 | `BaseMemoryService` | `RedisLongTermMemoryService` | [Sessions + Memory Services](sessions.md) |
 | `BaseTool` | Search tools (`RedisVectorSearchTool`, `RedisHybridSearchTool`, etc.) and memory tools (`SearchMemoryTool`, `CreateMemoryTool`, etc.) | [Search Tools](search.md), [Memory MCP + Tools](memory.md) |
 | Model callbacks | `LLMResponseCache` with `RedisVLCacheProvider` or `LangCacheProvider` | [Semantic Caching](caching.md) |

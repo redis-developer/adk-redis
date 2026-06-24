@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-06-24
+
+### Changed
+
+- Renamed `RedisWorkingMemorySessionService` to `RedisSessionMemoryService`
+  and `RedisWorkingMemorySessionServiceConfig` to
+  `RedisSessionMemoryServiceConfig`, aligning with the managed Redis Agent
+  Memory "session memory" terminology and ADK's `<Backend>SessionService`
+  convention. The module `adk_redis.sessions.working_memory` moved to
+  `adk_redis.sessions.session_memory`. Docs and examples now use the new
+  names.
+
+### Deprecated
+
+- `RedisWorkingMemorySessionService` and
+  `RedisWorkingMemorySessionServiceConfig` remain as deprecated aliases that
+  emit a `DeprecationWarning` and will be removed in 0.1.0. Switch to
+  `RedisSessionMemoryService` / `RedisSessionMemoryServiceConfig`.
+
 ## [0.0.7] - 2026-06-18
 
 ### Added

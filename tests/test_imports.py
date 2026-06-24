@@ -45,24 +45,48 @@ class TestSessionImports:
   """Test session module imports."""
 
   def test_session_service_import(self):
-    """Test RedisWorkingMemorySessionService can be imported."""
-    from adk_redis import RedisWorkingMemorySessionService
+    """Test RedisSessionMemoryService can be imported."""
+    from adk_redis import RedisSessionMemoryService
 
-    assert RedisWorkingMemorySessionService is not None
+    assert RedisSessionMemoryService is not None
 
   def test_session_config_import(self):
-    """Test RedisWorkingMemorySessionServiceConfig can be imported."""
-    from adk_redis import RedisWorkingMemorySessionServiceConfig
+    """Test RedisSessionMemoryServiceConfig can be imported."""
+    from adk_redis import RedisSessionMemoryServiceConfig
 
-    assert RedisWorkingMemorySessionServiceConfig is not None
+    assert RedisSessionMemoryServiceConfig is not None
 
   def test_session_submodule_import(self):
     """Test sessions submodule imports."""
-    from adk_redis.sessions import RedisWorkingMemorySessionService
-    from adk_redis.sessions import RedisWorkingMemorySessionServiceConfig
+    from adk_redis.sessions import RedisSessionMemoryService
+    from adk_redis.sessions import RedisSessionMemoryServiceConfig
 
-    assert RedisWorkingMemorySessionService is not None
-    assert RedisWorkingMemorySessionServiceConfig is not None
+    assert RedisSessionMemoryService is not None
+    assert RedisSessionMemoryServiceConfig is not None
+
+  def test_deprecated_session_aliases(self):
+    """Deprecated aliases still import and subclass the new names."""
+    import warnings
+
+    from adk_redis import RedisSessionMemoryService
+    from adk_redis import RedisSessionMemoryServiceConfig
+    from adk_redis import RedisWorkingMemorySessionService
+    from adk_redis import RedisWorkingMemorySessionServiceConfig
+
+    assert issubclass(
+        RedisWorkingMemorySessionService, RedisSessionMemoryService
+    )
+    assert issubclass(
+        RedisWorkingMemorySessionServiceConfig, RedisSessionMemoryServiceConfig
+    )
+
+    with warnings.catch_warnings(record=True) as caught:
+      warnings.simplefilter("always")
+      RedisWorkingMemorySessionService()
+      RedisWorkingMemorySessionServiceConfig()
+
+    categories = [w.category for w in caught]
+    assert categories.count(DeprecationWarning) == 2
 
 
 class TestToolImports:

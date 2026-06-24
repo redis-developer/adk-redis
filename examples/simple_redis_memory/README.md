@@ -2,7 +2,7 @@
 
 This sample demonstrates the **complete two-tier memory architecture** using Redis Agent Memory Server with the `adk-redis` package:
 
-1. **RedisWorkingMemorySessionService** - Session management with auto-summarization
+1. **RedisSessionMemoryService** - Session management with auto-summarization
 2. **RedisLongTermMemoryService** - Persistent long-term memory with semantic search
 
 ## Architecture

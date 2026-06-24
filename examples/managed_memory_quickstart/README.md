@@ -6,7 +6,7 @@ with no self-hosted Agent Memory Server or Docker setup.
 
 ## What it demonstrates
 
-- `RedisWorkingMemorySessionService` for session persistence
+- `RedisSessionMemoryService` for session persistence
 - `RedisLongTermMemoryService` for semantic memory search
 - ADK built-in `preload_memory` and `load_memory` tools
 

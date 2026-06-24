@@ -17,7 +17,7 @@
 This agent demonstrates the HYBRID approach combining:
 
 Framework-Managed (via main.py services):
-- RedisWorkingMemorySessionService - Session persistence with auto-summarization
+- RedisSessionMemoryService - Session persistence with auto-summarization
 - RedisLongTermMemoryService - Automatic memory extraction and semantic search
 
 LLM-Controlled (via tools):

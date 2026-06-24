@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Redis working memory session service for ADK."""
+"""Redis session memory service for ADK."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ import logging
 import time
 from typing import Any, AsyncIterator, Literal
 import uuid
+import warnings
 
 from google.adk.events.event import Event
 from google.adk.sessions.base_session_service import BaseSessionService
@@ -80,8 +81,8 @@ else:
   _AgentMemory = _redis_agent_memory_module.AgentMemory
 
 
-class RedisWorkingMemorySessionServiceConfig(BaseModel):
-  """Configuration for Redis working memory session service.
+class RedisSessionMemoryServiceConfig(BaseModel):
+  """Configuration for Redis session memory service.
 
   Attributes:
       backend: Memory backend to use.
@@ -118,7 +119,7 @@ class RedisWorkingMemorySessionServiceConfig(BaseModel):
   session_ttl_seconds: int | None = Field(default=None, ge=1)
 
 
-class RedisWorkingMemorySessionService(BaseSessionService):
+class RedisSessionMemoryService(BaseSessionService):
   """Session service backed by Redis memory backends.
 
   Redis Agent Memory stores session events by session ID. The self-hosted
@@ -126,15 +127,13 @@ class RedisWorkingMemorySessionService(BaseSessionService):
   sessions keep the original caller-facing session ID for both backends.
   """
 
-  def __init__(
-      self, config: RedisWorkingMemorySessionServiceConfig | None = None
-  ):
+  def __init__(self, config: RedisSessionMemoryServiceConfig | None = None):
     """Initialize the Redis Agent Memory session service.
 
     Args:
         config: Configuration for the service. If None, defaults are used.
     """
-    self._config = config or RedisWorkingMemorySessionServiceConfig()
+    self._config = config or RedisSessionMemoryServiceConfig()
 
   def _timeout_ms(self) -> int:
     """Return the configured SDK timeout in milliseconds."""
@@ -151,7 +150,7 @@ class RedisWorkingMemorySessionService(BaseSessionService):
     if _AgentMemory is None:
       raise ImportError(
           "redis-agent-memory package is required for "
-          "RedisWorkingMemorySessionService. "
+          "RedisSessionMemoryService. "
           "Install it with: pip install adk-redis[memory]"
       )
 
@@ -472,9 +471,7 @@ class RedisWorkingMemorySessionService(BaseSessionService):
   ) -> ListSessionsResponse:
     """List sessions from the self-hosted Agent Memory Server."""
     if user_id is None:
-      raise ValueError(
-          "user_id is required for RedisWorkingMemorySessionService"
-      )
+      raise ValueError("user_id is required for RedisSessionMemoryService")
 
     try:
       namespace = self._get_namespace(app_name)
@@ -833,3 +830,35 @@ class RedisWorkingMemorySessionService(BaseSessionService):
   async def close(self) -> None:
     """Close the session service and cleanup resources."""
     pass
+
+
+class RedisWorkingMemorySessionServiceConfig(RedisSessionMemoryServiceConfig):
+  """Deprecated alias for :class:`RedisSessionMemoryServiceConfig`.
+
+  Retained for backward compatibility and removed in 0.1.0.
+  """
+
+  def __init__(self, **data: Any):
+    warnings.warn(
+        "RedisWorkingMemorySessionServiceConfig is deprecated; use "
+        "RedisSessionMemoryServiceConfig. The alias will be removed in 0.1.0.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    super().__init__(**data)
+
+
+class RedisWorkingMemorySessionService(RedisSessionMemoryService):
+  """Deprecated alias for :class:`RedisSessionMemoryService`.
+
+  Retained for backward compatibility and removed in 0.1.0.
+  """
+
+  def __init__(self, config: RedisSessionMemoryServiceConfig | None = None):
+    warnings.warn(
+        "RedisWorkingMemorySessionService is deprecated; use "
+        "RedisSessionMemoryService. The alias will be removed in 0.1.0.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    super().__init__(config=config)
