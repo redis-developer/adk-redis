@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `RedisWorkingMemorySessionServiceConfig` remain as deprecated aliases that
   emit a `DeprecationWarning` and will be removed in 0.1.0. Switch to
   `RedisSessionMemoryService` / `RedisSessionMemoryServiceConfig`.
+- The old module path `adk_redis.sessions.working_memory` remains as a
+  compatibility shim that re-exports the classes and emits a
+  `DeprecationWarning` on import. It will be removed in 0.1.0. Import from
+  `adk_redis.sessions.session_memory` or the top-level `adk_redis` package.
 
 ## [0.0.7] - 2026-06-18
 
