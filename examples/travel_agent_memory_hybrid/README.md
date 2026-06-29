@@ -26,7 +26,7 @@ uv run python main.py
 This example showcases the full hybrid integration combining:
 
 **Framework-Managed Services (via main.py):**
-- **RedisWorkingMemorySessionService** - Session persistence with auto-summarization
+- **RedisSessionMemoryService** - Session persistence with auto-summarization
 - **RedisLongTermMemoryService** - Automatic memory extraction and semantic search
 
 **LLM-Controlled Tools:**
@@ -144,7 +144,7 @@ Then open **http://localhost:8080** in your browser.
 - Hot reload on code changes
 
 **What's Different from `travel_agent_memory`:**
-- Uses `RedisWorkingMemorySessionService` for session persistence
+- Uses `RedisSessionMemoryService` for session persistence
 - Uses `RedisLongTermMemoryService` for automatic memory extraction
 - PLUS all the memory tools for explicit LLM control
 
@@ -153,10 +153,10 @@ Then open **http://localhost:8080** in your browser.
 ```python
 from travel_agent import root_agent
 from google.adk.runners import Runner
-from adk_redis.sessions import RedisWorkingMemorySessionService
+from adk_redis.sessions import RedisSessionMemoryService
 from adk_redis.memory import RedisLongTermMemoryService
 
-session_service = RedisWorkingMemorySessionService()
+session_service = RedisSessionMemoryService()
 memory_service = RedisLongTermMemoryService()
 
 runner = Runner(

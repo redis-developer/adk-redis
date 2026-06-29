@@ -1,6 +1,6 @@
 # Sessions + Memory with Services
 
-Use `RedisWorkingMemorySessionService` and `RedisLongTermMemoryService` when you want the ADK `Runner` to manage sessions and memory automatically. Plug them in and let the framework handle the rest.
+Use `RedisSessionMemoryService` and `RedisLongTermMemoryService` when you want the ADK `Runner` to manage sessions and memory automatically. Plug them in and let the framework handle the rest.
 
 ## Quick Reference
 
@@ -54,12 +54,12 @@ from google.adk.runners import Runner
 from adk_redis import (
     RedisLongTermMemoryService,
     RedisLongTermMemoryServiceConfig,
-    RedisWorkingMemorySessionService,
-    RedisWorkingMemorySessionServiceConfig,
+    RedisSessionMemoryService,
+    RedisSessionMemoryServiceConfig,
 )
 
-session_service = RedisWorkingMemorySessionService(
-    config=RedisWorkingMemorySessionServiceConfig(
+session_service = RedisSessionMemoryService(
+    config=RedisSessionMemoryServiceConfig(
         backend="redis-agent-memory",
         api_base_url="http://localhost:8000",
         api_key="...",
@@ -103,7 +103,7 @@ adk web .
 
 ## Configuration
 
-### Session Service (`RedisWorkingMemorySessionServiceConfig`)
+### Session Service (`RedisSessionMemoryServiceConfig`)
 
 | Option | Default | Description |
 |--------|---------|-------------|

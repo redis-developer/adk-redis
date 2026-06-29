@@ -11,7 +11,7 @@ directory and explains what it demonstrates.
 
 | Example | What it shows |
 |---------|---------------|
-| [**Simple Redis memory**](https://github.com/redis-developer/adk-redis/tree/main/examples/simple_redis_memory) | Minimal agent with `RedisWorkingMemorySessionService` and `RedisLongTermMemoryService`. |
+| [**Simple Redis memory**](https://github.com/redis-developer/adk-redis/tree/main/examples/simple_redis_memory) | Minimal agent with `RedisSessionMemoryService` and `RedisLongTermMemoryService`. |
 | [**Fitness coach (MCP)**](https://github.com/redis-developer/adk-redis/tree/main/examples/fitness_coach_mcp) | MCP-based memory with `McpToolset` and Agent Memory Server. |
 | [**Travel agent (hybrid)**](https://github.com/redis-developer/adk-redis/tree/main/examples/travel_agent_memory_hybrid) | Framework-managed sessions + memory with vector search over travel docs. |
 | [**Travel agent (tools)**](https://github.com/redis-developer/adk-redis/tree/main/examples/travel_agent_memory_tools) | Same travel agent using LLM-controlled memory tools instead of framework services. |

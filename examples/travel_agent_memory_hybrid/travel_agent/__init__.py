@@ -18,7 +18,7 @@ This package provides a comprehensive travel planning agent demonstrating
 the HYBRID approach with both framework-managed services and LLM-controlled tools:
 
 Framework-Managed (via main.py):
-- RedisWorkingMemorySessionService (auto-summarization)
+- RedisSessionMemoryService (auto-summarization)
 - RedisLongTermMemoryService (semantic search)
 
 LLM-Controlled (via tools):

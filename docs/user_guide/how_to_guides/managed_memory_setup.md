@@ -64,12 +64,12 @@ from adk_redis import (
     REDIS_AGENT_MEMORY_BACKEND,
     RedisLongTermMemoryService,
     RedisLongTermMemoryServiceConfig,
-    RedisWorkingMemorySessionService,
-    RedisWorkingMemorySessionServiceConfig,
+    RedisSessionMemoryService,
+    RedisSessionMemoryServiceConfig,
 )
 
-session_service = RedisWorkingMemorySessionService(
-    config=RedisWorkingMemorySessionServiceConfig(
+session_service = RedisSessionMemoryService(
+    config=RedisSessionMemoryServiceConfig(
         backend=REDIS_AGENT_MEMORY_BACKEND,
         api_base_url=os.environ["REDIS_AGENT_MEMORY_API_BASE_URL"],
         api_key=os.environ["REDIS_AGENT_MEMORY_API_KEY"],

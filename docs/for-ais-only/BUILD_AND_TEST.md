@@ -46,7 +46,7 @@ should ship with tests in the matching subdirectory under `tests/`.
 ## Running a single test
 
 ```
-uv run pytest tests/sessions/test_working_memory.py::<test_name> -vv
+uv run pytest tests/sessions/test_session_memory.py::<test_name> -vv
 uv run pytest tests/tools/test_vector_search.py -vv
 ```
 

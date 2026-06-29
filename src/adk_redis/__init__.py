@@ -20,7 +20,7 @@ Memory Services:
     - RedisLongTermMemoryService: Long-term memory with semantic search
 
 Session Services:
-    - RedisWorkingMemorySessionService: Session management with working memory
+    - RedisSessionMemoryService: Session management backed by session memory
 
 Search Tools:
     - RedisVectorSearchTool: Vector similarity search
@@ -48,8 +48,8 @@ Example:
     from adk_redis import (
         RedisLongTermMemoryService,
         RedisLongTermMemoryServiceConfig,
-        RedisWorkingMemorySessionService,
-        RedisWorkingMemorySessionServiceConfig,
+        RedisSessionMemoryService,
+        RedisSessionMemoryServiceConfig,
     )
 
     # Configure memory service
@@ -62,13 +62,13 @@ Example:
     memory_service = RedisLongTermMemoryService(config=memory_config)
 
     # Configure session service
-    session_config = RedisWorkingMemorySessionServiceConfig(
+    session_config = RedisSessionMemoryServiceConfig(
         backend="redis-agent-memory",
         api_base_url="http://localhost:8000",
         api_key="...",
         store_id="...",
     )
-    session_service = RedisWorkingMemorySessionService(config=session_config)
+    session_service = RedisSessionMemoryService(config=session_config)
     ```
 """
 
@@ -81,6 +81,8 @@ from adk_redis.memory import MemoryBackendName
 from adk_redis.memory import RedisLongTermMemoryService
 from adk_redis.memory import RedisLongTermMemoryServiceConfig
 # Session services
+from adk_redis.sessions import RedisSessionMemoryService
+from adk_redis.sessions import RedisSessionMemoryServiceConfig
 from adk_redis.sessions import RedisWorkingMemorySessionService
 from adk_redis.sessions import RedisWorkingMemorySessionServiceConfig
 # Search tools - import from tools submodule
@@ -129,6 +131,9 @@ __all__ = [
     "RedisLongTermMemoryService",
     "RedisLongTermMemoryServiceConfig",
     # Session services
+    "RedisSessionMemoryService",
+    "RedisSessionMemoryServiceConfig",
+    # Deprecated session-service aliases, removed in 0.1.0.
     "RedisWorkingMemorySessionService",
     "RedisWorkingMemorySessionServiceConfig",
     # Search tools - base classes

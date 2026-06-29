@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for RedisWorkingMemorySessionService."""
+"""Tests for RedisSessionMemoryService."""
 
 from datetime import datetime
 from datetime import timezone
@@ -26,8 +26,8 @@ import pytest
 
 from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis import REDIS_AGENT_MEMORY_BACKEND
-from adk_redis.sessions import RedisWorkingMemorySessionService
-from adk_redis.sessions import RedisWorkingMemorySessionServiceConfig
+from adk_redis.sessions import RedisSessionMemoryService
+from adk_redis.sessions import RedisSessionMemoryServiceConfig
 
 
 class FakeAgentMemory:
@@ -75,12 +75,12 @@ class FakeAgentMemoryServerClient:
     return self.list_response
 
 
-class TestRedisWorkingMemorySessionServiceConfig:
-  """Tests for RedisWorkingMemorySessionServiceConfig."""
+class TestRedisSessionMemoryServiceConfig:
+  """Tests for RedisSessionMemoryServiceConfig."""
 
   def test_default_values(self):
     """Test default configuration values."""
-    config = RedisWorkingMemorySessionServiceConfig()
+    config = RedisSessionMemoryServiceConfig()
     assert config.backend == REDIS_AGENT_MEMORY_BACKEND
     assert config.api_base_url == "http://localhost:8000"
     assert config.api_key is None
@@ -95,7 +95,7 @@ class TestRedisWorkingMemorySessionServiceConfig:
 
   def test_custom_values(self):
     """Test custom configuration values."""
-    config = RedisWorkingMemorySessionServiceConfig(
+    config = RedisSessionMemoryServiceConfig(
         api_base_url="http://custom:9000",
         api_key="key",
         store_id="store",
@@ -118,31 +118,31 @@ class TestRedisWorkingMemorySessionServiceConfig:
 
   def test_opensource_backend_value(self):
     """Test the self-hosted backend value is accepted."""
-    config = RedisWorkingMemorySessionServiceConfig(
+    config = RedisSessionMemoryServiceConfig(
         backend=OPENSOURCE_AGENT_MEMORY_BACKEND
     )
     assert config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND
 
 
-class TestRedisWorkingMemorySessionServiceInit:
-  """Tests for RedisWorkingMemorySessionService initialization."""
+class TestRedisSessionMemoryServiceInit:
+  """Tests for RedisSessionMemoryService initialization."""
 
   def test_init_with_default_config(self):
     """Test initialization with default config."""
-    service = RedisWorkingMemorySessionService()
+    service = RedisSessionMemoryService()
     assert service._config.api_base_url == "http://localhost:8000"
 
   def test_init_with_custom_config(self):
     """Test initialization with custom config."""
-    config = RedisWorkingMemorySessionServiceConfig(
+    config = RedisSessionMemoryServiceConfig(
         api_base_url="http://custom:9000",
     )
-    service = RedisWorkingMemorySessionService(config=config)
+    service = RedisSessionMemoryService(config=config)
     assert service._config.api_base_url == "http://custom:9000"
 
 
-class TestRedisWorkingMemorySessionServiceMethods:
-  """Tests for RedisWorkingMemorySessionService methods."""
+class TestRedisSessionMemoryServiceMethods:
+  """Tests for RedisSessionMemoryService methods."""
 
   @pytest.fixture
   def fake_client(self):
@@ -152,8 +152,8 @@ class TestRedisWorkingMemorySessionServiceMethods:
   @pytest.fixture
   def service(self, fake_client):
     """Create a service instance for testing."""
-    service = RedisWorkingMemorySessionService(
-        RedisWorkingMemorySessionServiceConfig(default_namespace="test_ns")
+    service = RedisSessionMemoryService(
+        RedisSessionMemoryServiceConfig(default_namespace="test_ns")
     )
     with patch.object(service, "_get_client", return_value=fake_client):
       yield service
@@ -350,8 +350,8 @@ class TestRedisWorkingMemorySessionServiceMethods:
     """Test list_sessions can use the self-hosted backend."""
     fake_client = FakeAgentMemoryServerClient()
     fake_client.list_response = SimpleNamespace(sessions=["session-1"])
-    service = RedisWorkingMemorySessionService(
-        RedisWorkingMemorySessionServiceConfig(
+    service = RedisSessionMemoryService(
+        RedisSessionMemoryServiceConfig(
             backend=OPENSOURCE_AGENT_MEMORY_BACKEND,
             default_namespace="test_ns",
         )

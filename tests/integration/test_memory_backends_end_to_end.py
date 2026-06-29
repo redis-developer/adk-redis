@@ -14,7 +14,7 @@
 
 """End-to-end integration tests for the selectable memory backends.
 
-Round-trips RedisLongTermMemoryService and RedisWorkingMemorySessionService
+Round-trips RedisLongTermMemoryService and RedisSessionMemoryService
 against real backends. Tests skip when env vars are not set:
 
 - redis-agent-memory (managed): REDIS_AGENT_MEMORY_API_BASE_URL,
@@ -35,8 +35,8 @@ from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis import RedisLongTermMemoryService
 from adk_redis import RedisLongTermMemoryServiceConfig
-from adk_redis import RedisWorkingMemorySessionService
-from adk_redis import RedisWorkingMemorySessionServiceConfig
+from adk_redis import RedisSessionMemoryService
+from adk_redis import RedisSessionMemoryServiceConfig
 from tests.integration.conftest import AGENT_MEMORY_SERVER_URL
 from tests.integration.conftest import REDIS_AGENT_MEMORY_API_KEY
 from tests.integration.conftest import REDIS_AGENT_MEMORY_STORE_ID
@@ -105,8 +105,8 @@ class TestRedisAgentMemoryBackendEndToEnd:
   async def test_session_append_and_get(
       self, unique_namespace: str, unique_user_id: str
   ) -> None:
-    sessions = RedisWorkingMemorySessionService(
-        config=RedisWorkingMemorySessionServiceConfig(
+    sessions = RedisSessionMemoryService(
+        config=RedisSessionMemoryServiceConfig(
             backend=REDIS_AGENT_MEMORY_BACKEND,
             api_base_url=REDIS_AGENT_MEMORY_URL,
             api_key=REDIS_AGENT_MEMORY_API_KEY,

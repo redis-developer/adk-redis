@@ -42,7 +42,7 @@ docker rm redis
 
 ### Option 2: Redis Agent Memory Server (Docker)
 
-**Use case:** Memory and session services (RedisLongTermMemoryService, RedisWorkingMemorySessionService)
+**Use case:** Memory and session services (RedisLongTermMemoryService, RedisSessionMemoryService)
 
 **Features:**
 - Two-tier memory architecture (working + long-term)

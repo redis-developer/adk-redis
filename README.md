@@ -72,12 +72,12 @@ from google.adk.runners import Runner
 from adk_redis import (
     RedisLongTermMemoryService,
     RedisLongTermMemoryServiceConfig,
-    RedisWorkingMemorySessionService,
-    RedisWorkingMemorySessionServiceConfig,
+    RedisSessionMemoryService,
+    RedisSessionMemoryServiceConfig,
 )
 
-session_service = RedisWorkingMemorySessionService(
-    config=RedisWorkingMemorySessionServiceConfig(
+session_service = RedisSessionMemoryService(
+    config=RedisSessionMemoryServiceConfig(
         backend="redis-agent-memory",
         api_base_url="http://localhost:8088",
         api_key="...",

@@ -1,6 +1,6 @@
 # Session Service
 
-This guide shows how to wire `RedisWorkingMemorySessionService` into a Google
+This guide shows how to wire `RedisSessionMemoryService` into a Google
 ADK agent for durable session state backed by Redis Agent Memory session
 events or self-hosted Agent Memory Server working memory.
 
@@ -19,12 +19,12 @@ For the concepts behind sessions and working memory, see
 from google.adk import Agent
 from google.adk.runners import Runner
 from adk_redis import (
-    RedisWorkingMemorySessionService,
-    RedisWorkingMemorySessionServiceConfig,
+    RedisSessionMemoryService,
+    RedisSessionMemoryServiceConfig,
 )
 
-session_service = RedisWorkingMemorySessionService(
-    config=RedisWorkingMemorySessionServiceConfig(
+session_service = RedisSessionMemoryService(
+    config=RedisSessionMemoryServiceConfig(
         backend="redis-agent-memory",
         api_base_url="http://localhost:8000",
         api_key="...",

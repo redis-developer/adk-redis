@@ -42,8 +42,8 @@ from google.adk.tools import load_memory
 from google.adk.tools import preload_memory
 from adk_redis import (
     REDIS_AGENT_MEMORY_BACKEND,
-    RedisWorkingMemorySessionService,
-    RedisWorkingMemorySessionServiceConfig,
+    RedisSessionMemoryService,
+    RedisSessionMemoryServiceConfig,
     RedisLongTermMemoryService,
     RedisLongTermMemoryServiceConfig,
 )
@@ -52,8 +52,8 @@ from adk_redis import (
 # aliases for the "redis-agent-memory" and "opensource-agent-memory" strings.
 backend = os.getenv("REDIS_MEMORY_BACKEND", REDIS_AGENT_MEMORY_BACKEND)
 
-session_service = RedisWorkingMemorySessionService(
-    config=RedisWorkingMemorySessionServiceConfig(
+session_service = RedisSessionMemoryService(
+    config=RedisSessionMemoryServiceConfig(
         backend=backend,
         api_base_url=os.environ["REDIS_AGENT_MEMORY_API_BASE_URL"],
         api_key=os.environ.get("REDIS_AGENT_MEMORY_API_KEY"),

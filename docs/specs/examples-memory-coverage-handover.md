@@ -38,7 +38,7 @@ end-to-end against `redis-agent-memory`, and if not, what is missing?"
 
 1. Read the current backend dispatch:
    - `src/adk_redis/memory/long_term_memory.py`
-   - `src/adk_redis/sessions/working_memory.py`
+   - `src/adk_redis/sessions/session_memory.py`
    - `src/adk_redis/tools/memory/` (all six tools plus `_base.py` and
      `_config.py`)
    - `src/adk_redis/memory/_backends.py`
@@ -52,7 +52,7 @@ end-to-end against `redis-agent-memory`, and if not, what is missing?"
 4. For each ADK surface we expose
    (`RedisLongTermMemoryService.add_session_to_memory` / `add_memory` /
    `add_events_to_memory` / `search_memory`,
-   `RedisWorkingMemorySessionService.create_session` / `get_session` /
+   `RedisSessionMemoryService.create_session` / `get_session` /
    `list_sessions` / `append_event` / `delete_session`, and each memory
    tool), record:
    - Does the managed SDK have a primitive we can call?
@@ -79,7 +79,7 @@ are different depending on whether managed has full parity, partial
 parity, or a known feature gap.
 
 1. Enumerate the current examples and what each one actually exercises:
-   - Which use `RedisLongTermMemoryService` / `RedisWorkingMemorySessionService`?
+   - Which use `RedisLongTermMemoryService` / `RedisSessionMemoryService`?
    - Which use the memory tools directly?
    - Which use the Agent Memory Server MCP endpoint?
    - Which use the `adk web` runner vs. a custom `main.py` via
@@ -151,7 +151,7 @@ current server image.
   `context_window_max` using the configured `model_name`. The managed
   docs do not describe an equivalent. Confirm whether the managed
   session-memory endpoint has any size-based behavior, and document any
-  `RedisWorkingMemorySessionServiceConfig` fields that become no-ops on
+  `RedisSessionMemoryServiceConfig` fields that become no-ops on
   managed.
 - **Recency-boosted search is opensource only (as documented).**
   Opensource search exposes `semantic_weight` / `recency_weight` /
@@ -219,7 +219,7 @@ current server image.
 - Backend selection spec: [`redis-agent-memory-default.md`](redis-agent-memory-default.md)
 - Backend dispatch:
   - `src/adk_redis/memory/long_term_memory.py`
-  - `src/adk_redis/sessions/working_memory.py`
+  - `src/adk_redis/sessions/session_memory.py`
   - `src/adk_redis/tools/memory/_config.py`
   - `src/adk_redis/tools/memory/_base.py`
 - Live integration coverage: `tests/integration/test_memory_backends_end_to_end.py`

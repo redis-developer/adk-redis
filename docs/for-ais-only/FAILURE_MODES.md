@@ -13,7 +13,7 @@ service method, and any prompt fragments together.
 
 ## Sessions and memory go through Agent Memory Server, not Redis directly
 
-Both `RedisWorkingMemorySessionService` and `RedisLongTermMemoryService`
+Both `RedisSessionMemoryService` and `RedisLongTermMemoryService`
 talk to Agent Memory Server, not raw Redis. Reaching into Redis from
 either service bypasses dedup, summarization, embedding, and the
 working-to-long-term promotion pipeline. Stay on the AMS client.
