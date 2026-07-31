@@ -294,6 +294,28 @@ async def test_create_memory_tool_scopes_client_id(config, fake_client):
 
 
 @pytest.mark.asyncio
+async def test_create_memory_tool_scopes_client_id_to_context_user(
+    config, fake_client
+):
+  """Invocation users isolate the same application-level client ID."""
+  tool = CreateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    await tool.run_async(
+        args={"content": "Alice memory", "id": "request-1"},
+        tool_context=SimpleNamespace(user_id="alice"),
+    )
+    await tool.run_async(
+        args={"content": "Bob memory", "id": "request-1"},
+        tool_context=SimpleNamespace(user_id="bob"),
+    )
+
+  assert (
+      fake_client.created_records[0]["id"]
+      != fake_client.created_records[1]["id"]
+  )
+
+
+@pytest.mark.asyncio
 async def test_create_memory_tool_treats_zero_as_client_id(config, fake_client):
   """A numeric zero is a supplied client ID, not a missing value."""
   tool = CreateMemoryTool(config=config)
