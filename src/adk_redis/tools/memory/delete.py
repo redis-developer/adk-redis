@@ -121,17 +121,23 @@ class DeleteMemoryTool(BaseMemoryTool):
     tool_context = kwargs.get("tool_context")
 
     memory_ids = args.get("memory_ids", [])
-    self._get_namespace(args.get("namespace"))
-    self._get_user_id(args.get("user_id"), tool_context=tool_context)
+    namespace = self._get_namespace(args.get("namespace"))
+    user_id = self._get_user_id(args.get("user_id"), tool_context=tool_context)
 
     if not memory_ids:
       return {"status": "error", "message": "memory_ids is required"}
 
     try:
       if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
-        response = await self._get_agent_memory_server_client().delete_long_term_memories(
-            memory_ids=memory_ids,
-        )
+        client = self._get_agent_memory_server_client()
+        for memory_id in memory_ids:
+          memory = await client.get_long_term_memory(memory_id=memory_id)
+          self._require_memory_scope(
+              memory,
+              namespace=namespace,
+              user_id=user_id,
+          )
+        response = await client.delete_long_term_memories(memory_ids=memory_ids)
         status_msg = response.status
         match = re.search(r"deleted (\d+)", status_msg)
         deleted_count = int(match.group(1)) if match else 0
@@ -144,6 +150,15 @@ class DeleteMemoryTool(BaseMemoryTool):
         }
 
       async with self._agent_memory() as agent_memory:
+        for memory_id in memory_ids:
+          memory = await agent_memory.get_long_term_memory_async(
+              memory_id=memory_id
+          )
+          self._require_memory_scope(
+              memory,
+              namespace=namespace,
+              user_id=user_id,
+          )
         response = await agent_memory.bulk_delete_long_term_memories_async(
             memory_ids=memory_ids,
         )

@@ -153,6 +153,12 @@ class UpdateMemoryTool(BaseMemoryTool):
           updates["topics"] = topics
 
         client = self._get_agent_memory_server_client()
+        memory = await client.get_long_term_memory(memory_id=memory_id)
+        self._require_memory_scope(
+            memory,
+            namespace=namespace,
+            user_id=user_id,
+        )
         response = await client.edit_long_term_memory(
             memory_id=memory_id,
             updates=updates,
@@ -174,6 +180,14 @@ class UpdateMemoryTool(BaseMemoryTool):
         update_kwargs["owner_id"] = user_id
 
       async with self._agent_memory() as agent_memory:
+        memory = await agent_memory.get_long_term_memory_async(
+            memory_id=memory_id
+        )
+        self._require_memory_scope(
+            memory,
+            namespace=namespace,
+            user_id=user_id,
+        )
         response = await agent_memory.update_long_term_memory_async(
             memory_id=memory_id,
             **update_kwargs,

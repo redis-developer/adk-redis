@@ -165,6 +165,8 @@ when no per-call or context user is available.
 | `store_id` | `None` | Redis Agent Memory store ID |
 | `timeout` | `30` | HTTP timeout in seconds |
 | `default_namespace` | `default` | Namespace for memory isolation |
+| `default_owner_id` | `None` | Default owner ID used when no per-call or context user is available |
+| `default_user_id` | `None` | Legacy default user ID fallback after `default_owner_id` |
 | `search_top_k` | `10` | Default max search results |
 | `distance_threshold` | `None` | Compatibility alias for search threshold |
 | `deduplicate` | `True` | Deduplicate when creating memories |

@@ -25,6 +25,7 @@ from google.adk.tools.base_tool import BaseTool
 
 from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis.memory._backends import REDIS_AGENT_MEMORY_BACKEND
+from adk_redis.memory._utils import read_field
 from adk_redis.memory._utils import sanitize_managed_identifier
 from adk_redis.tools.memory._config import MemoryToolConfig
 
@@ -218,3 +219,32 @@ class BaseMemoryTool(BaseTool):
       return context_user_id
 
     return self._config.default_owner_id or self._config.default_user_id
+
+  def _require_memory_scope(
+      self,
+      memory: object,
+      *,
+      namespace: str,
+      user_id: str | None,
+  ) -> None:
+    """Require a memory record to belong to the resolved operation scope.
+
+    Args:
+        memory: Backend memory record to validate.
+        namespace: Resolved namespace for the current invocation.
+        user_id: Resolved user for the current invocation, if any.
+
+    Raises:
+        PermissionError: If the memory is outside the resolved scope.
+    """
+    memory_namespace = read_field(memory, "namespace")
+    memory_user_id = read_field(memory, "owner_id")
+    if memory_user_id is None:
+      memory_user_id = read_field(memory, "user_id")
+
+    if memory_namespace != namespace or (
+        user_id is not None and memory_user_id != user_id
+    ):
+      raise PermissionError(
+          "Memory is outside the resolved namespace or user scope"
+      )

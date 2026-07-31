@@ -36,6 +36,8 @@ class FakeAgentMemory:
     self.deleted_ids = []
     self.search_request = None
     self.update_kwargs = None
+    self.memory_namespace = "test-ns"
+    self.memory_owner_id = "alice"
 
   async def __aenter__(self):
     return self
@@ -68,6 +70,13 @@ class FakeAgentMemory:
     self.update_kwargs = kwargs
     return SimpleNamespace(id=kwargs["memory_id"])
 
+  async def get_long_term_memory_async(self, *, memory_id):
+    return SimpleNamespace(
+        id=memory_id,
+        namespace=self.memory_namespace,
+        owner_id=self.memory_owner_id,
+    )
+
   async def bulk_delete_long_term_memories_async(self, *, memory_ids):
     self.deleted_ids.extend(memory_ids)
     return SimpleNamespace(deleted=memory_ids, errors=None)
@@ -78,6 +87,10 @@ class FakeAgentMemoryServerClient:
 
   def __init__(self):
     self.add_memory_kwargs = None
+    self.edit_memory_kwargs = None
+    self.deleted_ids = []
+    self.memory_namespace = "test_ns"
+    self.memory_user_id = "alice"
 
   async def add_memory_tool(self, **kwargs):
     self.add_memory_kwargs = kwargs
@@ -86,6 +99,21 @@ class FakeAgentMemoryServerClient:
         "memory_id": "memory-1",
         "summary": "Memory created successfully",
     }
+
+  async def get_long_term_memory(self, *, memory_id):
+    return SimpleNamespace(
+        id=memory_id,
+        namespace=self.memory_namespace,
+        user_id=self.memory_user_id,
+    )
+
+  async def edit_long_term_memory(self, **kwargs):
+    self.edit_memory_kwargs = kwargs
+    return SimpleNamespace(id=kwargs["memory_id"])
+
+  async def delete_long_term_memories(self, *, memory_ids):
+    self.deleted_ids.extend(memory_ids)
+    return SimpleNamespace(status=f"ok: deleted {len(memory_ids)}")
 
 
 @pytest.fixture
@@ -225,6 +253,50 @@ async def test_update_memory_tool_calls_update(config, fake_client):
 
 
 @pytest.mark.asyncio
+async def test_update_memory_tool_scopes_to_tool_context_user(
+    config, fake_client
+):
+  """UpdateMemoryTool verifies and applies the ADK invocation user."""
+  tool = UpdateMemoryTool(config=config)
+  fake_client.memory_owner_id = "bob"
+
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"memory_id": "memory-1", "content": "Updated"},
+        tool_context=SimpleNamespace(user_id="bob"),
+    )
+
+  assert result["status"] == "success"
+  assert fake_client.update_kwargs["owner_id"] == "bob"
+
+
+@pytest.mark.asyncio
+async def test_opensource_update_rejects_memory_owned_by_another_user():
+  """Self-hosted updates cannot mutate another invocation user's memory."""
+  fake_client = FakeAgentMemoryServerClient()
+  fake_client.memory_user_id = "alice"
+  config = MemoryToolConfig(
+      backend=OPENSOURCE_AGENT_MEMORY_BACKEND,
+      default_namespace="test_ns",
+  )
+  tool = UpdateMemoryTool(config=config)
+
+  with patch.object(
+      tool,
+      "_get_agent_memory_server_client",
+      return_value=fake_client,
+  ):
+    result = await tool.run_async(
+        args={"memory_id": "memory-1", "content": "Updated"},
+        tool_context=SimpleNamespace(user_id="bob"),
+    )
+
+  assert result["status"] == "error"
+  assert "outside the resolved" in result["message"]
+  assert fake_client.edit_memory_kwargs is None
+
+
+@pytest.mark.asyncio
 async def test_delete_memory_tool_calls_bulk_delete(config, fake_client):
   """DeleteMemoryTool deletes memory IDs."""
   tool = DeleteMemoryTool(config=config)
@@ -234,6 +306,23 @@ async def test_delete_memory_tool_calls_bulk_delete(config, fake_client):
   assert result["status"] == "success"
   assert result["deleted_count"] == 1
   assert fake_client.deleted_ids == ["memory-1"]
+
+
+@pytest.mark.asyncio
+async def test_delete_memory_tool_rejects_cross_user_ids(config, fake_client):
+  """DeleteMemoryTool validates ownership before deleting any memory."""
+  tool = DeleteMemoryTool(config=config)
+  fake_client.memory_owner_id = "alice"
+
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"memory_ids": ["memory-1"]},
+        tool_context=SimpleNamespace(user_id="bob"),
+    )
+
+  assert result["status"] == "error"
+  assert "outside the resolved" in result["message"]
+  assert fake_client.deleted_ids == []
 
 
 @pytest.mark.asyncio
