@@ -12,6 +12,7 @@ with an API base URL, an API key, and a store ID.
 
 - Python 3.10+
 - `adk-redis` with the memory extra: `pip install "adk-redis[memory]"`.
+  The extra installs `redis-agent-memory>=0.2.0`.
 - A managed Redis Agent Memory service on Redis Cloud (see
   [Get credentials](#get-credentials) below).
 
