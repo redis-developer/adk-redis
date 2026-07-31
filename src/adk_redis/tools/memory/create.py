@@ -24,7 +24,6 @@ from google.genai import types
 
 from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis.memory._utils import read_field
-from adk_redis.memory._utils import sanitize_managed_identifier
 from adk_redis.memory._utils import stable_memory_id
 from adk_redis.tools.memory._base import BaseMemoryTool
 from adk_redis.tools.memory._config import MemoryToolConfig
@@ -132,10 +131,10 @@ class CreateMemoryTool(BaseMemoryTool):
             not exposed in the LLM tool declaration; direct callers pass
             it via ``run_async(id=..., content=...)`` or
             ``run_async(args={"id": ..., ...})``. On the managed Redis
-            Agent Memory backend the ID is sanitized with the same rules
-            as other managed identifiers (alphanumerics and hyphens) and
-            used as the record ID, so retrying with the same ID upserts
-            instead of creating a duplicate. The self-hosted
+            Agent Memory backend the ID and resolved namespace/user scope
+            are mapped to a collision-resistant record ID, so retrying with
+            the same ID in the same scope upserts instead of creating a
+            duplicate. The self-hosted
             opensource-agent-memory backend cannot honor client IDs; a
             warning is logged and the write proceeds with a
             server-generated ID.
@@ -172,7 +171,7 @@ class CreateMemoryTool(BaseMemoryTool):
 
     try:
       if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
-        if client_memory_id:
+        if client_memory_id is not None:
           logger.warning(
               "Client-supplied memory id %r is not supported by the "
               "opensource-agent-memory backend: add_memory_tool generates "
@@ -203,8 +202,16 @@ class CreateMemoryTool(BaseMemoryTool):
             "message": response.get("summary", "Failed to create memory"),
         }
 
-      if client_memory_id:
-        memory_id = sanitize_managed_identifier(str(client_memory_id))
+      if client_memory_id is not None:
+        raw_client_memory_id = str(client_memory_id)
+        if not raw_client_memory_id.strip():
+          raise ValueError("Client-supplied memory id must not be empty")
+        memory_id = stable_memory_id(
+            "client",
+            namespace,
+            user_id or "",
+            raw_client_memory_id,
+        )
       else:
         memory_id = stable_memory_id(
             "tool",

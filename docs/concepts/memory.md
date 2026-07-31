@@ -148,11 +148,12 @@ when no per-call or context user is available.
 
 For idempotent retries, `CreateMemoryTool.run_async` accepts an optional
 application-level `id` argument that is not exposed to the LLM. On the managed
-Redis Agent Memory backend, a client-supplied `id` is sanitized like other
-managed identifiers and used as the record ID, so retrying with the same `id`
-upserts instead of creating a duplicate. The self-hosted
-`opensource-agent-memory` backend cannot honor client IDs; the tool logs a
-warning and writes with a server-generated ID.
+Redis Agent Memory backend, a client-supplied `id` is combined with the resolved
+namespace and user to derive a collision-resistant, managed-safe record ID.
+Retrying with the same `id` in the same scope upserts instead of creating a
+duplicate, while the same application ID in another scope remains isolated.
+The self-hosted `opensource-agent-memory` backend cannot honor client IDs; the
+tool logs a warning and writes with a server-generated ID.
 
 ## MCP vs SDK Decision
 

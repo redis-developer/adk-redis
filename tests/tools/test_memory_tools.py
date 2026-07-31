@@ -240,7 +240,7 @@ async def test_create_memory_tool_writes_record(config, fake_client):
 
 @pytest.mark.asyncio
 async def test_create_memory_tool_uses_client_supplied_id(config, fake_client):
-  """CreateMemoryTool uses a client-supplied id as the record ID."""
+  """CreateMemoryTool derives a scoped ID from a client-supplied id."""
   tool = CreateMemoryTool(config=config)
   with patch.object(tool, "_get_client", return_value=fake_client):
     result = await tool.run_async(
@@ -248,23 +248,61 @@ async def test_create_memory_tool_uses_client_supplied_id(config, fake_client):
     )
 
   assert result["status"] == "success"
-  assert result["memory_id"] == "retry-abc-123"
-  assert fake_client.created_records[0]["id"] == "retry-abc-123"
+  expected_id = stable_memory_id("client", "test-ns", "alice", "retry-abc-123")
+  assert result["memory_id"] == expected_id
+  assert fake_client.created_records[0]["id"] == expected_id
 
 
 @pytest.mark.asyncio
-async def test_create_memory_tool_sanitizes_client_supplied_id(
+async def test_create_memory_tool_preserves_client_id_uniqueness(
     config, fake_client
 ):
-  """CreateMemoryTool sanitizes client ids for the managed backend."""
+  """Distinct raw client IDs remain distinct after managed-safe mapping."""
   tool = CreateMemoryTool(config=config)
   with patch.object(tool, "_get_client", return_value=fake_client):
-    result = await tool.run_async(
+    await tool.run_async(
         args={"content": "User likes tea.", "id": "retry:abc_123"}
     )
+    await tool.run_async(
+        args={"content": "User likes tea.", "id": "retry_abc_123"}
+    )
 
+  assert (
+      fake_client.created_records[0]["id"]
+      != fake_client.created_records[1]["id"]
+  )
+
+
+@pytest.mark.asyncio
+async def test_create_memory_tool_scopes_client_id(config, fake_client):
+  """The same application ID cannot collide across users."""
+  tool = CreateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    await tool.run_async(args={"content": "Alice memory", "id": "request-1"})
+    await tool.run_async(
+        args={
+            "content": "Bob memory",
+            "id": "request-1",
+            "user_id": "bob",
+        }
+    )
+
+  assert (
+      fake_client.created_records[0]["id"]
+      != fake_client.created_records[1]["id"]
+  )
+
+
+@pytest.mark.asyncio
+async def test_create_memory_tool_treats_zero_as_client_id(config, fake_client):
+  """A numeric zero is a supplied client ID, not a missing value."""
+  tool = CreateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(args={"content": "User likes tea.", "id": 0})
+
+  expected_id = stable_memory_id("client", "test-ns", "alice", "0")
   assert result["status"] == "success"
-  assert fake_client.created_records[0]["id"] == "retry-abc-123"
+  assert fake_client.created_records[0]["id"] == expected_id
 
 
 @pytest.mark.asyncio
@@ -293,7 +331,7 @@ async def test_create_memory_tool_same_id_is_idempotent(config, fake_client):
   assert (
       fake_client.created_records[0]["id"]
       == fake_client.created_records[1]["id"]
-      == "retry-1"
+      == stable_memory_id("client", "test-ns", "alice", "retry-1")
   )
 
 
