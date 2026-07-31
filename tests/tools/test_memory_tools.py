@@ -15,6 +15,7 @@
 """Tests for Redis Agent Memory tools."""
 
 import asyncio
+import logging
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -22,6 +23,7 @@ import pytest
 
 from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis import REDIS_AGENT_MEMORY_BACKEND
+from adk_redis.memory._utils import stable_memory_id
 from adk_redis.tools.memory import CreateMemoryTool
 from adk_redis.tools.memory import DeleteMemoryTool
 from adk_redis.tools.memory import MemoryPromptTool
@@ -237,6 +239,125 @@ async def test_create_memory_tool_writes_record(config, fake_client):
 
 
 @pytest.mark.asyncio
+async def test_create_memory_tool_uses_client_supplied_id(config, fake_client):
+  """CreateMemoryTool derives a scoped ID from a client-supplied id."""
+  tool = CreateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"content": "User likes tea.", "id": "retry-abc-123"}
+    )
+
+  assert result["status"] == "success"
+  expected_id = stable_memory_id("client", "test-ns", "alice", "retry-abc-123")
+  assert result["memory_id"] == expected_id
+  assert fake_client.created_records[0]["id"] == expected_id
+
+
+@pytest.mark.asyncio
+async def test_create_memory_tool_preserves_client_id_uniqueness(
+    config, fake_client
+):
+  """Distinct raw client IDs remain distinct after managed-safe mapping."""
+  tool = CreateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    await tool.run_async(
+        args={"content": "User likes tea.", "id": "retry:abc_123"}
+    )
+    await tool.run_async(
+        args={"content": "User likes tea.", "id": "retry_abc_123"}
+    )
+
+  assert (
+      fake_client.created_records[0]["id"]
+      != fake_client.created_records[1]["id"]
+  )
+
+
+@pytest.mark.asyncio
+async def test_create_memory_tool_scopes_client_id(config, fake_client):
+  """The same application ID cannot collide across users."""
+  tool = CreateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    await tool.run_async(args={"content": "Alice memory", "id": "request-1"})
+    await tool.run_async(
+        args={
+            "content": "Bob memory",
+            "id": "request-1",
+            "user_id": "bob",
+        }
+    )
+
+  assert (
+      fake_client.created_records[0]["id"]
+      != fake_client.created_records[1]["id"]
+  )
+
+
+@pytest.mark.asyncio
+async def test_create_memory_tool_scopes_client_id_to_context_user(
+    config, fake_client
+):
+  """Invocation users isolate the same application-level client ID."""
+  tool = CreateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    await tool.run_async(
+        args={"content": "Alice memory", "id": "request-1"},
+        tool_context=SimpleNamespace(user_id="alice"),
+    )
+    await tool.run_async(
+        args={"content": "Bob memory", "id": "request-1"},
+        tool_context=SimpleNamespace(user_id="bob"),
+    )
+
+  assert (
+      fake_client.created_records[0]["id"]
+      != fake_client.created_records[1]["id"]
+  )
+
+
+@pytest.mark.asyncio
+async def test_create_memory_tool_treats_zero_as_client_id(config, fake_client):
+  """A numeric zero is a supplied client ID, not a missing value."""
+  tool = CreateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(args={"content": "User likes tea.", "id": 0})
+
+  expected_id = stable_memory_id("client", "test-ns", "alice", "0")
+  assert result["status"] == "success"
+  assert fake_client.created_records[0]["id"] == expected_id
+
+
+@pytest.mark.asyncio
+async def test_create_memory_tool_defaults_to_stable_id(config, fake_client):
+  """CreateMemoryTool falls back to the stable content-derived ID."""
+  tool = CreateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(args={"content": "User likes tea."})
+
+  expected_id = stable_memory_id(
+      "tool", "test-ns", "alice", "semantic", "User likes tea."
+  )
+  assert result["status"] == "success"
+  assert fake_client.created_records[0]["id"] == expected_id
+
+
+@pytest.mark.asyncio
+async def test_create_memory_tool_same_id_is_idempotent(config, fake_client):
+  """Two calls with the same client id send the same record ID."""
+  tool = CreateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    await tool.run_async(args={"content": "First attempt.", "id": "retry-1"})
+    await tool.run_async(args={"content": "First attempt.", "id": "retry-1"})
+
+  assert len(fake_client.created_records) == 2
+  assert (
+      fake_client.created_records[0]["id"]
+      == fake_client.created_records[1]["id"]
+      == stable_memory_id("client", "test-ns", "alice", "retry-1")
+  )
+
+
+@pytest.mark.asyncio
 async def test_search_memory_tool_uses_owner_and_namespace_filter(
     config, fake_client
 ):
@@ -425,3 +546,31 @@ async def test_create_memory_tool_can_use_agent_memory_server_backend():
   assert fake_client.add_memory_kwargs["text"] == "User likes tea."
   assert fake_client.add_memory_kwargs["namespace"] == "test_ns"
   assert fake_client.add_memory_kwargs["user_id"] == "alice"
+
+
+@pytest.mark.asyncio
+async def test_create_memory_tool_warns_on_client_id_for_self_hosted(caplog):
+  """Self-hosted warning explains behavior without exposing the client id."""
+  fake_client = FakeAgentMemoryServerClient()
+  config = MemoryToolConfig(
+      backend=OPENSOURCE_AGENT_MEMORY_BACKEND,
+      default_namespace="test_ns",
+      default_user_id="alice",
+  )
+  tool = CreateMemoryTool(config=config)
+
+  with patch.object(
+      tool,
+      "_get_agent_memory_server_client",
+      return_value=fake_client,
+  ):
+    with caplog.at_level(logging.WARNING, logger="adk_redis"):
+      result = await tool.run_async(
+          args={"content": "User likes tea.", "id": "retry-abc-123"}
+      )
+
+  assert result["status"] == "success"
+  assert fake_client.add_memory_kwargs["text"] == "User likes tea."
+  assert "retry-abc-123" not in caplog.text
+  assert "not supported by the opensource-agent-memory backend" in caplog.text
+  assert "Proceeding without the client id" in caplog.text

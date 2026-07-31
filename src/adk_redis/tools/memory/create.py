@@ -126,6 +126,18 @@ class CreateMemoryTool(BaseMemoryTool):
         user_id: Optional user ID override. When omitted, the user is
             resolved from the ADK tool_context invocation user, then the
             configured defaults.
+        id: Optional client-supplied memory ID for idempotent retries.
+            This is an application-level parameter and is intentionally
+            not exposed in the LLM tool declaration; direct callers pass
+            it via ``run_async(id=..., content=...)`` or
+            ``run_async(args={"id": ..., ...})``. On the managed Redis
+            Agent Memory backend the ID and resolved namespace/user scope
+            are mapped to a collision-resistant record ID, so retrying with
+            the same ID in the same scope upserts instead of creating a
+            duplicate. The self-hosted
+            opensource-agent-memory backend cannot honor client IDs; a
+            warning is logged and the write proceeds with a
+            server-generated ID.
 
     Returns:
         A dictionary with status and memory_id.
@@ -139,6 +151,7 @@ class CreateMemoryTool(BaseMemoryTool):
     memory_type_raw = args.get("memory_type", "semantic")
     namespace = self._get_namespace(args.get("namespace"))
     user_id = self._get_user_id(args.get("user_id"), tool_context=tool_context)
+    client_memory_id = args.get("id")
 
     if not content:
       return {"status": "error", "message": "content is required"}
@@ -158,6 +171,12 @@ class CreateMemoryTool(BaseMemoryTool):
 
     try:
       if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
+        if client_memory_id is not None:
+          logger.warning(
+              "A client-supplied memory id is not supported by the "
+              "opensource-agent-memory backend: add_memory_tool generates "
+              "its own memory ID. Proceeding without the client id."
+          )
         session_id = f"standalone_{uuid.uuid4().hex[:8]}"
         response = await self._get_agent_memory_server_client().add_memory_tool(
             session_id=session_id,
@@ -182,13 +201,24 @@ class CreateMemoryTool(BaseMemoryTool):
             "message": response.get("summary", "Failed to create memory"),
         }
 
-      memory_id = stable_memory_id(
-          "tool",
-          namespace,
-          user_id or "",
-          memory_type,
-          content,
-      )
+      if client_memory_id is not None:
+        raw_client_memory_id = str(client_memory_id)
+        if not raw_client_memory_id.strip():
+          raise ValueError("Client-supplied memory id must not be empty")
+        memory_id = stable_memory_id(
+            "client",
+            namespace,
+            user_id or "",
+            raw_client_memory_id,
+        )
+      else:
+        memory_id = stable_memory_id(
+            "tool",
+            namespace,
+            user_id or "",
+            memory_type,
+            content,
+        )
       record = {
           "id": memory_id,
           "text": content,
