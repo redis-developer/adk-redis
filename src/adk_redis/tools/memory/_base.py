@@ -25,6 +25,7 @@ from google.adk.tools.base_tool import BaseTool
 
 from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis.memory._backends import REDIS_AGENT_MEMORY_BACKEND
+from adk_redis.memory._utils import read_field
 from adk_redis.memory._utils import sanitize_managed_identifier
 from adk_redis.tools.memory._config import MemoryToolConfig
 
@@ -184,15 +185,66 @@ class BaseMemoryTool(BaseTool):
       return sanitize_managed_identifier(resolved)
     return resolved
 
-  def _get_user_id(self, user_id: str | None = None) -> str | None:
+  def _get_user_id(
+      self,
+      user_id: str | None = None,
+      tool_context: Any = None,
+  ) -> str | None:
     """Get the user ID to use for operations.
+
+    Resolution order:
+
+    1. Explicit ``user_id`` argument.
+    2. The invocation user from the ADK ``tool_context`` (its public
+       ``user_id`` property), when the tool runs inside an ADK agent loop.
+    3. ``config.default_owner_id``.
+    4. ``config.default_user_id``.
 
     Args:
         user_id: Optional user ID override.
+        tool_context: Optional ADK ToolContext for the current invocation.
+            Read defensively; a missing or broken context never raises.
 
     Returns:
-        The user ID to use (override or default).
+        The resolved user ID, or None if no source provides one.
     """
-    return (
-        user_id or self._config.default_owner_id or self._config.default_user_id
-    )
+    if user_id:
+      return user_id
+
+    try:
+      context_user_id = getattr(tool_context, "user_id", None)
+    except Exception:
+      context_user_id = None
+    if isinstance(context_user_id, str) and context_user_id:
+      return context_user_id
+
+    return self._config.default_owner_id or self._config.default_user_id
+
+  def _require_memory_scope(
+      self,
+      memory: object,
+      *,
+      namespace: str,
+      user_id: str | None,
+  ) -> None:
+    """Require a memory record to belong to the resolved operation scope.
+
+    Args:
+        memory: Backend memory record to validate.
+        namespace: Resolved namespace for the current invocation.
+        user_id: Resolved user for the current invocation, if any.
+
+    Raises:
+        PermissionError: If the memory is outside the resolved scope.
+    """
+    memory_namespace = read_field(memory, "namespace")
+    memory_user_id = read_field(memory, "owner_id")
+    if memory_user_id is None:
+      memory_user_id = read_field(memory, "user_id")
+
+    if memory_namespace != namespace or (
+        user_id is not None and memory_user_id != user_id
+    ):
+      raise PermissionError(
+          "Memory is outside the resolved namespace or user scope"
+      )

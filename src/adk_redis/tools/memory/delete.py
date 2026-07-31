@@ -16,9 +16,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from google.genai import types
 
@@ -28,6 +29,8 @@ from adk_redis.tools.memory._base import BaseMemoryTool
 from adk_redis.tools.memory._config import MemoryToolConfig
 
 logger = logging.getLogger("adk_redis." + __name__)
+
+_PREFLIGHT_BATCH_SIZE = 10
 
 
 class DeleteMemoryTool(BaseMemoryTool):
@@ -103,32 +106,61 @@ class DeleteMemoryTool(BaseMemoryTool):
         ),
     )
 
+  async def _validate_memory_scopes(
+      self,
+      *,
+      memory_ids: list[str],
+      get_memory: Callable[..., Awaitable[object]],
+      namespace: str,
+      user_id: str | None,
+  ) -> None:
+    """Validate memory scopes with bounded concurrent backend reads."""
+    for start in range(0, len(memory_ids), _PREFLIGHT_BATCH_SIZE):
+      batch = memory_ids[start : start + _PREFLIGHT_BATCH_SIZE]
+      memories = await asyncio.gather(
+          *(get_memory(memory_id=memory_id) for memory_id in batch)
+      )
+      for memory in memories:
+        self._require_memory_scope(
+            memory,
+            namespace=namespace,
+            user_id=user_id,
+        )
+
   async def run_async(self, **kwargs: Any) -> dict[str, Any]:
     """Delete long-term memories by ID.
 
     Args:
         memory_ids: List of memory IDs to delete.
         namespace: Optional namespace override.
-        user_id: Optional user ID override.
+        user_id: Optional user ID override. When omitted, the user is
+            resolved from the ADK tool_context invocation user, then the
+            configured defaults.
 
     Returns:
         A dictionary with status and deleted_count.
     """
     # ADK passes parameters in kwargs['args']
     args = kwargs.get("args", kwargs)
+    tool_context = kwargs.get("tool_context")
 
     memory_ids = args.get("memory_ids", [])
-    self._get_namespace(args.get("namespace"))
-    self._get_user_id(args.get("user_id"))
+    namespace = self._get_namespace(args.get("namespace"))
+    user_id = self._get_user_id(args.get("user_id"), tool_context=tool_context)
 
     if not memory_ids:
       return {"status": "error", "message": "memory_ids is required"}
 
     try:
       if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
-        response = await self._get_agent_memory_server_client().delete_long_term_memories(
+        client = self._get_agent_memory_server_client()
+        await self._validate_memory_scopes(
             memory_ids=memory_ids,
+            get_memory=client.get_long_term_memory,
+            namespace=namespace,
+            user_id=user_id,
         )
+        response = await client.delete_long_term_memories(memory_ids=memory_ids)
         status_msg = response.status
         match = re.search(r"deleted (\d+)", status_msg)
         deleted_count = int(match.group(1)) if match else 0
@@ -141,6 +173,12 @@ class DeleteMemoryTool(BaseMemoryTool):
         }
 
       async with self._agent_memory() as agent_memory:
+        await self._validate_memory_scopes(
+            memory_ids=memory_ids,
+            get_memory=agent_memory.get_long_term_memory_async,
+            namespace=namespace,
+            user_id=user_id,
+        )
         response = await agent_memory.bulk_delete_long_term_memories_async(
             memory_ids=memory_ids,
         )

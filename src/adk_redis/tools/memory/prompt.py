@@ -115,18 +115,21 @@ class MemoryPromptTool(BaseMemoryTool):
         query: The query to search for relevant memories.
         system_prompt: Optional base system prompt to enrich.
         namespace: Optional namespace override.
-        user_id: Optional user ID override.
+        user_id: Optional user ID override. When omitted, the user is
+            resolved from the ADK tool_context invocation user, then the
+            configured defaults.
 
     Returns:
         A dictionary with status and enriched_prompt.
     """
     # ADK passes parameters in kwargs['args']
     args = kwargs.get("args", kwargs)
+    tool_context = kwargs.get("tool_context")
 
     query = args.get("query")
     system_prompt = args.get("system_prompt", "")
     namespace = self._get_namespace(args.get("namespace"))
-    user_id = self._get_user_id(args.get("user_id"))
+    user_id = self._get_user_id(args.get("user_id"), tool_context=tool_context)
 
     if not query:
       return {"status": "error", "message": "query is required"}

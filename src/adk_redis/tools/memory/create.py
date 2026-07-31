@@ -123,19 +123,22 @@ class CreateMemoryTool(BaseMemoryTool):
         topics: Optional list of topics/tags.
         memory_type: Type of memory (semantic, episodic, message).
         namespace: Optional namespace override.
-        user_id: Optional user ID override.
+        user_id: Optional user ID override. When omitted, the user is
+            resolved from the ADK tool_context invocation user, then the
+            configured defaults.
 
     Returns:
         A dictionary with status and memory_id.
     """
     # ADK passes parameters in kwargs['args']
     args = kwargs.get("args", kwargs)
+    tool_context = kwargs.get("tool_context")
 
     content = args.get("content")
     topics = args.get("topics", [])
     memory_type_raw = args.get("memory_type", "semantic")
     namespace = self._get_namespace(args.get("namespace"))
-    user_id = self._get_user_id(args.get("user_id"))
+    user_id = self._get_user_id(args.get("user_id"), tool_context=tool_context)
 
     if not content:
       return {"status": "error", "message": "content is required"}
