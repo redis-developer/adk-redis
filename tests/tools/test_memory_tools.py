@@ -528,7 +528,7 @@ async def test_create_memory_tool_can_use_agent_memory_server_backend():
 
 @pytest.mark.asyncio
 async def test_create_memory_tool_warns_on_client_id_for_self_hosted(caplog):
-  """Self-hosted backend warns about client ids and still succeeds."""
+  """Self-hosted warning explains behavior without exposing the client id."""
   fake_client = FakeAgentMemoryServerClient()
   config = MemoryToolConfig(
       backend=OPENSOURCE_AGENT_MEMORY_BACKEND,
@@ -549,4 +549,6 @@ async def test_create_memory_tool_warns_on_client_id_for_self_hosted(caplog):
 
   assert result["status"] == "success"
   assert fake_client.add_memory_kwargs["text"] == "User likes tea."
+  assert "retry-abc-123" not in caplog.text
   assert "not supported by the opensource-agent-memory backend" in caplog.text
+  assert "Proceeding without the client id" in caplog.text

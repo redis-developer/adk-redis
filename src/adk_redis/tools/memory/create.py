@@ -173,10 +173,9 @@ class CreateMemoryTool(BaseMemoryTool):
       if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
         if client_memory_id is not None:
           logger.warning(
-              "Client-supplied memory id %r is not supported by the "
+              "A client-supplied memory id is not supported by the "
               "opensource-agent-memory backend: add_memory_tool generates "
-              "its own memory ID. Proceeding without the client id.",
-              client_memory_id,
+              "its own memory ID. Proceeding without the client id."
           )
         session_id = f"standalone_{uuid.uuid4().hex[:8]}"
         response = await self._get_agent_memory_server_client().add_memory_tool(
