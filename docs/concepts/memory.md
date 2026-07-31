@@ -146,6 +146,14 @@ an explicit `user_id` argument, the invocation user from the ADK tool context,
 `default_owner_id`, then `default_user_id`. Configured defaults are only used
 when no per-call or context user is available.
 
+For idempotent retries, `CreateMemoryTool.run_async` accepts an optional
+application-level `id` argument that is not exposed to the LLM. On the managed
+Redis Agent Memory backend, a client-supplied `id` is sanitized like other
+managed identifiers and used as the record ID, so retrying with the same `id`
+upserts instead of creating a duplicate. The self-hosted
+`opensource-agent-memory` backend cannot honor client IDs; the tool logs a
+warning and writes with a server-generated ID.
+
 ## MCP vs SDK Decision
 
 | | MCP | SDK Tools |
