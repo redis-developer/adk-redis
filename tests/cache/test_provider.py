@@ -128,6 +128,7 @@ def _make_langcache_provider() -> tuple[LangCacheProvider, MagicMock]:
   return provider, mock_cache
 
 
+@pytest.mark.asyncio
 class TestLangCacheProviderEntryIds:
   """LangCacheProvider surfaces entry IDs and targeted invalidation."""
 
@@ -227,6 +228,7 @@ def _make_redisvl_provider(
   return provider, mock_cache
 
 
+@pytest.mark.asyncio
 class TestRedisVLCacheProviderEntryIds:
   """RedisVLCacheProvider surfaces RedisVL entry IDs."""
 
