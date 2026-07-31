@@ -228,39 +228,38 @@ def _make_redisvl_provider(
 
 
 class TestRedisVLCacheProviderEntryIds:
-  """RedisVLCacheProvider uses full Redis keys as entry IDs."""
+  """RedisVLCacheProvider surfaces RedisVL entry IDs."""
 
-  async def test_check_surfaces_redis_key_as_entry_id(self, mock_vectorizer):
-    """check() surfaces the hit's Redis key on CacheEntry.entry_id."""
+  async def test_check_surfaces_entry_id(self, mock_vectorizer):
+    """check() surfaces the hit's RedisVL entry ID."""
     provider, mock_cache = _make_redisvl_provider(mock_vectorizer)
     mock_cache.check.return_value = [
         {
             "response": "An in-memory data store.",
             "vector_distance": 0.08,
             "entry_id": "abc123",
-            "key": "test_cache:abc123",
         }
     ]
 
     entry = await provider.check("What is Redis?")
 
     assert entry is not None
-    assert entry.entry_id == "test_cache:abc123"
+    assert entry.entry_id == "abc123"
     assert entry.response == "An in-memory data store."
 
-  async def test_store_returns_redis_key(self, mock_vectorizer):
-    """store() returns the Redis key reported by the backend."""
+  async def test_store_returns_entry_id(self, mock_vectorizer):
+    """store() normalizes the backend Redis key to its entry ID."""
     provider, mock_cache = _make_redisvl_provider(mock_vectorizer)
     mock_cache.store.return_value = "test_cache:abc123"
 
     entry_id = await provider.store("prompt", "response")
 
-    assert entry_id == "test_cache:abc123"
+    assert entry_id == "abc123"
 
-  async def test_delete_by_id_drops_exact_key(self, mock_vectorizer):
-    """delete_by_id() drops exactly the given Redis key."""
+  async def test_delete_by_id_drops_exact_entry_id(self, mock_vectorizer):
+    """delete_by_id() drops exactly the given RedisVL entry ID."""
     provider, mock_cache = _make_redisvl_provider(mock_vectorizer)
 
-    await provider.delete_by_id("test_cache:abc123")
+    await provider.delete_by_id("abc123")
 
-    mock_cache.drop.assert_called_once_with(keys=["test_cache:abc123"])
+    mock_cache.drop.assert_called_once_with(ids=["abc123"])

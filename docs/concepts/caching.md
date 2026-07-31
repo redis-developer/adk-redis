@@ -147,7 +147,7 @@ ID availability per backend:
 | Provider | `entry_id` value |
 |----------|------------------|
 | **LangCache** | The managed LangCache entry ID. |
-| **RedisVL** | The full Redis key of the cache entry. |
+| **RedisVL** | The RedisVL cache entry ID. |
 
 For a given provider instance, identifiers returned by `check()` and `store()` are interchangeable inputs to `delete_by_id()`. `LLMResponseCache` does not use targeted invalidation itself; the simple read-through callback path is unchanged.
 

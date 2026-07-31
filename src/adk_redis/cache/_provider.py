@@ -41,8 +41,8 @@ class CacheEntry:
     metadata: Optional metadata stored alongside the entry.
     entry_id: Stable backend identifier for the matched entry, if the
       backend provides one. For LangCacheProvider this is the LangCache
-      entry ID; for RedisVLCacheProvider this is the full Redis key of
-      the entry. It can be passed to delete_by_id() to retire exactly
+      entry ID; for RedisVLCacheProvider this is the RedisVL entry ID.
+      It can be passed to delete_by_id() to retire exactly
       this entry. None when the backend does not expose an identifier.
   """
 
@@ -60,8 +60,8 @@ class BaseCacheProvider(ABC):
     Providers surface a stable per-entry identifier when the backend
     exposes one. check() populates CacheEntry.entry_id on hits and
     store() returns the identifier of the newly written entry. Both
-    LangCacheProvider (LangCache entry IDs) and RedisVLCacheProvider
-    (full Redis keys) provide identifiers; a backend that cannot must
+    LangCacheProvider and RedisVLCacheProvider provide backend entry IDs;
+    a backend that cannot provide an identifier must
     leave CacheEntry.entry_id as None and return None from store().
     Identifiers from check() and store() are interchangeable inputs to
     delete_by_id() for the same provider instance.
@@ -217,8 +217,8 @@ class RedisVLCacheProvider(BaseCacheProvider):
       **kwargs: Additional keyword arguments (unused).
 
     Returns:
-      A CacheEntry on a hit, None on a miss. entry_id is the full Redis
-      key of the matched entry and can be passed to delete_by_id().
+      A CacheEntry on a hit, None on a miss. entry_id is the RedisVL entry
+      ID of the matched entry and can be passed to delete_by_id().
     """
     result = await asyncio.to_thread(self._cache.check, prompt=prompt)
     if result:
@@ -227,7 +227,7 @@ class RedisVLCacheProvider(BaseCacheProvider):
           prompt=prompt,
           response=result[0]["response"],
           distance=result[0].get("vector_distance"),
-          entry_id=result[0].get("key"),
+          entry_id=result[0].get("entry_id"),
       )
     logger.debug("Cache miss for prompt: %s", prompt[:50])
     return None
@@ -248,26 +248,28 @@ class RedisVLCacheProvider(BaseCacheProvider):
       **kwargs: Additional keyword arguments (unused).
 
     Returns:
-      The full Redis key of the newly written entry. It can be passed
-      to delete_by_id() to retire exactly this entry.
+      The RedisVL entry ID of the newly written entry. It can be passed to
+      delete_by_id() to retire exactly this entry.
     """
     key: str = await asyncio.to_thread(
         self._cache.store, prompt=prompt, response=response
     )
+    key_prefix = f"{self._config.name}:"
+    entry_id = key.removeprefix(key_prefix)
     logger.debug("Stored response for prompt: %s", prompt[:50])
-    return key
+    return entry_id
 
   async def delete_by_id(self, entry_id: str, **kwargs: Any) -> None:
-    """Delete exactly one cache entry by its Redis key.
+    """Delete exactly one cache entry by its RedisVL entry ID.
 
     Unlike clear(), which removes every entry, this drops only the entry
-    identified by the full Redis key obtained from check() or store().
+    identified by the RedisVL entry ID obtained from check() or store().
 
     Args:
-      entry_id: The full Redis key of the entry to delete.
+      entry_id: The RedisVL entry ID of the entry to delete.
       **kwargs: Additional keyword arguments (unused).
     """
-    await asyncio.to_thread(self._cache.drop, keys=[entry_id])
+    await asyncio.to_thread(self._cache.drop, ids=[entry_id])
     logger.debug("Dropped cache entry: %s", entry_id)
 
   async def clear(self, **kwargs: Any) -> None:
