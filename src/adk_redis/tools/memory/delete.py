@@ -16,9 +16,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from google.genai import types
 
@@ -28,6 +29,8 @@ from adk_redis.tools.memory._base import BaseMemoryTool
 from adk_redis.tools.memory._config import MemoryToolConfig
 
 logger = logging.getLogger("adk_redis." + __name__)
+
+_PREFLIGHT_BATCH_SIZE = 10
 
 
 class DeleteMemoryTool(BaseMemoryTool):
@@ -103,6 +106,27 @@ class DeleteMemoryTool(BaseMemoryTool):
         ),
     )
 
+  async def _validate_memory_scopes(
+      self,
+      *,
+      memory_ids: list[str],
+      get_memory: Callable[..., Awaitable[object]],
+      namespace: str,
+      user_id: str | None,
+  ) -> None:
+    """Validate memory scopes with bounded concurrent backend reads."""
+    for start in range(0, len(memory_ids), _PREFLIGHT_BATCH_SIZE):
+      batch = memory_ids[start : start + _PREFLIGHT_BATCH_SIZE]
+      memories = await asyncio.gather(
+          *(get_memory(memory_id=memory_id) for memory_id in batch)
+      )
+      for memory in memories:
+        self._require_memory_scope(
+            memory,
+            namespace=namespace,
+            user_id=user_id,
+        )
+
   async def run_async(self, **kwargs: Any) -> dict[str, Any]:
     """Delete long-term memories by ID.
 
@@ -130,13 +154,12 @@ class DeleteMemoryTool(BaseMemoryTool):
     try:
       if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
         client = self._get_agent_memory_server_client()
-        for memory_id in memory_ids:
-          memory = await client.get_long_term_memory(memory_id=memory_id)
-          self._require_memory_scope(
-              memory,
-              namespace=namespace,
-              user_id=user_id,
-          )
+        await self._validate_memory_scopes(
+            memory_ids=memory_ids,
+            get_memory=client.get_long_term_memory,
+            namespace=namespace,
+            user_id=user_id,
+        )
         response = await client.delete_long_term_memories(memory_ids=memory_ids)
         status_msg = response.status
         match = re.search(r"deleted (\d+)", status_msg)
@@ -150,15 +173,12 @@ class DeleteMemoryTool(BaseMemoryTool):
         }
 
       async with self._agent_memory() as agent_memory:
-        for memory_id in memory_ids:
-          memory = await agent_memory.get_long_term_memory_async(
-              memory_id=memory_id
-          )
-          self._require_memory_scope(
-              memory,
-              namespace=namespace,
-              user_id=user_id,
-          )
+        await self._validate_memory_scopes(
+            memory_ids=memory_ids,
+            get_memory=agent_memory.get_long_term_memory_async,
+            namespace=namespace,
+            user_id=user_id,
+        )
         response = await agent_memory.bulk_delete_long_term_memories_async(
             memory_ids=memory_ids,
         )
