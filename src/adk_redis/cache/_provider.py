@@ -32,20 +32,53 @@ logger = logging.getLogger("adk_redis." + __name__)
 
 @dataclass
 class CacheEntry:
-  """Represents a cached entry."""
+  """Represents a cached entry.
+
+  Attributes:
+    prompt: The prompt text that was matched.
+    response: The cached response text.
+    distance: The vector distance of the match, if available.
+    metadata: Optional metadata stored alongside the entry.
+    entry_id: Stable backend identifier for the matched entry, if the
+      backend provides one. For LangCacheProvider this is the LangCache
+      entry ID; for RedisVLCacheProvider this is the full Redis key of
+      the entry. It can be passed to delete_by_id() to retire exactly
+      this entry. None when the backend does not expose an identifier.
+  """
 
   prompt: str
   response: str
   distance: Optional[float] = None
   metadata: Optional[dict[str, Any]] = None
+  entry_id: Optional[str] = None
 
 
 class BaseCacheProvider(ABC):
-  """Abstract base class for cache providers."""
+  """Abstract base class for cache providers.
+
+  Entry identity contract:
+    Providers surface a stable per-entry identifier when the backend
+    exposes one. check() populates CacheEntry.entry_id on hits and
+    store() returns the identifier of the newly written entry. Both
+    LangCacheProvider (LangCache entry IDs) and RedisVLCacheProvider
+    (full Redis keys) provide identifiers; a backend that cannot must
+    leave CacheEntry.entry_id as None and return None from store().
+    Identifiers from check() and store() are interchangeable inputs to
+    delete_by_id() for the same provider instance.
+  """
 
   @abstractmethod
   async def check(self, prompt: str, **kwargs: Any) -> Optional[CacheEntry]:
-    """Check if a semantically similar prompt exists in the cache."""
+    """Check if a semantically similar prompt exists in the cache.
+
+    Args:
+      prompt: The prompt to look up.
+      **kwargs: Provider-specific options.
+
+    Returns:
+      A CacheEntry on a hit (with entry_id populated when the backend
+      provides one), None on a miss.
+    """
     pass
 
   @abstractmethod
@@ -55,13 +88,43 @@ class BaseCacheProvider(ABC):
       response: str,
       metadata: Optional[dict[str, Any]] = None,
       **kwargs: Any,
-  ) -> None:
-    """Store a prompt-response pair in the cache."""
+  ) -> Optional[str]:
+    """Store a prompt-response pair in the cache.
+
+    Args:
+      prompt: The prompt text.
+      response: The response text.
+      metadata: Optional metadata to store alongside the entry.
+      **kwargs: Provider-specific options.
+
+    Returns:
+      The identifier of the newly written entry when the backend
+      provides one, otherwise None. The identifier can be passed to
+      delete_by_id() to retire exactly this entry.
+    """
+    pass
+
+  @abstractmethod
+  async def delete_by_id(self, entry_id: str, **kwargs: Any) -> None:
+    """Delete exactly one entry from the cache by its identifier.
+
+    Unlike clear(), which removes every entry in the cache, this targets
+    a single entry, identified by the entry_id obtained from check() or
+    store(). Deleting an identifier that no longer exists is a no-op.
+
+    Args:
+      entry_id: The identifier of the entry to delete, as returned by
+        check() (CacheEntry.entry_id) or store() on this provider.
+      **kwargs: Provider-specific options.
+    """
     pass
 
   @abstractmethod
   async def clear(self, **kwargs: Any) -> None:
-    """Clear all entries from the cache."""
+    """Clear all entries from the cache.
+
+    For removing a single entry, use delete_by_id() instead.
+    """
     pass
 
   @abstractmethod
@@ -147,7 +210,16 @@ class RedisVLCacheProvider(BaseCacheProvider):
     )
 
   async def check(self, prompt: str, **kwargs: Any) -> Optional[CacheEntry]:
-    """Check for a semantically similar prompt in the cache."""
+    """Check for a semantically similar prompt in the cache.
+
+    Args:
+      prompt: The prompt to look up.
+      **kwargs: Additional keyword arguments (unused).
+
+    Returns:
+      A CacheEntry on a hit, None on a miss. entry_id is the full Redis
+      key of the matched entry and can be passed to delete_by_id().
+    """
     result = await asyncio.to_thread(self._cache.check, prompt=prompt)
     if result:
       logger.debug("Cache hit for prompt: %s", prompt[:50])
@@ -155,6 +227,7 @@ class RedisVLCacheProvider(BaseCacheProvider):
           prompt=prompt,
           response=result[0]["response"],
           distance=result[0].get("vector_distance"),
+          entry_id=result[0].get("key"),
       )
     logger.debug("Cache miss for prompt: %s", prompt[:50])
     return None
@@ -165,13 +238,43 @@ class RedisVLCacheProvider(BaseCacheProvider):
       response: str,
       metadata: Optional[dict[str, Any]] = None,
       **kwargs: Any,
-  ) -> None:
-    """Store a prompt-response pair in the cache."""
-    await asyncio.to_thread(self._cache.store, prompt=prompt, response=response)
+  ) -> Optional[str]:
+    """Store a prompt-response pair in the cache.
+
+    Args:
+      prompt: The prompt text.
+      response: The response text.
+      metadata: Optional metadata (unused by this provider).
+      **kwargs: Additional keyword arguments (unused).
+
+    Returns:
+      The full Redis key of the newly written entry. It can be passed
+      to delete_by_id() to retire exactly this entry.
+    """
+    key: str = await asyncio.to_thread(
+        self._cache.store, prompt=prompt, response=response
+    )
     logger.debug("Stored response for prompt: %s", prompt[:50])
+    return key
+
+  async def delete_by_id(self, entry_id: str, **kwargs: Any) -> None:
+    """Delete exactly one cache entry by its Redis key.
+
+    Unlike clear(), which removes every entry, this drops only the entry
+    identified by the full Redis key obtained from check() or store().
+
+    Args:
+      entry_id: The full Redis key of the entry to delete.
+      **kwargs: Additional keyword arguments (unused).
+    """
+    await asyncio.to_thread(self._cache.drop, keys=[entry_id])
+    logger.debug("Dropped cache entry: %s", entry_id)
 
   async def clear(self, **kwargs: Any) -> None:
-    """Clear all entries from the cache."""
+    """Clear all entries from the cache.
+
+    For removing a single entry, use delete_by_id() instead.
+    """
     await asyncio.to_thread(self._cache.clear)
     logger.info("Cache cleared")
 
@@ -187,7 +290,7 @@ class LangCacheProvider(BaseCacheProvider):
 
   LangCache is a managed semantic caching service that handles embedding
   generation, storage, and retrieval. Unlike RedisVLCacheProvider, it does
-  not require a local vectorizer — embeddings are handled server-side.
+  not require a local vectorizer; embeddings are handled server-side.
 
   Requires redisvl>=0.11.1 with LangCache support.
   """
@@ -230,7 +333,9 @@ class LangCacheProvider(BaseCacheProvider):
       **kwargs: Additional keyword arguments (e.g., distance_threshold).
 
     Returns:
-      A CacheEntry if a cache hit is found, None otherwise.
+      A CacheEntry if a cache hit is found, None otherwise. entry_id is
+      the LangCache entry ID of the matched entry and can be passed to
+      delete_by_id().
     """
     distance_threshold = kwargs.get(
         "distance_threshold", self._config.distance_threshold
@@ -246,6 +351,7 @@ class LangCacheProvider(BaseCacheProvider):
           response=result[0]["response"],
           distance=result[0].get("vector_distance"),
           metadata=result[0].get("metadata"),
+          entry_id=result[0].get("entry_id"),
       )
     logger.debug("LangCache miss for prompt: %s", prompt[:50])
     return None
@@ -256,7 +362,7 @@ class LangCacheProvider(BaseCacheProvider):
       response: str,
       metadata: Optional[dict[str, Any]] = None,
       **kwargs: Any,
-  ) -> None:
+  ) -> Optional[str]:
     """Store a prompt-response pair in LangCache.
 
     Args:
@@ -264,6 +370,10 @@ class LangCacheProvider(BaseCacheProvider):
       response: The response text.
       metadata: Optional metadata to store alongside the entry.
       **kwargs: Additional keyword arguments (e.g., ttl).
+
+    Returns:
+      The LangCache entry ID of the newly written entry. It can be
+      passed to delete_by_id() to retire exactly this entry.
     """
     astore_kwargs: dict[str, Any] = {
         "prompt": prompt,
@@ -274,11 +384,29 @@ class LangCacheProvider(BaseCacheProvider):
     ttl = kwargs.get("ttl")
     if ttl is not None:
       astore_kwargs["ttl"] = ttl
-    await self._cache.astore(**astore_kwargs)
+    entry_id = await self._cache.astore(**astore_kwargs)
     logger.debug("LangCache stored response for prompt: %s", prompt[:50])
+    return entry_id or None
+
+  async def delete_by_id(self, entry_id: str, **kwargs: Any) -> None:
+    """Delete exactly one LangCache entry by its entry ID.
+
+    Unlike clear(), which removes every entry, this deletes only the
+    entry identified by the LangCache entry ID obtained from check()
+    or store().
+
+    Args:
+      entry_id: The LangCache entry ID of the entry to delete.
+      **kwargs: Additional keyword arguments (unused).
+    """
+    await self._cache.adelete_by_id(entry_id)
+    logger.debug("LangCache deleted entry: %s", entry_id)
 
   async def clear(self, **kwargs: Any) -> None:
-    """Clear all entries from the LangCache."""
+    """Clear all entries from the LangCache.
+
+    For removing a single entry, use delete_by_id() instead.
+    """
     await self._cache.aclear()
     logger.info("LangCache cleared")
 

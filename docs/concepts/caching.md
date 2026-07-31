@@ -123,6 +123,34 @@ agent = Agent(
 | **RedisVL** | You already run Redis, want local embeddings, need full control over cache index schema. |
 | **LangCache** | You want a managed service with no infrastructure, server-side embeddings, and built-in analytics. |
 
+## Entry IDs and Targeted Invalidation
+
+Both providers expose a stable identifier for each cache entry, so an application-level coordinator can retire exactly one stale entry without a semantic re-search and without clearing unrelated entries:
+
+- `provider.check(prompt)` returns a `CacheEntry` whose `entry_id` field identifies the matched entry.
+- `provider.store(prompt, response)` returns the identifier of the newly written entry.
+- `provider.delete_by_id(entry_id)` deletes exactly that entry. Unlike `provider.clear()`, which removes every entry in the cache, `delete_by_id` targets a single entry.
+
+```python
+entry_id = await provider.store("What is our refund policy?", "30 days.")
+
+hit = await provider.check("What's the refund policy?")
+if hit is not None:
+    print(hit.entry_id)  # same entry
+
+# The source document changed; retire only this entry.
+await provider.delete_by_id(entry_id)
+```
+
+ID availability per backend:
+
+| Provider | `entry_id` value |
+|----------|------------------|
+| **LangCache** | The managed LangCache entry ID. |
+| **RedisVL** | The full Redis key of the cache entry. |
+
+For a given provider instance, identifiers returned by `check()` and `store()` are interchangeable inputs to `delete_by_id()`. `LLMResponseCache` does not use targeted invalidation itself; the simple read-through callback path is unchanged.
+
 ## Configuration Options
 
 | Option | Provider | Default | Description |
