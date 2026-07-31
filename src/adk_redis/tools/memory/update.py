@@ -118,19 +118,22 @@ class UpdateMemoryTool(BaseMemoryTool):
         content: New content for the memory.
         topics: New list of topics/tags.
         namespace: Optional namespace override.
-        user_id: Optional user ID override.
+        user_id: Optional user ID override. When omitted, the user is
+            resolved from the ADK tool_context invocation user, then the
+            configured defaults.
 
     Returns:
         A dictionary with status and updated memory info.
     """
     # ADK passes parameters in kwargs['args']
     args = kwargs.get("args", kwargs)
+    tool_context = kwargs.get("tool_context")
 
     memory_id = args.get("memory_id")
     content = args.get("content")
     topics = args.get("topics")
     namespace = self._get_namespace(args.get("namespace"))
-    user_id = self._get_user_id(args.get("user_id"))
+    user_id = self._get_user_id(args.get("user_id"), tool_context=tool_context)
 
     if not memory_id:
       return {"status": "error", "message": "memory_id is required"}

@@ -111,6 +111,70 @@ def test_memory_tool_config_accepts_opensource_backend():
   )
 
 
+def test_get_user_id_resolution_order(config):
+  """_get_user_id resolves explicit arg, context user, then defaults."""
+  tool = SearchMemoryTool(config=config)
+  tool_context = SimpleNamespace(user_id="context-user")
+
+  # Explicit user_id beats the tool_context user.
+  assert (
+      tool._get_user_id("explicit-user", tool_context=tool_context)
+      == "explicit-user"
+  )
+
+  # The tool_context user beats configured defaults.
+  assert tool._get_user_id(None, tool_context=tool_context) == "context-user"
+
+  # Configured defaults still apply with no tool_context.
+  assert tool._get_user_id(None) == "alice"
+
+  # An empty context user counts as absent.
+  empty_context = SimpleNamespace(user_id="")
+  assert tool._get_user_id(None, tool_context=empty_context) == "alice"
+
+  # A context without a user_id attribute falls through safely.
+  assert tool._get_user_id(None, tool_context=object()) == "alice"
+
+
+def test_get_user_id_without_defaults_returns_none():
+  """_get_user_id returns None when no source provides a user."""
+  tool = SearchMemoryTool(config=MemoryToolConfig())
+  assert tool._get_user_id(None, tool_context=object()) is None
+
+
+@pytest.mark.asyncio
+async def test_search_memory_tool_scopes_to_tool_context_user(
+    config, fake_client
+):
+  """SearchMemoryTool scopes search to the ADK tool_context user."""
+  tool = SearchMemoryTool(config=config)
+  tool_context = SimpleNamespace(user_id="bob")
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"query": "seat"}, tool_context=tool_context
+    )
+
+  assert result["status"] == "success"
+  assert fake_client.search_request["filter"] == {
+      "namespace": {"eq": "test-ns"},
+      "ownerId": {"eq": "bob"},
+  }
+
+
+@pytest.mark.asyncio
+async def test_create_memory_tool_uses_tool_context_user(config, fake_client):
+  """CreateMemoryTool stamps records with the ADK tool_context user."""
+  tool = CreateMemoryTool(config=config)
+  tool_context = SimpleNamespace(user_id="bob")
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"content": "User likes tea."}, tool_context=tool_context
+    )
+
+  assert result["status"] == "success"
+  assert fake_client.created_records[0]["ownerId"] == "bob"
+
+
 @pytest.mark.asyncio
 async def test_create_memory_tool_writes_record(config, fake_client):
   """CreateMemoryTool writes a Redis Agent Memory record."""

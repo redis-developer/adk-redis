@@ -141,6 +141,11 @@ agent = Agent(
 | `DeleteMemoryTool` | Remove memories by ID |
 | `MemoryPromptTool` | Enrich a system prompt with relevant memories |
 
+When a tool runs inside an ADK agent loop, it resolves the user in this order:
+an explicit `user_id` argument, the invocation user from the ADK tool context,
+`default_owner_id`, then `default_user_id`. Configured defaults are only used
+when no per-call or context user is available.
+
 ## MCP vs SDK Decision
 
 | | MCP | SDK Tools |
