@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "adk-redis"
-version = "0.0.8"
+version = "0.0.9"
 description = "Redis integrations for Google's Agent Development Kit (ADK)"
 readme = "README.md"
 license = "Apache-2.0"
@@ -43,7 +43,7 @@ dependencies = [
 # Redis Agent Memory integrations (long-term memory + working memory sessions)
 memory = [
     "agent-memory-client>=0.14.0",
-    "redis-agent-memory>=0.0.4",
+    "redis-agent-memory>=0.2.0",
 ]
 
 # RedisVL-based search tools

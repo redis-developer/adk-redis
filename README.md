@@ -59,6 +59,9 @@ Memory backends are selected with `backend`:
 | `redis-agent-memory` | You want Redis Agent Memory managed by Redis or the Redis Agent Memory data plane | `redis-agent-memory` |
 | `opensource-agent-memory` | You want the open source self-hosted Agent Memory Server | `agent-memory-client` |
 
+The `memory` extra installs `redis-agent-memory>=0.2.0` for the managed
+backend.
+
 ---
 
 ## Quick start

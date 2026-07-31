@@ -122,7 +122,7 @@ Agent Memory Server options:
 The `memory` extra installs both backend clients:
 
 - `agent-memory-client>=0.14.0`
-- `redis-agent-memory>=0.0.4`
+- `redis-agent-memory>=0.2.0`
 
 ## Tests
 

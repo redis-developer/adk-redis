@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.0.9] - 2026-07-31
+
+### Added
+
+- Cache providers now expose stable entry IDs from `check()` and `store()` and
+  support targeted invalidation through `delete_by_id()` without clearing
+  unrelated entries.
+- Memory tools resolve the acting user from the ADK `tool_context` before
+  falling back to configured defaults, allowing a shared runner to remain
+  scoped to each invocation user.
+- `CreateMemoryTool.run_async()` accepts an application-supplied `id` for
+  idempotent managed-memory writes. IDs are derived with namespace and user
+  scope to prevent cross-tenant collisions and are not exposed to the LLM.
+
+### Changed
+
+- The managed memory integration now requires `redis-agent-memory>=0.2.0`.
+  SDK method compatibility was verified across session memory, long-term
+  memory, and memory tools.
+- Documentation now covers cache entry IDs, targeted invalidation,
+  invocation-user resolution, scoped client IDs, and the updated managed SDK
+  requirement.
+
+### Fixed
+
+- Update and delete memory tools validate namespace and user ownership before
+  mutating records. Delete preflight reads use bounded concurrency.
+- Self-hosted memory warnings no longer log raw application-supplied IDs.
+
 ## [0.0.8] - 2026-06-24
 
 ### Changed
