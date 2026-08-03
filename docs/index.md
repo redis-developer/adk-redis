@@ -47,7 +47,7 @@ docker run -d --name redis -p 6379:6379 redis:8
 
     ---
 
-    Nine runnable agents covering memory, search, and caching.
+    Ten runnable agents covering memory, search, and caching.
 
 -   :material-api:{ .lg .middle } **[API Reference](api/index.md)**
 

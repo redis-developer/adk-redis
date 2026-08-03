@@ -88,6 +88,9 @@ agent = Agent(
 | `delete_long_term_memories` | Remove memories by ID |
 | `memory_prompt` | Enrich a prompt with relevant memories |
 | `set_working_memory` | Write to the current session's working memory |
+| `get_working_memory` | Read the current session's working memory |
+| `compact_long_term_memories` | Deduplicate and compact stored memories |
+| `get_current_datetime` | Resolve the current time for relative date reasoning |
 
 ## Option 2: SDK-Based Tools
 
