@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `RedisVLCacheProviderConfig.create_index` lets `RedisVLCacheProvider`
+  attach to a search index provisioned outside adk-redis. With
+  `create_index=False` no index command is issued while the provider is
+  constructed, so the cache works on a credential that is denied `FT.INFO`
+  and `FT.CREATE`. The flag requires `redisvl>=0.26.0`, and requesting it on
+  an older release raises an `ImportError` naming the required version
+  instead of failing inside RedisVL. The `redisvl` floor stays at 0.18.2,
+  so the default path is unaffected.
+- `RedisVLCacheProviderConfig.overwrite` exposes index overwrite as a
+  configuration option.
+- The semantic cache guide documents the pre-provisioned index path, the
+  minimum ACL for each provider call, and the fact that `check()` still
+  needs `FT.SEARCH`.
+
+### Changed
+
+- `RedisVLCacheProvider` no longer forces `overwrite=True`. An existing
+  index is now reused rather than dropped and recreated on every provider
+  construction, which removes `FT.DROPINDEX` and `FT.CREATE` from a path
+  most callers use only to read and write entries. A schema mismatch is
+  reported instead of being silently rebuilt, leaving entries embedded by a
+  different model behind. Set `overwrite=True` on
+  `RedisVLCacheProviderConfig` to restore the previous behavior.
+- Errors from RedisVL during cache construction are re-raised with the
+  `RedisVLCacheProviderConfig` fields that control the index, rather than
+  surfacing a bare RedisVL message.
+- `RedisVLCacheProvider.clear()` deletes entries by scanning the cache key
+  prefix when `create_index=False`, because RedisVL refuses index-wide
+  destructive calls for an index it does not manage. The external index is
+  never dropped.
+
+### Fixed
+
+- `RedisVLCacheProvider.close()` no longer raises `AttributeError` when the
+  provider never opened a connection, which is reachable with
+  `create_index=False` because construction sends nothing to Redis.
+
 ## [0.0.9] - 2026-07-31
 
 ### Added

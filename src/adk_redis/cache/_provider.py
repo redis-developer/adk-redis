@@ -20,6 +20,8 @@ from abc import ABC
 from abc import abstractmethod
 import asyncio
 from dataclasses import dataclass
+import importlib
+import importlib.metadata
 import logging
 from typing import Any, Optional
 
@@ -28,6 +30,44 @@ from pydantic import Field
 from pydantic import SecretStr
 
 logger = logging.getLogger("adk_redis." + __name__)
+
+# redisvl release that introduced the create_index flag on its extensions.
+_CREATE_INDEX_MIN_REDISVL = "0.26.0"
+
+# Number of keys deleted per round trip when clearing an externally
+# managed cache index, matching the batch size RedisVL uses internally.
+_CLEAR_BATCH_SIZE = 100
+
+
+def _redisvl_supports_create_index() -> bool:
+  """Report whether the installed redisvl accepts the create_index flag.
+
+  redisvl 0.26.0 added create_index alongside the
+  CREATE_INDEX_OVERWRITE_CONFLICT constant, so the presence of that
+  constant identifies a redisvl that can attach to an index it did not
+  create. The module is resolved dynamically because redisvl is an
+  optional dependency of adk-redis.
+
+  Returns:
+    True when the installed redisvl supports create_index.
+  """
+  try:
+    constants = importlib.import_module("redisvl.extensions.constants")
+  except ImportError:
+    return False
+  return hasattr(constants, "CREATE_INDEX_OVERWRITE_CONFLICT")
+
+
+def _installed_redisvl_version() -> str:
+  """Return the installed redisvl version for use in error messages.
+
+  Returns:
+    The version string, or "not installed" when redisvl is absent.
+  """
+  try:
+    return importlib.metadata.version("redisvl")
+  except importlib.metadata.PackageNotFoundError:
+    return "not installed"
 
 
 @dataclass
@@ -140,6 +180,26 @@ class RedisVLCacheProviderConfig(BaseModel):
   name: str = Field(default="adk_semantic_cache")
   ttl: int = Field(default=3600, ge=0)
   distance_threshold: float = Field(default=0.1, ge=0.0, le=2.0)
+  create_index: bool = Field(
+      default=True,
+      description=(
+          "Whether RedisVL creates and validates the cache index. Set to"
+          " False to attach to an index provisioned outside adk-redis, for"
+          " example by a platform team on a credential without @search"
+          " permissions. The index must already exist under the same name"
+          " and prefix; its schema is not verified. Requires"
+          " redisvl>=0.26.0."
+      ),
+  )
+  overwrite: bool = Field(
+      default=False,
+      description=(
+          "Whether to drop and recreate the index when it already exists."
+          " Leave False so an existing index is reused and a schema"
+          " mismatch is reported instead of silently rebuilt. Cannot be"
+          " combined with create_index=False."
+      ),
+  )
 
 
 class LangCacheProviderConfig(BaseModel):
@@ -189,7 +249,19 @@ class RedisVLCacheProvider(BaseCacheProvider):
   """Cache provider using RedisVL's SemanticCache."""
 
   def __init__(self, config: RedisVLCacheProviderConfig, vectorizer: Any):
-    """Initialize the RedisVL cache provider."""
+    """Initialize the RedisVL cache provider.
+
+    Args:
+      config: Configuration for the cache and its index.
+      vectorizer: RedisVL vectorizer used to embed prompts.
+
+    Raises:
+      ImportError: If redisvl is not installed, or if create_index is False
+        on a redisvl older than 0.26.0.
+      ValueError: If the configuration cannot be applied to the index, for
+        instance create_index=False combined with overwrite=True, or an
+        existing index whose schema differs from this configuration.
+    """
     try:
       from redisvl.extensions.cache.llm import SemanticCache
     except ImportError as e:
@@ -200,14 +272,45 @@ class RedisVLCacheProvider(BaseCacheProvider):
 
     self._config = config
     self._vectorizer = vectorizer
-    self._cache = SemanticCache(
-        name=config.name,
-        redis_url=config.redis_url,
-        ttl=config.ttl,
-        distance_threshold=config.distance_threshold,
-        vectorizer=vectorizer,
-        overwrite=True,  # Overwrite existing index if schema doesn't match
-    )
+
+    cache_kwargs: dict[str, Any] = {
+        "name": config.name,
+        "redis_url": config.redis_url,
+        "ttl": config.ttl,
+        "distance_threshold": config.distance_threshold,
+        "vectorizer": vectorizer,
+        "overwrite": config.overwrite,
+    }
+    # create_index is only forwarded when it is turned off, so the provider
+    # keeps working against releases predating the flag.
+    if not config.create_index:
+      if config.overwrite:
+        raise ValueError(
+            "RedisVLCacheProviderConfig sets create_index=False together"
+            " with overwrite=True, which contradict each other: overwrite"
+            " drops and recreates the index, but create_index=False leaves"
+            " the index under external management. Set overwrite=False to"
+            " attach to a pre-provisioned index, or create_index=True to"
+            " let RedisVL own the index."
+        )
+      if not _redisvl_supports_create_index():
+        raise ImportError(
+            "RedisVLCacheProviderConfig.create_index=False requires"
+            f" redisvl>={_CREATE_INDEX_MIN_REDISVL}, found"
+            f" {_installed_redisvl_version()}. Upgrade with: pip install"
+            f" 'redisvl>={_CREATE_INDEX_MIN_REDISVL}', or leave"
+            " create_index=True to have RedisVL create the index."
+        )
+      cache_kwargs["create_index"] = False
+
+    try:
+      self._cache = SemanticCache(**cache_kwargs)
+    except ValueError as e:
+      raise ValueError(
+          "RedisVL rejected the semantic cache configuration for index"
+          f" {config.name!r}: {e} Adjust name, create_index, or overwrite on"
+          " RedisVLCacheProviderConfig so they match the index in Redis."
+      ) from e
 
   async def check(self, prompt: str, **kwargs: Any) -> Optional[CacheEntry]:
     """Check for a semantically similar prompt in the cache.
@@ -272,18 +375,52 @@ class RedisVLCacheProvider(BaseCacheProvider):
     await asyncio.to_thread(self._cache.drop, ids=[entry_id])
     logger.debug("Dropped cache entry: %s", entry_id)
 
+  def _clear_external_index_entries(self) -> None:
+    """Delete every cache entry key without touching the index.
+
+    RedisVL refuses index-wide destructive calls when create_index is False,
+    because it does not own the index lifecycle. Entries are still plain
+    Redis keys under the cache prefix, so they are scanned and deleted
+    directly. That needs no @search permissions and leaves the externally
+    provisioned index in place.
+    """
+    client = self._cache._get_redis_client()
+    prefix = f"{self._config.name}:"
+    # Keys arrive as str or bytes depending on the client's decode setting,
+    # and both are accepted by DEL.
+    batch: list[Any] = []
+    for key in client.scan_iter(match=f"{prefix}*", count=_CLEAR_BATCH_SIZE):
+      batch.append(key)
+      if len(batch) >= _CLEAR_BATCH_SIZE:
+        client.delete(*batch)
+        batch = []
+    if batch:
+      client.delete(*batch)
+
   async def clear(self, **kwargs: Any) -> None:
     """Clear all entries from the cache.
 
+    When create_index is False the entries are removed by scanning the cache
+    key prefix, because RedisVL raises on clear() for an index it does not
+    manage. The index itself is never dropped in that case.
+
     For removing a single entry, use delete_by_id() instead.
     """
-    await asyncio.to_thread(self._cache.clear)
+    if self._config.create_index:
+      await asyncio.to_thread(self._cache.clear)
+    else:
+      await asyncio.to_thread(self._clear_external_index_entries)
     logger.info("Cache cleared")
 
   async def close(self) -> None:
-    """Close the cache provider and release resources."""
-    if hasattr(self._cache, "_index") and hasattr(self._cache._index, "client"):
-      await asyncio.to_thread(self._cache._index.client.close)
+    """Close the cache provider and release resources.
+
+    RedisVL connects lazily, so a provider that issued no command yet holds
+    no client. That is reachable when create_index is False, because
+    construction sends nothing to Redis. disconnect() tolerates the missing
+    client and leaves a caller-supplied client open.
+    """
+    await asyncio.to_thread(self._cache.disconnect)
     logger.debug("RedisVL cache provider closed")
 
 

@@ -19,8 +19,12 @@ from __future__ import annotations
 import hashlib
 import math
 from unittest.mock import MagicMock
+from urllib.parse import urlparse
+import uuid
 
 import pytest
+import redis
+from redisvl.exceptions import RedisSearchError
 from redisvl.index import SearchIndex
 from redisvl.schema import IndexSchema
 from redisvl.utils.vectorize.text.custom import CustomTextVectorizer
@@ -148,3 +152,207 @@ class TestRedisVLCacheProviderEndToEnd:
     finally:
       await provider.clear()
       await provider.close()
+
+
+def _index_names(redis_url: str) -> set[str]:
+  """Return the search index names that exist on the server."""
+  client = redis.Redis.from_url(redis_url)
+  try:
+    return {
+        name.decode() if isinstance(name, bytes) else str(name)
+        for name in client.execute_command("FT._LIST")
+    }
+  finally:
+    client.close()
+
+
+@REQUIRES_REDIS
+class TestRedisVLCacheProviderExternalIndex:
+  """create_index=False attaches to an index adk-redis did not create."""
+
+  @pytest.mark.asyncio
+  async def test_construction_issues_no_index_command(
+      self, redis_url: str, vectorizer, unique_index_name
+  ):
+    """A missing index stays missing, proving no FT.CREATE was sent."""
+    config = RedisVLCacheProviderConfig(
+        redis_url=redis_url,
+        name=unique_index_name,
+        ttl=60,
+        create_index=False,
+    )
+
+    provider = RedisVLCacheProvider(config, vectorizer=vectorizer)
+    try:
+      assert unique_index_name not in _index_names(redis_url)
+    finally:
+      await provider.close()
+
+  @pytest.mark.asyncio
+  async def test_round_trip_against_pre_provisioned_index(
+      self, redis_url: str, vectorizer, unique_index_name
+  ):
+    """An externally provisioned index serves check(), store(), and clear()."""
+    # Stand in for the platform team: provision the index out of band, then
+    # attach a second provider that is told not to manage it.
+    owner_config = RedisVLCacheProviderConfig(
+        redis_url=redis_url, name=unique_index_name, ttl=60
+    )
+    owner = RedisVLCacheProvider(owner_config, vectorizer=vectorizer)
+    assert unique_index_name in _index_names(redis_url)
+
+    attached_config = RedisVLCacheProviderConfig(
+        redis_url=redis_url,
+        name=unique_index_name,
+        ttl=60,
+        create_index=False,
+    )
+    attached = RedisVLCacheProvider(attached_config, vectorizer=vectorizer)
+    try:
+      entry_id = await attached.store("hello world", "hi there")
+      hit = await attached.check("hello world")
+      assert hit is not None
+      assert hit.response == "hi there"
+      assert entry_id is not None
+
+      # clear() must remove entries without dropping the external index.
+      await attached.clear()
+      assert await attached.check("hello world") is None
+      assert unique_index_name in _index_names(redis_url)
+    finally:
+      await attached.close()
+      await owner.clear()
+      await owner.close()
+
+  @pytest.mark.asyncio
+  async def test_delete_by_id_on_pre_provisioned_index(
+      self, redis_url: str, vectorizer, unique_index_name
+  ):
+    """Targeted invalidation works while the index is externally managed."""
+    owner_config = RedisVLCacheProviderConfig(
+        redis_url=redis_url, name=unique_index_name, ttl=60
+    )
+    owner = RedisVLCacheProvider(owner_config, vectorizer=vectorizer)
+    attached_config = RedisVLCacheProviderConfig(
+        redis_url=redis_url,
+        name=unique_index_name,
+        ttl=60,
+        create_index=False,
+    )
+    attached = RedisVLCacheProvider(attached_config, vectorizer=vectorizer)
+    try:
+      entry_id = await attached.store("what is redis", "a data store")
+      assert entry_id is not None
+
+      await attached.delete_by_id(entry_id)
+
+      assert await attached.check("what is redis") is None
+      assert unique_index_name in _index_names(redis_url)
+    finally:
+      await attached.close()
+      await owner.clear()
+      await owner.close()
+
+
+@pytest.fixture
+def restricted_acl_url(redis_url: str):
+  """Yield a Redis URL for a user granted +@read +@write and no @search.
+
+  This is the credential shape reported by customers whose search indices
+  are provisioned by a platform team: FT.INFO and FT.CREATE are denied,
+  while FT.SEARCH remains reachable through the @read category.
+  """
+  admin = redis.Redis.from_url(redis_url)
+  username = f"adk_redis_it_{uuid.uuid4().hex[:8]}"
+  password = "it-secret"
+  try:
+    admin.execute_command(
+        "ACL",
+        "SETUSER",
+        username,
+        "on",
+        f">{password}",
+        "~*",
+        "+@read",
+        "+@write",
+    )
+  except redis.exceptions.ResponseError as e:
+    admin.close()
+    pytest.skip(f"cannot provision an ACL user on this Redis: {e}")
+
+  parsed = urlparse(redis_url)
+  netloc = f"{username}:{password}@{parsed.hostname}"
+  if parsed.port:
+    netloc = f"{netloc}:{parsed.port}"
+  try:
+    yield parsed._replace(netloc=netloc).geturl()
+  finally:
+    admin.execute_command("ACL", "DELUSER", username)
+    admin.close()
+
+
+@REQUIRES_REDIS
+class TestRedisVLCacheProviderRestrictedAcl:
+  """The cache must attach to an index on a credential denied @search."""
+
+  @pytest.mark.asyncio
+  async def test_default_path_is_denied_without_search_grant(
+      self, restricted_acl_url: str, vectorizer, unique_index_name
+  ):
+    """create_index=True cannot even probe the index on this credential."""
+    config = RedisVLCacheProviderConfig(
+        redis_url=restricted_acl_url, name=unique_index_name, ttl=60
+    )
+
+    with pytest.raises(RedisSearchError) as excinfo:
+      RedisVLCacheProvider(config, vectorizer=vectorizer)
+
+    assert "FT.INFO" in str(excinfo.value)
+
+  @pytest.mark.asyncio
+  async def test_round_trip_on_restricted_acl(
+      self,
+      redis_url: str,
+      restricted_acl_url: str,
+      vectorizer,
+      unique_index_name,
+  ):
+    """A pre-provisioned index serves the full runtime path on +@read."""
+    # The platform team provisions the index with a privileged credential.
+    owner = RedisVLCacheProvider(
+        RedisVLCacheProviderConfig(
+            redis_url=redis_url, name=unique_index_name, ttl=60
+        ),
+        vectorizer=vectorizer,
+    )
+
+    attached = RedisVLCacheProvider(
+        RedisVLCacheProviderConfig(
+            redis_url=restricted_acl_url,
+            name=unique_index_name,
+            ttl=60,
+            create_index=False,
+        ),
+        vectorizer=vectorizer,
+    )
+    try:
+      entry_id = await attached.store("what is redis", "a data store")
+      assert entry_id is not None
+
+      # FT.SEARCH carries the @read category, so check() still resolves.
+      hit = await attached.check("what is redis")
+      assert hit is not None
+      assert hit.response == "a data store"
+
+      await attached.delete_by_id(entry_id)
+      assert await attached.check("what is redis") is None
+
+      # clear() takes the prefix scan path, needing no index command.
+      await attached.store("another prompt", "another response")
+      await attached.clear()
+      assert await attached.check("another prompt") is None
+      assert unique_index_name in _index_names(redis_url)
+    finally:
+      await attached.close()
+      await owner.clear()
+      await owner.close()
