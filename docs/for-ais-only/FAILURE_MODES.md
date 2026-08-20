@@ -37,7 +37,7 @@ tests in `tests/tools/test_vector_search.py::TestRedisVectorQueryConfigEpsilonRe
 
 The `redisvl.extensions.llmcache` path still works but emits a
 `DeprecationWarning`. The cache provider imports from
-`redisvl.extensions.cache.llm` (`cache/_provider.py:131`). Do not revert
+`redisvl.extensions.cache.llm` (`cache/_provider.py`). Do not revert
 to the old path; the regression test in
 `tests/cache/test_provider.py` asserts no `DeprecationWarning` fires.
 
@@ -87,3 +87,36 @@ is real. Either add a test or delete the unreachable branch.
 `sphinx-build -W` is the published build mode. Suppressing a warning to
 "make CI green" hides broken cross-references that later become 404s on
 the published docs site.
+
+## A mismatched attached index misses silently, it does not raise
+
+With `create_index=False` the cache provider attaches to an index it did
+not create, and RedisVL validates nothing about it. A wrong or absent
+index `name` raises `RedisSearchError` on the first `check()`, but a wrong
+vector dimension, key prefix, storage type, or distance metric is silent:
+entries are written, every lookup misses, and the cache adds latency
+while saving nothing. Do not "fix" this by adding an `FT.INFO` probe to
+the provider. That command is exactly what the credential is denied, and
+probing would defeat the feature. Verify the index out of band instead.
+`tests/integration/test_sql_and_cache_end_to_end.py` pins both shapes.
+
+## The cache swallows backend failures on purpose
+
+`LLMResponseCache` and `ToolCache` catch every exception from
+`provider.check()` and `provider.store()` and fall through to the model or
+the tool. This is deliberate: ADK awaits callbacks with no `try`/`except`
+and outside its own model-error handling, so a raised exception ends the
+invocation with no events emitted, discarding a response the caller
+already paid for. Do not narrow these to specific exception types to
+"surface real errors"; a cache is an optimization and must not be able to
+break an agent turn. `tests/cache/test_fail_open.py` pins this.
+
+## `overwrite` defaults to False, so a drifted schema raises
+
+`RedisVLCacheProvider` once hardcoded `overwrite=True`, which dropped and
+recreated the index on every construction. It now reuses an existing
+index, matching RedisVL's own default, so a config that no longer matches
+the index in Redis raises at construction where it previously appeared to
+succeed. That is the intended report, not a regression: the old default
+hid the real problem, leaving entries embedded by a previous model in the
+keyspace, unindexed. Set `overwrite=True` to rebuild deliberately.

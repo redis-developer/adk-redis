@@ -155,9 +155,11 @@ For a given provider instance, identifiers returned by `check()` and `store()` a
 
 | Option | Provider | Default | Description |
 |--------|----------|---------|-------------|
-| `distance_threshold` | Both | `0.1` | Max vector distance for a cache hit (lower = stricter) |
-| `ttl` | Both | `None` | Time-to-live in seconds for cache entries |
-| `name` | RedisVL | `llmcache` | Redis index name for the cache |
+| `distance_threshold` | Both | `0.1` (RedisVL), `None` (LangCache) | Max vector distance for a cache hit (lower = stricter). LangCache applies its server-side default when unset |
+| `ttl` | Both | `3600` (RedisVL), `None` (LangCache) | Time-to-live in seconds for cache entries |
+| `name` | RedisVL | `adk_semantic_cache` | Redis index name for the cache |
+| `create_index` | RedisVL | `True` | Whether RedisVL creates and validates the index. `False` attaches to an index provisioned elsewhere, for a credential denied `@search`. See the [how-to guide](../user_guide/how_to_guides/semantic_cache.md#attaching-to-a-pre-provisioned-index) |
+| `overwrite` | RedisVL | `False` | Whether to drop and recreate an existing index |
 | `redis_url` | RedisVL | `redis://localhost:6379` | Redis connection string |
 | `cache_id` | LangCache | Required | LangCache instance identifier |
 | `api_key` | LangCache | Required | LangCache API key |

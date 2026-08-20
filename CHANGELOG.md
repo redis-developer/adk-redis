@@ -11,30 +11,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - `RedisVLCacheProviderConfig.create_index` lets `RedisVLCacheProvider`
   attach to a search index provisioned outside adk-redis. With
-  `create_index=False` no index command is issued while the provider is
-  constructed, so the cache works on a credential that is denied `FT.INFO`
-  and `FT.CREATE`. The flag requires `redisvl>=0.26.0`, and requesting it on
-  an older release raises an `ImportError` naming the required version
-  instead of failing inside RedisVL. The `redisvl` floor stays at 0.18.2,
-  so the default path is unaffected.
+  `create_index=False` construction issues no index command, so the cache
+  runs on a credential denied `FT.INFO` and `FT.CREATE`. Requires
+  `redisvl>=0.26.0`; the package floor stays at 0.18.2 and the default path
+  is unchanged.
 - `RedisVLCacheProviderConfig.overwrite` exposes index overwrite as a
   configuration option.
-- The semantic cache guide documents the pre-provisioned index path, the
-  minimum ACL for each provider call, and the fact that `check()` still
-  needs `FT.SEARCH`.
 
 ### Changed
 
-- `RedisVLCacheProvider` no longer forces `overwrite=True`. An existing
-  index is now reused rather than dropped and recreated on every provider
-  construction, which removes `FT.DROPINDEX` and `FT.CREATE` from a path
-  most callers use only to read and write entries. A schema mismatch is
-  reported instead of being silently rebuilt, leaving entries embedded by a
-  different model behind. Set `overwrite=True` on
-  `RedisVLCacheProviderConfig` to restore the previous behavior.
-- Errors from RedisVL during cache construction are re-raised with the
-  `RedisVLCacheProviderConfig` fields that control the index, rather than
-  surfacing a bare RedisVL message.
+- **Breaking:** `RedisVLCacheProvider` no longer forces `overwrite=True`.
+  The default is now `False`, matching RedisVL, so an existing index is
+  reused instead of dropped and recreated on every construction. If your
+  index schema no longer matches the provider config, construction now
+  raises a `ValueError` naming `overwrite` where it previously rebuilt the
+  index silently and left entries embedded by the old model unindexed. To
+  migrate, set `overwrite=True` for one deployment to rebuild the index, or
+  drop it out of band with `FT.DROPINDEX <name>`.
+- `LLMResponseCache` and `ToolCache` no longer let a cache backend failure
+  abort the agent turn. A failed lookup falls through to the model or the
+  tool, and a failed write returns the response unchanged, both logged.
+  Previously any provider exception propagated out of the ADK callback and
+  ended the invocation with no events emitted.
+- Errors raised while RedisVL sets up the index are re-raised naming the
+  `RedisVLCacheProviderConfig` field that resolves them. A credential
+  denied `FT.INFO` is now pointed at `create_index`, and a drifted schema
+  at `overwrite`.
 - `RedisVLCacheProvider.clear()` deletes entries by scanning the cache key
   prefix when `create_index=False`, because RedisVL refuses index-wide
   destructive calls for an index it does not manage. The external index is
@@ -45,6 +47,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `RedisVLCacheProvider.close()` no longer raises `AttributeError` when the
   provider never opened a connection, which is reachable with
   `create_index=False` because construction sends nothing to Redis.
+- `RedisVLCacheProvider.clear()` no longer builds its key scan from an
+  unescaped cache name. A name containing a glob metacharacter, such as
+  `cache[ab]`, matched unrelated keys and deleted them while leaving the
+  cache's own entries in place.
+- Integration tests now run in CI, which had no Redis service, so the
+  suite silently skipped every test requiring one.
 
 ## [0.0.9] - 2026-07-31
 

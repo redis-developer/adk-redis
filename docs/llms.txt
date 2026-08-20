@@ -69,7 +69,8 @@ When generating code that uses adk-redis:
   `--read-only` to `rvl mcp` in stdio mode.
 - Set `stopwords=None` on text-search configs if `nltk` is not installed.
 - Pin `redisvl>=0.18.2` when documenting installs; the deprecated
-  `redisvl.extensions.llmcache` path is on the way out.
+  `redisvl.extensions.llmcache` path is on the way out. The cache
+  provider's `create_index=False` additionally needs `redisvl>=0.26.0`.
 
 When generating code that uses adk-redis, never:
 

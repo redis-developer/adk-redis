@@ -66,17 +66,17 @@ for a runnable version.
 
 ### Attaching to a pre-provisioned index
 
-By default the provider creates the cache index, which requires `FT.CREATE`
-and an `FT.INFO` probe to detect an existing index. Some deployments cannot
-do that from the application: a platform team provisions the index out of
-band, and the credential the agent runs under is denied index management.
-Set `create_index=False` to attach to that index instead of creating it.
+By default the provider creates the cache index, which needs `FT.CREATE` plus
+an `FT.INFO` probe to detect an existing one. Where a platform team
+provisions the index out of band and the agent credential is denied index
+management, set `create_index=False` to attach to it instead. Requires
+`redisvl>=0.26.0`.
 
 ```python
 provider = RedisVLCacheProvider(
     config=RedisVLCacheProviderConfig(
         redis_url="redis://cache-user:password@redis.internal:6379",
-        name="my_cache",  # must match the pre-provisioned index name
+        name="my_cache",  # must match the pre-provisioned index
         ttl=3600,
         distance_threshold=0.1,
         create_index=False,
@@ -85,52 +85,67 @@ provider = RedisVLCacheProvider(
 )
 ```
 
-Requires `redisvl>=0.26.0`. On older releases the provider raises an
-`ImportError` naming the required version. Leaving `create_index=True`, the
-default, keeps working on any supported `redisvl`.
+#### Provisioning the index
 
-With `create_index=False` the provider issues no index command while being
-constructed, and RedisVL validates nothing about the index it attaches to.
-The index must already exist under the same name and key prefix, over the
-same storage type, with a vector field matching the vectorizer's dimensions.
-A mismatch is not reported: queries return no results instead of failing, so
-the cache silently misses on every prompt. Verify the index yourself with
-`FT.INFO <name>` from a credential that is allowed to run it.
+RedisVL derives the schema from the cache name and the vectorizer. For
+`name="my_cache"` over a 768 dimension vectorizer, provision the equivalent
+of:
 
-`create_index=False` cannot be combined with `overwrite=True`, because
-overwrite means drop and recreate. The provider rejects that combination with
-a `ValueError` before contacting Redis.
+```
+FT.CREATE my_cache ON HASH PREFIX 1 my_cache SCHEMA
+  prompt TEXT response TEXT inserted_at NUMERIC updated_at NUMERIC
+  prompt_vector VECTOR FLAT 6 TYPE FLOAT32 DIM 768 DISTANCE_METRIC COSINE
+```
 
-#### Minimum ACL for the runtime path
+The index prefix is the bare name while entry keys are `my_cache:<entry_id>`.
+So a credential's key pattern must cover `my_cache*`, not `my_cache:*`, and a
+second cache whose name extends this one, such as `my_cache_v2`, is covered by
+this index and returns the other cache's entries as hits. Give each cache a
+name that is not a prefix of another.
 
-Measured on Redis 8.4. `FT.SEARCH` carries both the `@read` and `@search`
-categories, while `FT.CREATE` and `FT.INFO` carry only `@search`. So a
-`+@read +@write` grant is enough for the whole cache runtime path, and it is
-exactly the grant that makes the default `create_index=True` path fail.
+!!! warning "The attached index is not validated"
 
-| Provider call | Redis commands | Allowed by `+@read +@write` |
-|---------------|----------------|-----------------------------|
-| Construction, `create_index=True` | `FT.INFO`, `FT.CREATE` | No |
-| Construction, `create_index=False` | none | Yes |
-| `store()` | `HSET`, `EXPIRE` | Yes |
-| `check()` | `FT.SEARCH` | Yes |
-| `delete_by_id()` | `DEL` | Yes |
-| `clear()` | `SCAN`, `DEL` | Yes |
+    RedisVL checks nothing about an index it did not create (verified on
+    redisvl 0.26.0). Which mismatches are loud depends on the field:
 
-An ACL that revokes search explicitly, such as `+@read +@write -@search`,
-also removes `FT.SEARCH`. That credential can still write entries, but
-`check()` raises `RedisSearchError` and the cache never serves a hit, so it
-adds latency without saving any model calls. `create_index=False` removes the
-index management commands from the requirements, not the query itself.
+    - Wrong or absent `name`: `check()` raises `RedisSearchError` on the
+      first lookup.
+    - Wrong vector dimensions, key prefix, storage type, or distance
+      metric: silent. Entries are written and TTLs set, every lookup
+      misses, and the cache stops saving model calls without erroring.
 
-#### Index-wide destructive calls
+    Confirm the index with `FT.INFO <name>` from a credential allowed to run
+    it before deploying.
 
-RedisVL refuses `clear()` and `delete()` on its extensions when
-`create_index=False`, because it does not own the index lifecycle.
-`RedisVLCacheProvider.clear()` handles that case by scanning the cache key
-prefix and deleting the entry keys directly, so it needs no index command and
-leaves the externally provisioned index in place. `delete_by_id()` deletes a
-single key and is unaffected. adk-redis never drops the index.
+#### Minimum ACL
+
+Measured on Redis 8.4, where `FT.SEARCH` carries both `@read` and `@search`
+while `FT.CREATE` and `FT.INFO` carry only `@search`. So
+`+@read +@write ~my_cache*` covers the entire runtime path and only index
+creation needs `@search`: `store()` issues `HSET` and `EXPIRE`, `check()`
+issues `FT.SEARCH` plus one `EXPIRE` per hit to refresh its TTL,
+`delete_by_id()` issues `UNLINK`, and `clear()` scans the key prefix and
+deletes. Three caveats:
+
+- Because `check()` refreshes TTLs, the read path needs `@write` too. A
+  read-only credential fails on lookup, not just on write.
+- On Redis Open Source 7.x with the RediSearch module, and on Redis Software
+  or Redis Cloud databases earlier than 8.2, module commands belong to no
+  category, so the grant must name the command: `+@read +@write +FT.SEARCH`.
+- A `redis_url` naming a non-zero database also needs `+SELECT`, which is in
+  `@connection`. Keep the cache on database 0 or grant it explicitly.
+
+An ACL that revokes search explicitly, `+@read +@write -@search`, loses
+`FT.SEARCH` as well: entries still store, but every lookup fails and the
+cache never serves a hit.
+
+#### Clearing entries
+
+RedisVL refuses `clear()` and `delete()` on an index it does not manage, so
+`clear()` deletes entries by scanning the `<name>:` key prefix instead. It
+issues no index command and never drops the index; `delete_by_id()` is
+unaffected. Neither is a barrier, because `SCAN` takes no snapshot, so an
+entry written concurrently may survive a `clear()`.
 
 ---
 
@@ -192,7 +207,7 @@ for a runnable version.
 
 | Option | Provider | Default | Description |
 |--------|----------|---------|-------------|
-| `distance_threshold` | Both | `0.1` | Max vector distance for a cache hit (lower = stricter) |
+| `distance_threshold` | Both | `0.1` (RedisVL), `None` (LangCache) | Max vector distance for a cache hit (lower = stricter). LangCache applies its server-side default when unset |
 | `ttl` | Both | `3600` (RedisVL), `None` (LangCache) | Time-to-live in seconds for cache entries |
 | `name` | RedisVL | `adk_semantic_cache` | Redis index name |
 | `redis_url` | RedisVL | `redis://localhost:6379` | Redis connection string |
