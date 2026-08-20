@@ -123,7 +123,13 @@ class ToolCache:
       return None
 
     cache_key = self._build_cache_key(tool_name, args, tool_context)
-    cache_entry = await self._provider.check(cache_key)
+    try:
+      cache_entry = await self._provider.check(cache_key)
+    except Exception as e:
+      # A cache is an optimization, so a backend failure must not abort the
+      # invocation. ADK does not catch callback exceptions.
+      logger.error("Cache lookup failed, running the tool: %s", e)
+      return None
 
     if cache_entry:
       logger.info("Cache hit for tool: %s", tool_name)
@@ -169,6 +175,13 @@ class ToolCache:
     except (TypeError, ValueError):
       response_str = str(tool_response)
 
-    await self._provider.store(cache_key, response_str)
+    try:
+      await self._provider.store(cache_key, response_str)
+    except Exception as e:
+      # Returning the tool result the caller already computed matters more
+      # than caching it.
+      logger.error("Failed to cache tool result: %s", e)
+      return None
+
     logger.info("Cached result for tool: %s", tool.name)
     return None

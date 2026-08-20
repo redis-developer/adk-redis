@@ -148,7 +148,13 @@ class LLMResponseCache:
       return None
 
     cache_key = self._build_cache_key(prompt, callback_context)
-    cache_entry = await self._provider.check(cache_key)
+    try:
+      cache_entry = await self._provider.check(cache_key)
+    except Exception as e:
+      # A cache is an optimization, so a backend failure must not abort the
+      # invocation. ADK does not catch callback exceptions.
+      logger.error("Cache lookup failed, calling the model: %s", e)
+      return None
 
     if cache_entry:
       logger.info("Cache hit for prompt: %s", prompt[:50])
@@ -210,6 +216,13 @@ class LLMResponseCache:
       logger.debug("No text in response, skipping cache store")
       return None
 
-    await self._provider.store(cache_key, response_text)
+    try:
+      await self._provider.store(cache_key, response_text)
+    except Exception as e:
+      # Returning the response the caller already paid for matters more
+      # than caching it.
+      logger.error("Failed to cache response: %s", e)
+      return None
+
     logger.info("Cached response for prompt: %s", cache_key[:50])
     return None
