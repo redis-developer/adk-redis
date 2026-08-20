@@ -5,7 +5,7 @@ All notable changes to `adk-redis` are recorded in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.0.10] - 2026-08-20
 
 ### Added
 
@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `redisvl>=0.26.0`; the package floor stays at 0.18.2 and the default path
   is unchanged.
 - `RedisVLCacheProviderConfig.overwrite` exposes index overwrite as a
-  configuration option.
+  configuration option. It cannot be combined with `create_index=False`;
+  that pairing raises a `ValueError` at construction.
 - `ignore_errors` on `LLMResponseCacheConfig` and `ToolCacheConfig`
   defaults to True, logging cache backend failures and carrying on. Set it
   to False while developing to raise instead of reading a log line.
@@ -62,6 +63,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `adk_redis.adk_redis.cache.llm_cache` and configuring
   `adk_redis.cache` had no effect. Filtering on the top-level `adk_redis`
   logger is unchanged.
+
+### Documentation
+
+- New managed memory quickstart example, the smallest memory agent on the
+  managed `redis-agent-memory` backend, with no Docker or Agent Memory
+  Server required.
+- The examples index labels every example with its memory backend and its
+  runner, making clear which examples require the self-hosted
+  `opensource-agent-memory` backend.
+- The caching guides cover `create_index`, `overwrite`, and
+  `ignore_errors`.
 
 ## [0.0.9] - 2026-07-31
 
