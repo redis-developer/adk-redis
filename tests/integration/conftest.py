@@ -23,7 +23,7 @@ import uuid
 import pytest
 
 pytest.importorskip("redisvl")
-pytest.importorskip("redis")
+redis = pytest.importorskip("redis")
 
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6399")
@@ -32,8 +32,6 @@ REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6399")
 def _redis_reachable(url: str) -> bool:
   """Return True if a Redis instance with FT module is reachable at url."""
   try:
-    import redis
-
     client = redis.Redis.from_url(url, socket_timeout=1.0)
     client.ping()
     modules = client.module_list()
@@ -104,8 +102,6 @@ def unique_index_name():
   covers derived names such as "<name>_v2", so a reused Redis does not
   accumulate indices across runs.
   """
-  import redis
-
   name = f"adk_redis_it_{uuid.uuid4().hex[:8]}"
   try:
     yield name
@@ -144,8 +140,6 @@ def restricted_acl_url(redis_url: str):
   when the server will not provision such a user, or when it does not
   categorize FT.INFO the way this fixture's callers expect.
   """
-  import redis
-
   admin = redis.Redis.from_url(redis_url)
   username = f"acl_probe_{uuid.uuid4().hex[:8]}"
   password = uuid.uuid4().hex

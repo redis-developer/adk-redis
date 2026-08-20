@@ -141,6 +141,12 @@ class LLMResponseCache:
     Returns:
         LlmResponse if cache hit, None to proceed with LLM call.
     """
+    # Any key still pending for this session belongs to an earlier turn
+    # whose after-model callback never ran, for instance because the model
+    # call raised. Drop it here so no later path can pop it and cache this
+    # turn's response under the earlier turn's prompt.
+    self._pending_prompts.pop(self._get_session_key(callback_context), None)
+
     if self._config.first_message_only and not self._is_first_message(
         callback_context
     ):

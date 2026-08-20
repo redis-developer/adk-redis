@@ -122,6 +122,11 @@ class ToolCache:
     Returns:
         Dict if cache hit (skips tool execution), None to proceed.
     """
+    # Any key still pending for this context belongs to an earlier call
+    # whose after-tool callback never ran. Drop it here so no later path
+    # can pop it and cache this result under the earlier call's key.
+    self._pending_calls.pop(self._get_session_key(tool_context), None)
+
     tool_name = tool.name
     if not self._should_cache_tool(tool_name):
       logger.debug("Tool %s not in cache list, skipping", tool_name)

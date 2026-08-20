@@ -70,6 +70,45 @@ class _BrokenProvider(BaseCacheProvider):
     return None
 
 
+class _RecordingProvider(BaseCacheProvider):
+  """A provider that records writes and can be made to fail lookups."""
+
+  def __init__(self) -> None:
+    self.fail_check = False
+    self.stored: list[tuple[str, str]] = []
+
+  async def check(self, prompt: str, **kwargs: Any) -> Optional[CacheEntry]:
+    if self.fail_check:
+      raise RuntimeError("backend unreachable")
+    return None
+
+  async def store(
+      self,
+      prompt: str,
+      response: str,
+      metadata: Optional[dict[str, Any]] = None,
+      **kwargs: Any,
+  ) -> Optional[str]:
+    self.stored.append((prompt, response))
+    return "entry-1"
+
+  async def delete_by_id(self, entry_id: str, **kwargs: Any) -> None:
+    return None
+
+  async def clear(self, **kwargs: Any) -> None:
+    return None
+
+  async def close(self) -> None:
+    return None
+
+
+def _model_response(text: str) -> LlmResponse:
+  """Build a model response carrying a single text part."""
+  return LlmResponse(
+      content=types.Content(role="model", parts=[types.Part(text=text)])
+  )
+
+
 def _callback_context() -> MagicMock:
   """Build a callback context with no session history."""
   context = MagicMock()
@@ -195,3 +234,63 @@ class TestIgnoreErrorsDisabled:
       await cache.before_tool_callback(
           tool=tool, args={"city": "London"}, tool_context=MagicMock()
       )
+
+
+@pytest.mark.asyncio
+class TestPendingStateIsNotReusedAcrossTurns:
+  """A turn must never cache its response under an earlier turn's key.
+
+  The pending key registered on a cache miss is popped by the after
+  callback. If the call in between raises, that key survives, and any
+  later turn that returns early without registering its own key would
+  otherwise have its response stored against the stale one.
+  """
+
+  async def test_llm_cache_does_not_store_under_a_stale_key(self):
+    """A failed lookup discards the earlier turn's pending prompt."""
+    provider = _RecordingProvider()
+    cache = LLMResponseCache(
+        provider=provider,
+        config=LLMResponseCacheConfig(first_message_only=False),
+    )
+    context = _callback_context()
+
+    # Turn one misses, registering a pending prompt, then its model call
+    # fails so the after callback never runs.
+    await cache.before_model_callback(context, _user_request("prompt one"))
+
+    # Turn two cannot reach the backend and falls through to the model.
+    provider.fail_check = True
+    await cache.before_model_callback(context, _user_request("prompt two"))
+    provider.fail_check = False
+
+    await cache.after_model_callback(context, _model_response("response two"))
+
+    assert provider.stored == []
+
+  async def test_tool_cache_does_not_store_under_a_stale_key(self):
+    """A failed lookup discards the earlier call's pending key."""
+    provider = _RecordingProvider()
+    cache = ToolCache(provider=provider)
+    tool = MagicMock()
+    tool.name = "get_weather"
+    tool_context = MagicMock()
+
+    await cache.before_tool_callback(
+        tool=tool, args={"city": "London"}, tool_context=tool_context
+    )
+
+    provider.fail_check = True
+    await cache.before_tool_callback(
+        tool=tool, args={"city": "Paris"}, tool_context=tool_context
+    )
+    provider.fail_check = False
+
+    await cache.after_tool_callback(
+        tool=tool,
+        args={"city": "Paris"},
+        tool_context=tool_context,
+        tool_response={"temp": 12},
+    )
+
+    assert provider.stored == []
