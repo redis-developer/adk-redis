@@ -16,20 +16,22 @@
 
 from __future__ import annotations
 
-import inspect
+import importlib.metadata
 from typing import Any, Optional
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
 import warnings
 
+from packaging.requirements import Requirement
 import pytest
 
 pytest.importorskip("redisvl")
 
 from redisvl.extensions.cache.llm import SemanticCache
 
-from adk_redis.cache._provider import _redisvl_supports_create_index
+from adk_redis.cache._provider import _accepts_create_index
+from adk_redis.cache._provider import _escape_glob
 from adk_redis.cache._provider import BaseCacheProvider
 from adk_redis.cache._provider import CacheEntry
 from adk_redis.cache._provider import LangCacheProvider
@@ -225,11 +227,18 @@ class TestLangCacheProviderEntryIds:
 
 def _make_redisvl_provider(
     mock_vectorizer: MagicMock,
+    config: Optional[RedisVLCacheProviderConfig] = None,
 ) -> tuple[RedisVLCacheProvider, MagicMock]:
-  """Build a RedisVLCacheProvider around a mocked SemanticCache."""
-  config = RedisVLCacheProviderConfig(name="test_cache")
-  with patch("redisvl.extensions.cache.llm.SemanticCache") as mock_cls:
-    mock_cache = MagicMock()
+  """Build a RedisVLCacheProvider around a mocked SemanticCache.
+
+  The mock is spec'd so that a RedisVL release removing a method this
+  provider calls fails here rather than in production.
+  """
+  config = config or RedisVLCacheProviderConfig(name="test_cache")
+  with patch(
+      "redisvl.extensions.cache.llm.SemanticCache", autospec=True
+  ) as mock_cls:
+    mock_cache = MagicMock(spec=SemanticCache)
     mock_cls.return_value = mock_cache
     provider = RedisVLCacheProvider(config, vectorizer=mock_vectorizer)
   return provider, mock_cache
@@ -260,6 +269,7 @@ class TestRedisVLCacheProviderEntryIds:
     """store() normalizes the backend Redis key to its entry ID."""
     provider, mock_cache = _make_redisvl_provider(mock_vectorizer)
     mock_cache.store.return_value = "test_cache:abc123"
+    mock_cache._get_prefix.return_value = "test_cache:"
 
     entry_id = await provider.store("prompt", "response")
 
@@ -279,28 +289,18 @@ class TestRedisVLCacheProviderCreateIndex:
 
   redisvl 0.26.0 added create_index. With create_index=False the RedisVL
   cache issues no index command at construction, so the provider works on a
-  credential that is denied FT.INFO and FT.CREATE.
+  credential that is denied FT.INFO and FT.CREATE. That construction is
+  proven against real Redis in the integration suite; these tests cover the
+  guards that run before RedisVL is reached.
   """
-
-  def test_create_index_false_is_forwarded(self, mock_vectorizer):
-    """create_index=False reaches SemanticCache with overwrite off."""
-    config = RedisVLCacheProviderConfig(
-        name="external_cache", create_index=False
-    )
-
-    with patch("redisvl.extensions.cache.llm.SemanticCache") as mock_cls:
-      RedisVLCacheProvider(config, vectorizer=mock_vectorizer)
-
-    _, kwargs = mock_cls.call_args
-    assert kwargs["create_index"] is False
-    assert kwargs["overwrite"] is False
-    assert kwargs["name"] == "external_cache"
 
   def test_create_index_false_with_overwrite_is_rejected(self, mock_vectorizer):
     """The contradiction is refused before any index command is issued."""
     config = RedisVLCacheProviderConfig(create_index=False, overwrite=True)
 
-    with patch("redisvl.extensions.cache.llm.SemanticCache") as mock_cls:
+    with patch(
+        "redisvl.extensions.cache.llm.SemanticCache", autospec=True
+    ) as mock_cls:
       with pytest.raises(ValueError) as excinfo:
         RedisVLCacheProvider(config, vectorizer=mock_vectorizer)
 
@@ -310,15 +310,20 @@ class TestRedisVLCacheProviderCreateIndex:
     mock_cls.assert_not_called()
 
   def test_create_index_false_requires_redisvl_026(self, mock_vectorizer):
-    """An older redisvl reports the required version, not an AttributeError."""
+    """An older redisvl reports the required version, not a silent no-op.
+
+    redisvl 0.18.2 accepts **kwargs, so an unrecognized create_index would
+    be swallowed and the provider would manage the index anyway.
+    """
     config = RedisVLCacheProviderConfig(create_index=False)
 
     with patch(
-        "adk_redis.cache._provider._redisvl_supports_create_index",
-        return_value=False,
+        "adk_redis.cache._provider._accepts_create_index", return_value=False
     ):
-      with patch("redisvl.extensions.cache.llm.SemanticCache") as mock_cls:
-        with pytest.raises(ImportError) as excinfo:
+      with patch(
+          "redisvl.extensions.cache.llm.SemanticCache", autospec=True
+      ) as mock_cls:
+        with pytest.raises(ValueError) as excinfo:
           RedisVLCacheProvider(config, vectorizer=mock_vectorizer)
 
     assert "redisvl>=0.26.0" in str(excinfo.value)
@@ -329,103 +334,89 @@ class TestRedisVLCacheProviderCreateIndex:
     config = RedisVLCacheProviderConfig()
 
     with patch(
-        "adk_redis.cache._provider._redisvl_supports_create_index",
-        return_value=False,
+        "adk_redis.cache._provider._accepts_create_index", return_value=False
     ):
-      with patch("redisvl.extensions.cache.llm.SemanticCache") as mock_cls:
+      with patch(
+          "redisvl.extensions.cache.llm.SemanticCache", autospec=True
+      ) as mock_cls:
         RedisVLCacheProvider(config, vectorizer=mock_vectorizer)
 
     _, kwargs = mock_cls.call_args
     assert "create_index" not in kwargs
 
-  def test_redisvl_value_error_is_reraised_with_config_guidance(
-      self, mock_vectorizer
-  ):
-    """A RedisVL rejection names the config fields that control the index."""
-    config = RedisVLCacheProviderConfig(name="mismatched")
+  def test_bad_redis_url_error_is_not_relabeled(self, mock_vectorizer):
+    """Only a schema mismatch gets index-configuration advice.
 
-    with patch("redisvl.extensions.cache.llm.SemanticCache") as mock_cls:
-      mock_cls.side_effect = ValueError(
-          "Existing index mismatched schema does not match."
-      )
-      with pytest.raises(ValueError) as excinfo:
-        RedisVLCacheProvider(config, vectorizer=mock_vectorizer)
+    A malformed redis_url already names the field to fix, so rewriting it
+    as an index problem would point the caller at the wrong knob.
+    """
+    config = RedisVLCacheProviderConfig(redis_url="http://not-a-redis-url")
+    mock_vectorizer.dims = 384
+    mock_vectorizer.dtype = "float32"
+
+    with pytest.raises(ValueError) as excinfo:
+      RedisVLCacheProvider(config, vectorizer=mock_vectorizer)
 
     message = str(excinfo.value)
-    assert "mismatched" in message
-    assert "RedisVLCacheProviderConfig" in message
-    assert "overwrite" in message
-    assert isinstance(excinfo.value.__cause__, ValueError)
+    assert "scheme" in message.lower()
+    assert "overwrite" not in message
+    assert "create_index" not in message
 
-  def test_supports_create_index_matches_installed_redisvl(self):
-    """The capability probe agrees with the installed SemanticCache."""
-    signature = inspect.signature(SemanticCache.__init__)
-    assert _redisvl_supports_create_index() == (
-        "create_index" in signature.parameters
-    )
+  def test_probe_reads_the_constructor_signature(self):
+    """The probe asks the class it is about to call, not a proxy constant."""
+
+    class WithoutFlag:
+
+      def __init__(self, name: str):
+        pass
+
+    assert _accepts_create_index(SemanticCache) is True
+    assert _accepts_create_index(WithoutFlag) is False
+
+  def test_escape_glob_neutralizes_metacharacters(self):
+    """A cache name cannot widen the SCAN pattern used by clear().
+
+    Unescaped, "cache[ab]:*" matches unrelated cachea: and cacheb: keys
+    while missing the cache's own keys, so clear() would delete the wrong
+    entries.
+    """
+    assert _escape_glob("plain_cache") == "plain_cache"
+    assert _escape_glob("cache[ab]") == "cache\\[ab\\]"
+    assert _escape_glob("ca*che?") == "ca\\*che\\?"
 
 
 @pytest.mark.asyncio
 class TestRedisVLCacheProviderClear:
-  """clear() must work for both managed and externally managed indices."""
+  """clear() must not take the external path for a managed index."""
 
   async def test_clear_delegates_to_redisvl_when_managed(self, mock_vectorizer):
-    """The default path still calls SemanticCache.clear()."""
+    """The default path calls SemanticCache.clear() rather than scanning."""
     provider, mock_cache = _make_redisvl_provider(mock_vectorizer)
 
     await provider.clear()
 
     mock_cache.clear.assert_called_once_with()
+    mock_cache._get_redis_client.assert_not_called()
 
-  async def test_clear_scans_keys_for_external_index(self, mock_vectorizer):
-    """An external index is left in place while its entries are deleted."""
-    config = RedisVLCacheProviderConfig(
-        name="external_cache", create_index=False
+
+def test_version_gate_is_still_load_bearing():
+  """Delete the capability probe once the redisvl floor reaches 0.26.0.
+
+  _accepts_create_index and its ValueError branch exist only so the
+  declared floor can stay below the release that added create_index. This
+  test fails when that is no longer true, so the dead code goes with it.
+  """
+  specifiers = [
+      Requirement(req).specifier
+      for req in importlib.metadata.requires("adk-redis") or ()
+      if Requirement(req).name == "redisvl"
+  ]
+  assert specifiers, "adk-redis declares no redisvl requirement"
+
+  for specifier in specifiers:
+    assert specifier.contains("0.25.1"), (
+        "The declared redisvl floor no longer admits releases without"
+        " create_index, so _accepts_create_index and the version branch in"
+        " cache/_provider.py are dead code. Delete them and pass"
+        " create_index unconditionally."
     )
-    with patch("redisvl.extensions.cache.llm.SemanticCache") as mock_cls:
-      mock_cache = MagicMock()
-      mock_cache._get_redis_client.return_value.scan_iter.return_value = iter(
-          ["external_cache:a", "external_cache:b"]
-      )
-      mock_cls.return_value = mock_cache
-      provider = RedisVLCacheProvider(config, vectorizer=mock_vectorizer)
-
-    await provider.clear()
-
-    client = mock_cache._get_redis_client.return_value
-    _, scan_kwargs = client.scan_iter.call_args
-    assert scan_kwargs["match"] == "external_cache:*"
-    client.delete.assert_called_once_with(
-        "external_cache:a", "external_cache:b"
-    )
-    mock_cache.clear.assert_not_called()
-
-  async def test_delete_by_id_still_works_for_external_index(
-      self, mock_vectorizer
-  ):
-    """Targeted invalidation needs no index command, so it stays available."""
-    config = RedisVLCacheProviderConfig(create_index=False)
-    with patch("redisvl.extensions.cache.llm.SemanticCache") as mock_cls:
-      mock_cache = MagicMock()
-      mock_cls.return_value = mock_cache
-      provider = RedisVLCacheProvider(config, vectorizer=mock_vectorizer)
-
-    await provider.delete_by_id("abc123")
-
-    mock_cache.drop.assert_called_once_with(ids=["abc123"])
-
-  async def test_close_disconnects_without_a_live_client(self, mock_vectorizer):
-    """close() must not assume a client exists.
-
-    With create_index=False construction sends no command, so RedisVL may
-    never have opened a connection by the time close() runs.
-    """
-    config = RedisVLCacheProviderConfig(create_index=False)
-    with patch("redisvl.extensions.cache.llm.SemanticCache") as mock_cls:
-      mock_cache = MagicMock()
-      mock_cls.return_value = mock_cache
-      provider = RedisVLCacheProvider(config, vectorizer=mock_vectorizer)
-
-    await provider.close()
-
-    mock_cache.disconnect.assert_called_once_with()

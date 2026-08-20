@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import urlparse
 import uuid
 
 import pytest
@@ -111,3 +112,64 @@ def unique_namespace() -> str:
 def unique_user_id() -> str:
   """Unique owner/user ID to isolate memory-backend test runs."""
   return f"user_{uuid.uuid4().hex[:8]}"
+
+
+@pytest.fixture
+def restricted_acl_url(redis_url: str):
+  """Yield a Redis URL for a user granted +@read +@write and no @search.
+
+  This is the credential shape reported by customers whose search indices
+  are provisioned by a platform team: FT.INFO and FT.CREATE are denied,
+  while FT.SEARCH stays reachable through the @read category on Redis 8.2
+  and later. Skips when the server will not provision such a user, or when
+  it does not categorize FT.INFO the way this fixture's callers expect.
+  """
+  import redis
+
+  admin = redis.Redis.from_url(redis_url)
+  username = f"acl_probe_{uuid.uuid4().hex[:8]}"
+  password = uuid.uuid4().hex
+  try:
+    admin.execute_command(
+        "ACL",
+        "SETUSER",
+        username,
+        "on",
+        f">{password}",
+        "~*",
+        "+@read",
+        "+@write",
+    )
+  except redis.exceptions.ResponseError as e:
+    admin.close()
+    pytest.skip(f"cannot provision an ACL user on this Redis: {e}")
+
+  parsed = urlparse(redis_url)
+  netloc = f"{username}:{password}@{parsed.hostname}"
+  if parsed.port:
+    netloc = f"{netloc}:{parsed.port}"
+  url = parsed._replace(netloc=netloc).geturl()
+
+  try:
+    # Older servers and some managed flavors do not put module commands in
+    # any ACL category, so confirm the grant actually withholds FT.INFO
+    # before a caller asserts on that.
+    scoped = redis.Redis.from_url(url)
+    try:
+      denied = False
+      try:
+        scoped.execute_command("FT.INFO", "acl_probe_missing_index")
+      except redis.exceptions.ResponseError as e:
+        # An allowed FT.INFO reports an unknown index instead. redis-py
+        # strips the NOPERM prefix, so match on the message body.
+        denied = "no permissions" in str(e).lower()
+    finally:
+      scoped.close()
+    if not denied:
+      pytest.skip("FT.INFO is not denied by +@read +@write on this Redis")
+    yield url
+  finally:
+    try:
+      admin.execute_command("ACL", "DELUSER", username)
+    finally:
+      admin.close()
