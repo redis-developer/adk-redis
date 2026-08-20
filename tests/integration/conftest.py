@@ -138,11 +138,11 @@ def unique_user_id() -> str:
 def restricted_acl_url(redis_url: str):
   """Yield a Redis URL for a user granted +@read +@write and no @search.
 
-  This is the credential shape reported by customers whose search indices
-  are provisioned by a platform team: FT.INFO and FT.CREATE are denied,
-  while FT.SEARCH stays reachable through the @read category on Redis 8.2
-  and later. Skips when the server will not provision such a user, or when
-  it does not categorize FT.INFO the way this fixture's callers expect.
+  This is the credential shape used where search indices are provisioned
+  by a platform team: FT.INFO and FT.CREATE are denied, while FT.SEARCH
+  stays reachable through the @read category on Redis 8.2 and later. Skips
+  when the server will not provision such a user, or when it does not
+  categorize FT.INFO the way this fixture's callers expect.
   """
   import redis
 
