@@ -97,9 +97,29 @@ def redis_url() -> str:
 
 
 @pytest.fixture
-def unique_index_name() -> str:
-  """Unique index name to isolate test runs."""
-  return f"adk_redis_it_{uuid.uuid4().hex[:8]}"
+def unique_index_name():
+  """Unique index name to isolate test runs.
+
+  Every index whose name starts with this one is dropped afterwards, which
+  covers derived names such as "<name>_v2", so a reused Redis does not
+  accumulate indices across runs.
+  """
+  import redis
+
+  name = f"adk_redis_it_{uuid.uuid4().hex[:8]}"
+  try:
+    yield name
+  finally:
+    if REDIS_OK:
+      client = redis.Redis.from_url(REDIS_URL)
+      try:
+        for existing in client.execute_command("FT._LIST"):
+          if isinstance(existing, bytes):
+            existing = existing.decode()
+          if str(existing).startswith(name):
+            client.execute_command("FT.DROPINDEX", existing, "DD")
+      finally:
+        client.close()
 
 
 @pytest.fixture

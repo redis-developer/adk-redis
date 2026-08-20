@@ -367,6 +367,8 @@ class TestRedisVLCacheProviderExternalIndex:
       with pytest.raises(RedisSearchError, match="No such index"):
         await attached.check("what is redis")
     finally:
+      # The prefix scan needs no index, so it reclaims the written entry.
+      await attached.clear()
       await attached.close()
 
   @pytest.mark.asyncio
