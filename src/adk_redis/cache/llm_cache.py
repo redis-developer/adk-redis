@@ -28,7 +28,7 @@ from pydantic import Field
 
 from ._provider import BaseCacheProvider
 
-logger = logging.getLogger("adk_redis." + __name__)
+logger = logging.getLogger(__name__)
 
 
 class LLMResponseCacheConfig(BaseModel):
@@ -39,12 +39,17 @@ class LLMResponseCacheConfig(BaseModel):
       include_app_name: Include app name in cache key.
       include_user_id: Include user ID in cache key.
       include_session_id: Include session ID in cache key.
+      ignore_errors: Log cache backend failures and carry on with the model
+          call instead of raising. Leave True in production, where a cache
+          must not be able to break an agent turn. Set False while
+          developing to see the failure instead of a log line.
   """
 
   first_message_only: bool = Field(default=True)
   include_app_name: bool = Field(default=True)
   include_user_id: bool = Field(default=True)
   include_session_id: bool = Field(default=False)
+  ignore_errors: bool = Field(default=True)
 
 
 class LLMResponseCache:
@@ -153,7 +158,11 @@ class LLMResponseCache:
     except Exception as e:
       # A cache is an optimization, so a backend failure must not abort the
       # invocation. ADK does not catch callback exceptions.
-      logger.error("Cache lookup failed, calling the model: %s", e)
+      if not self._config.ignore_errors:
+        raise
+      logger.error(
+          "Cache lookup failed, calling the model: %s", e, exc_info=True
+      )
       return None
 
     if cache_entry:
@@ -221,7 +230,9 @@ class LLMResponseCache:
     except Exception as e:
       # Returning the response the caller already paid for matters more
       # than caching it.
-      logger.error("Failed to cache response: %s", e)
+      if not self._config.ignore_errors:
+        raise
+      logger.error("Failed to cache response: %s", e, exc_info=True)
       return None
 
     logger.info("Cached response for prompt: %s", cache_key[:50])

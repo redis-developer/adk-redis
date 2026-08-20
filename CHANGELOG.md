@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   is unchanged.
 - `RedisVLCacheProviderConfig.overwrite` exposes index overwrite as a
   configuration option.
+- `ignore_errors` on `LLMResponseCacheConfig` and `ToolCacheConfig`
+  defaults to True, logging cache backend failures and carrying on. Set it
+  to False while developing to raise instead of reading a log line.
 
 ### Changed
 
@@ -53,6 +56,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   cache's own entries in place.
 - Integration tests now run in CI, which had no Redis service, so the
   suite silently skipped every test requiring one.
+- Loggers are no longer named with a doubled package prefix. Every module
+  built its logger as `"adk_redis." + __name__` while `__name__` already
+  began with `adk_redis`, so the real logger was
+  `adk_redis.adk_redis.cache.llm_cache` and configuring
+  `adk_redis.cache` had no effect. Filtering on the top-level `adk_redis`
+  logger is unchanged.
 
 ## [0.0.9] - 2026-07-31
 

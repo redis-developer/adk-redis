@@ -29,7 +29,7 @@ from pydantic import BaseModel
 from pydantic import Field
 from pydantic import SecretStr
 
-logger = logging.getLogger("adk_redis." + __name__)
+logger = logging.getLogger(__name__)
 
 # redisvl release that introduced the create_index flag on its extensions.
 _CREATE_INDEX_MIN_REDISVL = "0.26.0"

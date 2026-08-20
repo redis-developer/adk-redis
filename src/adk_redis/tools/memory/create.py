@@ -28,7 +28,7 @@ from adk_redis.memory._utils import stable_memory_id
 from adk_redis.tools.memory._base import BaseMemoryTool
 from adk_redis.tools.memory._config import MemoryToolConfig
 
-logger = logging.getLogger("adk_redis." + __name__)
+logger = logging.getLogger(__name__)
 
 
 class CreateMemoryTool(BaseMemoryTool):

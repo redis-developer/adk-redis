@@ -139,6 +139,26 @@ An ACL that revokes search explicitly, `+@read +@write -@search`, loses
 `FT.SEARCH` as well: entries still store, but every lookup fails and the
 cache never serves a hit.
 
+#### Seeing failures while developing
+
+A cache backend failure is logged and the turn proceeds, so a broken cache
+costs latency rather than breaking the agent. That also means a
+misconfiguration can read as "caching just isn't working". While developing,
+set `ignore_errors=False` to raise instead:
+
+```python
+llm_cache = LLMResponseCache(
+    provider=provider,
+    config=LLMResponseCacheConfig(ignore_errors=False),
+)
+```
+
+Misconfiguration is still loud by default: a bad `redis_url`, a schema
+mismatch, a denied `FT.INFO`, or a too-old redisvl all raise when the
+provider is constructed. Only runtime lookup and store failures are
+absorbed. To turn up the logs instead, raise the verbosity of the
+`adk_redis.cache` logger.
+
 #### Clearing entries
 
 RedisVL refuses `clear()` and `delete()` on an index it does not manage, so
@@ -216,3 +236,4 @@ for a runnable version.
 | `cache_id` | LangCache | Required | LangCache instance identifier |
 | `api_key` | LangCache | Required | LangCache API key |
 | `first_message_only` | Cache config | `True` | Only cache the first message per session |
+| `ignore_errors` | Cache config | `True` | Log cache backend failures and carry on. Set `False` while developing to raise instead |

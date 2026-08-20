@@ -109,7 +109,10 @@ and outside its own model-error handling, so a raised exception ends the
 invocation with no events emitted, discarding a response the caller
 already paid for. Do not narrow these to specific exception types to
 "surface real errors"; a cache is an optimization and must not be able to
-break an agent turn. `tests/cache/test_fail_open.py` pins this.
+break an agent turn. Developers who want the exception set
+`ignore_errors=False` on `LLMResponseCacheConfig` or `ToolCacheConfig`.
+Construction errors are never absorbed. `tests/cache/test_fail_open.py`
+pins both paths.
 
 ## `overwrite` defaults to False, so a drifted schema raises
 

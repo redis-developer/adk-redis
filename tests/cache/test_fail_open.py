@@ -34,7 +34,9 @@ import pytest
 from adk_redis.cache._provider import BaseCacheProvider
 from adk_redis.cache._provider import CacheEntry
 from adk_redis.cache.llm_cache import LLMResponseCache
+from adk_redis.cache.llm_cache import LLMResponseCacheConfig
 from adk_redis.cache.tool_cache import ToolCache
+from adk_redis.cache.tool_cache import ToolCacheConfig
 
 
 class _BrokenProvider(BaseCacheProvider):
@@ -83,15 +85,9 @@ class TestLLMResponseCacheFailsOpen:
     """A failed lookup returns None so ADK proceeds with the LLM call."""
     provider = _BrokenProvider()
     cache = LLMResponseCache(provider=provider)
-    request = LlmRequest(
-        contents=[
-            types.Content(
-                role="user", parts=[types.Part(text="What is Redis?")]
-            )
-        ]
+    result = await cache.before_model_callback(
+        _callback_context(), _user_request()
     )
-
-    result = await cache.before_model_callback(_callback_context(), request)
 
     assert result is None
     assert provider.check_calls == 1
@@ -101,13 +97,7 @@ class TestLLMResponseCacheFailsOpen:
     provider = _BrokenProvider()
     cache = LLMResponseCache(provider=provider)
     context = _callback_context()
-    request = LlmRequest(
-        contents=[
-            types.Content(
-                role="user", parts=[types.Part(text="What is Redis?")]
-            )
-        ]
-    )
+    request = _user_request()
     response = LlmResponse(
         content=types.Content(
             role="model", parts=[types.Part(text="An in-memory data store.")]
@@ -128,6 +118,13 @@ class TestLLMResponseCacheFailsOpen:
 async def _miss(prompt: str, **kwargs: Any) -> Optional[CacheEntry]:
   """Stand in for a lookup that completes and finds nothing."""
   return None
+
+
+def _user_request(text: str = "What is Redis?") -> LlmRequest:
+  """Build a request carrying a single user turn."""
+  return LlmRequest(
+      contents=[types.Content(role="user", parts=[types.Part(text=text)])]
+  )
 
 
 @pytest.mark.asyncio
@@ -169,3 +166,32 @@ class TestToolCacheFailsOpen:
 
     assert result is None
     assert provider.store_calls == 1
+
+
+@pytest.mark.asyncio
+class TestIgnoreErrorsDisabled:
+  """ignore_errors=False lets a developer see the failure directly."""
+
+  async def test_llm_cache_raises_when_errors_are_not_ignored(self):
+    """The provider's exception reaches the caller unchanged."""
+    cache = LLMResponseCache(
+        provider=_BrokenProvider(),
+        config=LLMResponseCacheConfig(ignore_errors=False),
+    )
+
+    with pytest.raises(RuntimeError, match="backend unreachable"):
+      await cache.before_model_callback(_callback_context(), _user_request())
+
+  async def test_tool_cache_raises_when_errors_are_not_ignored(self):
+    """The provider's exception reaches the caller unchanged."""
+    cache = ToolCache(
+        provider=_BrokenProvider(),
+        config=ToolCacheConfig(ignore_errors=False),
+    )
+    tool = MagicMock()
+    tool.name = "get_weather"
+
+    with pytest.raises(RuntimeError, match="backend unreachable"):
+      await cache.before_tool_callback(
+          tool=tool, args={"city": "London"}, tool_context=MagicMock()
+      )

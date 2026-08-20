@@ -163,6 +163,7 @@ For a given provider instance, identifiers returned by `check()` and `store()` a
 | `redis_url` | RedisVL | `redis://localhost:6379` | Redis connection string |
 | `cache_id` | LangCache | Required | LangCache instance identifier |
 | `api_key` | LangCache | Required | LangCache API key |
+| `ignore_errors` | Cache config | `True` | Log cache backend failures and carry on with the model or tool call |
 | `use_exact_search` | LangCache | `True` | Enable exact (hash) matching in addition to semantic |
 | `use_semantic_search` | LangCache | `True` | Enable semantic (vector) matching |
 
