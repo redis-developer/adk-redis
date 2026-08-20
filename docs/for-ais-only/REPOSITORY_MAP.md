@@ -36,7 +36,8 @@ src/adk_redis/
 
   cache/
     __init__.py           Re-exports the cache providers.
-    _provider.py          Provider protocol and base class.
+    _provider.py          Provider base class plus the RedisVL and
+                          LangCache implementations.
     llm_cache.py          Wraps an LLM call site with semantic caching.
     tool_cache.py         Wraps a tool call site with semantic caching.
     callbacks.py          ADK callback hooks for cache integration.
@@ -68,7 +69,9 @@ tests/
     test_search_tools_end_to_end.py    Real Redis 8.4: vector/text/range/
                                        native hybrid round-trips.
     test_sql_and_cache_end_to_end.py   Real Redis 8.4: SQL SELECT with
-                                       params, cache round-trip.
+                                       params, cache round-trip,
+                                       pre-provisioned index, and an
+                                       ACL-restricted credential.
     test_adk_agent_registration.py     Tools register with google.adk.Agent
                                        and surface via canonical_tools().
 ```

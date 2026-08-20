@@ -43,7 +43,7 @@ from adk_redis.memory._utils import read_field
 from adk_redis.memory._utils import sanitize_managed_identifier
 from adk_redis.memory._utils import stable_memory_id
 
-logger = logging.getLogger("adk_redis." + __name__)
+logger = logging.getLogger(__name__)
 
 try:
   _agent_memory_client_module = import_module("agent_memory_client")

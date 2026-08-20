@@ -28,7 +28,7 @@ from adk_redis.memory._utils import read_field
 from adk_redis.tools.memory._base import BaseMemoryTool
 from adk_redis.tools.memory._config import MemoryToolConfig
 
-logger = logging.getLogger("adk_redis." + __name__)
+logger = logging.getLogger(__name__)
 
 _PREFLIGHT_BATCH_SIZE = 10
 

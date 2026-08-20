@@ -27,7 +27,7 @@ from pydantic import Field
 
 from ._provider import BaseCacheProvider
 
-logger = logging.getLogger("adk_redis." + __name__)
+logger = logging.getLogger(__name__)
 
 
 class ToolCacheConfig(BaseModel):
@@ -38,12 +38,17 @@ class ToolCacheConfig(BaseModel):
       include_app_name: Include app name in cache key.
       include_user_id: Include user ID in cache key.
       include_session_id: Include session ID in cache key.
+      ignore_errors: Log cache backend failures and carry on with the tool
+          call instead of raising. Leave True in production, where a cache
+          must not be able to break an agent turn. Set False while
+          developing to see the failure instead of a log line.
   """
 
   tool_names: Optional[Set[str]] = Field(default=None)
   include_app_name: bool = Field(default=True)
   include_user_id: bool = Field(default=True)
   include_session_id: bool = Field(default=False)
+  ignore_errors: bool = Field(default=True)
 
 
 class ToolCache:
@@ -117,13 +122,28 @@ class ToolCache:
     Returns:
         Dict if cache hit (skips tool execution), None to proceed.
     """
+    # Any key still pending for this context belongs to an earlier call
+    # whose after-tool callback never ran. Drop it here so no later path
+    # can pop it and cache this result under the earlier call's key.
+    self._pending_calls.pop(self._get_session_key(tool_context), None)
+
     tool_name = tool.name
     if not self._should_cache_tool(tool_name):
       logger.debug("Tool %s not in cache list, skipping", tool_name)
       return None
 
     cache_key = self._build_cache_key(tool_name, args, tool_context)
-    cache_entry = await self._provider.check(cache_key)
+    try:
+      cache_entry = await self._provider.check(cache_key)
+    except Exception as e:
+      # A cache is an optimization, so a backend failure must not abort the
+      # invocation. ADK does not catch callback exceptions.
+      if not self._config.ignore_errors:
+        raise
+      logger.error(
+          "Cache lookup failed, running the tool: %s", e, exc_info=True
+      )
+      return None
 
     if cache_entry:
       logger.info("Cache hit for tool: %s", tool_name)
@@ -169,6 +189,15 @@ class ToolCache:
     except (TypeError, ValueError):
       response_str = str(tool_response)
 
-    await self._provider.store(cache_key, response_str)
+    try:
+      await self._provider.store(cache_key, response_str)
+    except Exception as e:
+      # Returning the tool result the caller already computed matters more
+      # than caching it.
+      if not self._config.ignore_errors:
+        raise
+      logger.error("Failed to cache tool result: %s", e, exc_info=True)
+      return None
+
     logger.info("Cached result for tool: %s", tool.name)
     return None

@@ -28,7 +28,7 @@ from pydantic import Field
 
 from ._provider import BaseCacheProvider
 
-logger = logging.getLogger("adk_redis." + __name__)
+logger = logging.getLogger(__name__)
 
 
 class LLMResponseCacheConfig(BaseModel):
@@ -39,12 +39,17 @@ class LLMResponseCacheConfig(BaseModel):
       include_app_name: Include app name in cache key.
       include_user_id: Include user ID in cache key.
       include_session_id: Include session ID in cache key.
+      ignore_errors: Log cache backend failures and carry on with the model
+          call instead of raising. Leave True in production, where a cache
+          must not be able to break an agent turn. Set False while
+          developing to see the failure instead of a log line.
   """
 
   first_message_only: bool = Field(default=True)
   include_app_name: bool = Field(default=True)
   include_user_id: bool = Field(default=True)
   include_session_id: bool = Field(default=False)
+  ignore_errors: bool = Field(default=True)
 
 
 class LLMResponseCache:
@@ -136,6 +141,12 @@ class LLMResponseCache:
     Returns:
         LlmResponse if cache hit, None to proceed with LLM call.
     """
+    # Any key still pending for this session belongs to an earlier turn
+    # whose after-model callback never ran, for instance because the model
+    # call raised. Drop it here so no later path can pop it and cache this
+    # turn's response under the earlier turn's prompt.
+    self._pending_prompts.pop(self._get_session_key(callback_context), None)
+
     if self._config.first_message_only and not self._is_first_message(
         callback_context
     ):
@@ -148,7 +159,17 @@ class LLMResponseCache:
       return None
 
     cache_key = self._build_cache_key(prompt, callback_context)
-    cache_entry = await self._provider.check(cache_key)
+    try:
+      cache_entry = await self._provider.check(cache_key)
+    except Exception as e:
+      # A cache is an optimization, so a backend failure must not abort the
+      # invocation. ADK does not catch callback exceptions.
+      if not self._config.ignore_errors:
+        raise
+      logger.error(
+          "Cache lookup failed, calling the model: %s", e, exc_info=True
+      )
+      return None
 
     if cache_entry:
       logger.info("Cache hit for prompt: %s", prompt[:50])
@@ -210,6 +231,15 @@ class LLMResponseCache:
       logger.debug("No text in response, skipping cache store")
       return None
 
-    await self._provider.store(cache_key, response_text)
+    try:
+      await self._provider.store(cache_key, response_text)
+    except Exception as e:
+      # Returning the response the caller already paid for matters more
+      # than caching it.
+      if not self._config.ignore_errors:
+        raise
+      logger.error("Failed to cache response: %s", e, exc_info=True)
+      return None
+
     logger.info("Cached response for prompt: %s", cache_key[:50])
     return None

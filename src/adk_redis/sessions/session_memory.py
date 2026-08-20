@@ -45,7 +45,7 @@ from adk_redis.memory._utils import read_field
 from adk_redis.memory._utils import sanitize_managed_identifier
 from adk_redis.memory._utils import timestamp_to_datetime
 
-logger = logging.getLogger("adk_redis." + __name__)
+logger = logging.getLogger(__name__)
 
 _SESSION_ID_PREFIX = "adkredis"
 _MANAGED_SESSION_ID_LEN = 64
