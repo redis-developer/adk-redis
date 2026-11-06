@@ -11,7 +11,8 @@ directory and explains what it demonstrates.
 
 Each memory example targets a specific backend. The examples that exercise
 auto-summarization, extraction strategies, recency-boosted search, or MCP
-require the self-hosted `opensource-agent-memory` backend.
+require the self-hosted `opensource-agent-memory` backend, which is deprecated
+and will be removed in 0.1.0.
 
 | Example | Backend | Runner | What it shows |
 |---------|---------|--------|---------------|

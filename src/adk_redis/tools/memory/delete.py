@@ -113,6 +113,7 @@ class DeleteMemoryTool(BaseMemoryTool):
       get_memory: Callable[..., Awaitable[object]],
       namespace: str,
       user_id: str | None,
+      namespace_field: str = "namespace",
   ) -> None:
     """Validate memory scopes with bounded concurrent backend reads."""
     for start in range(0, len(memory_ids), _PREFLIGHT_BATCH_SIZE):
@@ -125,6 +126,7 @@ class DeleteMemoryTool(BaseMemoryTool):
             memory,
             namespace=namespace,
             user_id=user_id,
+            namespace_field=namespace_field,
         )
 
   async def run_async(self, **kwargs: Any) -> dict[str, Any]:
@@ -173,11 +175,17 @@ class DeleteMemoryTool(BaseMemoryTool):
         }
 
       async with self._agent_memory() as agent_memory:
+        namespace_id = await self._resolve_namespace_id(
+            agent_memory, args.get("namespace")
+        )
+        if namespace_id is None:
+          raise PermissionError(f"Namespace '{namespace}' does not exist")
         await self._validate_memory_scopes(
             memory_ids=memory_ids,
             get_memory=agent_memory.get_long_term_memory_async,
-            namespace=namespace,
+            namespace=namespace_id,
             user_id=user_id,
+            namespace_field="namespace_id",
         )
         response = await agent_memory.bulk_delete_long_term_memories_async(
             memory_ids=memory_ids,

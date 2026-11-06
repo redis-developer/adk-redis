@@ -28,12 +28,17 @@ from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory import RedisLongTermMemoryService
 from adk_redis.memory import RedisLongTermMemoryServiceConfig
+from tests.agent_memory_fakes import FakeNamespaces
+from tests.agent_memory_fakes import namespace_id_for
+
+TEST_NS_ID = namespace_id_for("test-ns")
 
 
-class FakeAgentMemory:
+class FakeAgentMemory(FakeNamespaces):
   """Fake async Redis Agent Memory client."""
 
   def __init__(self):
+    self.init_namespaces("test-ns")
     self.created_records = []
     self.search_request = None
     self.search_response = SimpleNamespace(items=[])
@@ -47,7 +52,7 @@ class FakeAgentMemory:
   async def bulk_create_long_term_memories_async(self, *, memories):
     self.created_records.extend(memories)
     return SimpleNamespace(
-        created=[memory["id"] for memory in memories],
+        created=[memory["memoryId"] for memory in memories],
         errors=None,
     )
 
@@ -160,10 +165,10 @@ class TestRedisLongTermMemoryServiceMethods:
     fake_client.search_response = SimpleNamespace(
         items=[
             SimpleNamespace(
-                id="memory-1",
+                memory_id="memory-1",
                 text="The user prefers window seats.",
                 owner_id="alice",
-                namespace="test_ns",
+                namespace_id=TEST_NS_ID,
                 session_id="session-1",
                 topics=["travel"],
                 memory_type="semantic",
@@ -178,9 +183,11 @@ class TestRedisLongTermMemoryServiceMethods:
         query="seat preference",
     )
 
+    assert fake_client.search_request["query"] == "seat preference"
     assert fake_client.search_request["filter"] == {
+        "op": "ALL",
         "ownerId": {"eq": "alice"},
-        "namespace": {"eq": "test-ns"},
+        "namespaceId": {"eq": TEST_NS_ID},
     }
     assert result.memories[0].id == "memory-1"
     assert (
@@ -209,10 +216,10 @@ class TestRedisLongTermMemoryServiceMethods:
 
     assert fake_client.created_records == [
         {
-            "id": "memory-1",
+            "memoryId": "memory-1",
             "text": "The user prefers window seats.",
             "ownerId": "alice",
-            "namespace": "test-ns",
+            "namespaceId": TEST_NS_ID,
             "sessionId": None,
             "topics": ["travel", "app"],
             "memoryType": "semantic",
@@ -275,3 +282,13 @@ class TestRedisLongTermMemoryServiceMethods:
     assert fake_client.search_kwargs["namespace"] == {"eq": "test_ns"}
     assert fake_client.search_kwargs["user_id"] == {"eq": "alice"}
     assert result.memories[0].id == "memory-1"
+
+
+def test_opensource_backend_emits_deprecation_warning():
+  """Selecting the self-hosted backend warns at the caller's line."""
+  config = RedisLongTermMemoryServiceConfig(
+      backend=OPENSOURCE_AGENT_MEMORY_BACKEND
+  )
+  with pytest.warns(DeprecationWarning, match="removed in 0.1.0") as record:
+    RedisLongTermMemoryService(config)
+  assert record[0].filename == __file__

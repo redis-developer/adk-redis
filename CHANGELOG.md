@@ -5,6 +5,46 @@ All notable changes to `adk-redis` are recorded in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **Breaking:** the `memory` extra now requires `redis-agent-memory>=1.0.0`,
+  the Redis Iris SDK, and the managed backend speaks its API. Redis Agent
+  Memory 1.0 clients and servers are not compatible with 0.x, so the store
+  must be a 1.0 store.
+- With the `redis-agent-memory` backend, namespaces are Redis Agent Memory
+  namespace resources. `default_namespace`, or the ADK app name, is a name
+  that maps to a shared root namespace of that name, looked up and created on
+  first use and cached per process. The API key needs permission to create
+  namespaces. A namespace ID (`ns_` followed by 32 hex characters) is used as
+  given.
+- The memory tools only look up a namespace named in the model's `namespace`
+  argument and never create it. A search in a namespace that does not exist
+  returns no memories, and a create, update or delete fails.
+- `UpdateMemoryTool` writes with the revision it read during its scope check,
+  so the update fails if the memory changed after the check. It no longer
+  resends the namespace and owner, which the check already requires to match.
+- `SearchMemoryTool` results no longer include a `score` field, because
+  Redis Agent Memory 1.0 search results carry none. `GetMemoryTool` returns
+  `namespace_id` in place of `namespace`.
+- Long-term memory search results carry the namespace ID in
+  `custom_metadata["namespace_id"]` alongside the namespace name.
+
+### Deprecated
+
+- The `opensource-agent-memory` backend, backed by the self-hosted Agent
+  Memory Server, is deprecated and will be removed in 0.1.0. Constructing a
+  memory service, session service or memory tool with it emits a
+  `DeprecationWarning`.
+
+### Tests
+
+- New contract tests (`tests/test_agent_memory_contract.py`) validate the
+  requests adk-redis builds against the installed SDK's own models and method
+  signatures. The SDK drops request keys it does not recognise, so a renamed
+  field otherwise fails silently.
+
 ## [0.0.11] - 2026-11-06
 
 ### Changed

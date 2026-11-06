@@ -28,16 +28,22 @@ from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.sessions import RedisSessionMemoryService
 from adk_redis.sessions import RedisSessionMemoryServiceConfig
+from tests.agent_memory_fakes import FakeNamespaces
+from tests.agent_memory_fakes import namespace_id_for
+
+TEST_NS_ID = namespace_id_for("test-ns")
 
 
-class FakeAgentMemory:
+class FakeAgentMemory(FakeNamespaces):
   """Fake async Redis Agent Memory client."""
 
   def __init__(self):
+    self.init_namespaces("test-ns")
     self.added_events = []
     self.deleted_session_id = None
     self.get_response = None
-    self.list_response = SimpleNamespace(items=[], next_page_token=None)
+    self.list_kwargs = None
+    self.list_response = SimpleNamespace(items=[], next_cursor=None)
 
   async def __aenter__(self):
     return self
@@ -59,7 +65,12 @@ class FakeAgentMemory:
   async def delete_session_memory_async(self, *, session_id):
     self.deleted_session_id = session_id
 
-  async def list_sessions_async(self, *, limit, page_token):
+  async def list_sessions_async(self, *, limit, cursor, namespace_id):
+    self.list_kwargs = {
+        "limit": limit,
+        "cursor": cursor,
+        "namespace_id": namespace_id,
+    }
     return self.list_response
 
 
@@ -213,6 +224,7 @@ class TestRedisSessionMemoryServiceMethods:
     stored = fake_client.added_events[0]
     assert stored["actor_id"] == "alice"
     assert stored["content"] == [{"text": "I prefer window seats."}]
+    assert stored["namespace_id"] == TEST_NS_ID
     assert stored["metadata"]["namespace"] == "test-ns"
     assert stored["metadata"]["adk_event_id"] == "event-1"
 
@@ -296,8 +308,8 @@ class TestRedisSessionMemoryServiceMethods:
         ],
     )
     fake_client.list_response = SimpleNamespace(
-        items=[storage_id],
-        next_page_token=None,
+        items=[SimpleNamespace(session_id=storage_id)],
+        next_cursor=None,
     )
 
     response = await service.list_sessions(app_name="app", user_id="alice")
@@ -328,12 +340,13 @@ class TestRedisSessionMemoryServiceMethods:
         ],
     )
     fake_client.list_response = SimpleNamespace(
-        items=[storage_id],
-        next_page_token=None,
+        items=[SimpleNamespace(session_id=storage_id)],
+        next_cursor=None,
     )
 
     response = await service.list_sessions(app_name="app", user_id="alice")
 
+    assert fake_client.list_kwargs["namespace_id"] == TEST_NS_ID
     assert [session.id for session in response.sessions] == ["session-1"]
     response_other_user = await service.list_sessions(
         app_name="app", user_id="bob"

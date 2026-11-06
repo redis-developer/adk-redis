@@ -39,6 +39,9 @@ from typing_extensions import override
 from adk_redis.memory._backends import MemoryBackendName
 from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis.memory._backends import REDIS_AGENT_MEMORY_BACKEND
+from adk_redis.memory._backends import warn_if_deprecated_backend
+from adk_redis.memory._namespaces import is_namespace_id
+from adk_redis.memory._namespaces import resolve_namespace_id
 from adk_redis.memory._utils import extract_text_from_event
 from adk_redis.memory._utils import is_not_found_error
 from adk_redis.memory._utils import read_field
@@ -92,6 +95,9 @@ class RedisSessionMemoryServiceConfig(BaseModel):
       timeout: HTTP request timeout in seconds.
       timeout_ms: Optional SDK timeout in milliseconds.
       default_namespace: Default namespace for session isolation.
+        With the redis-agent-memory backend, a name maps to a shared root
+        namespace of that name, created on first use, and a namespace ID
+        (``ns_`` followed by 32 hex characters) is used as given.
       model_name: Backward-compatible option retained from the previous client.
       context_window_max: Backward-compatible option retained from the
         previous client.
@@ -134,6 +140,7 @@ class RedisSessionMemoryService(BaseSessionService):
         config: Configuration for the service. If None, defaults are used.
     """
     self._config = config or RedisSessionMemoryServiceConfig()
+    warn_if_deprecated_backend(self._config.backend)
 
   def _timeout_ms(self) -> int:
     """Return the configured SDK timeout in milliseconds."""
@@ -192,9 +199,23 @@ class RedisSessionMemoryService(BaseSessionService):
   def _get_namespace(self, app_name: str) -> str:
     """Get namespace from config or app_name."""
     namespace = self._config.default_namespace or app_name
-    if self._config.backend == REDIS_AGENT_MEMORY_BACKEND:
+    if self._config.backend == REDIS_AGENT_MEMORY_BACKEND and not (
+        is_namespace_id(namespace)
+    ):
       return sanitize_managed_identifier(namespace)
     return namespace
+
+  async def _managed_namespace_id(
+      self, agent_memory: Any, app_name: str, *, create: bool
+  ) -> str | None:
+    """Resolve the Redis Agent Memory namespace ID for an app."""
+    return await resolve_namespace_id(
+        agent_memory,
+        server_url=self._config.api_base_url,
+        store_id=self._config.store_id,
+        name=self._get_namespace(app_name),
+        create=create,
+    )
 
   def _encode_segment(self, value: str) -> str:
     """Encode one storage session ID segment."""
@@ -539,8 +560,14 @@ class RedisSessionMemoryService(BaseSessionService):
         session_id=session.id,
     )
     async with self._agent_memory() as agent_memory:
+      # The session takes its namespace from its first event, and the
+      # server ignores the value on later events.
+      namespace_id = await self._managed_namespace_id(
+          agent_memory, session.app_name, create=True
+      )
       await agent_memory.add_session_event_async(
           session_id=storage_session_id,
+          namespace_id=namespace_id,
           actor_id=self._event_actor_id(session, event),
           role=self._event_role(event),
           content=[{"text": text}],
@@ -728,16 +755,26 @@ class RedisSessionMemoryService(BaseSessionService):
 
     namespace = self._get_namespace(app_name)
     sessions = []
-    page_token = None
+    cursor = None
 
     try:
       async with self._agent_memory() as agent_memory:
+        # Listing never creates the namespace; one that does not exist yet
+        # holds no sessions.
+        namespace_id = await self._managed_namespace_id(
+            agent_memory, app_name, create=False
+        )
+        if namespace_id is None:
+          return ListSessionsResponse(sessions=[])
+
         while True:
           response = await agent_memory.list_sessions_async(
               limit=100,
-              page_token=page_token,
+              cursor=cursor,
+              namespace_id=namespace_id,
           )
-          for storage_session_id in read_field(response, "items", []) or []:
+          for item in read_field(response, "items", []) or []:
+            storage_session_id = str(read_field(item, "session_id"))
             parsed = self._parse_storage_session_id(storage_session_id)
             if parsed:
               stored_namespace, stored_user_id, session_id = parsed
@@ -767,8 +804,8 @@ class RedisSessionMemoryService(BaseSessionService):
                 )
             )
 
-          page_token = read_field(response, "next_page_token")
-          if not page_token:
+          cursor = read_field(response, "next_cursor")
+          if not cursor:
             break
 
       return ListSessionsResponse(sessions=sessions)

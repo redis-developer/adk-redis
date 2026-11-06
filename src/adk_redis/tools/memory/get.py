@@ -152,13 +152,13 @@ class GetMemoryTool(BaseMemoryTool):
       return {
           "status": "success",
           "memory": {
-              "id": read_field(memory, "id"),
+              "id": read_field(memory, "memory_id"),
               "content": read_field(memory, "text"),
               "topics": read_field(memory, "topics", []) or [],
               "memory_type": str(getattr(memory_type, "value", memory_type))
               if memory_type
               else None,
-              "namespace": read_field(memory, "namespace"),
+              "namespace_id": read_field(memory, "namespace_id"),
               "user_id": read_field(memory, "owner_id"),
               "session_id": read_field(memory, "session_id"),
               "created_at": str(created_at) if created_at else None,

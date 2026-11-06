@@ -174,31 +174,37 @@ class UpdateMemoryTool(BaseMemoryTool):
         update_kwargs["text"] = content
       if topics is not None:
         update_kwargs["topics"] = topics
-      if namespace:
-        update_kwargs["namespace"] = namespace
-      if user_id:
-        update_kwargs["owner_id"] = user_id
 
       async with self._agent_memory() as agent_memory:
+        namespace_id = await self._resolve_namespace_id(
+            agent_memory, args.get("namespace")
+        )
+        if namespace_id is None:
+          raise PermissionError(f"Namespace '{namespace}' does not exist")
         memory = await agent_memory.get_long_term_memory_async(
             memory_id=memory_id
         )
         self._require_memory_scope(
             memory,
-            namespace=namespace,
+            namespace=namespace_id,
             user_id=user_id,
+            namespace_field="namespace_id",
         )
+        # The revision makes the write fail if the memory changed scope
+        # after the check above.
+        revision = read_field(memory, "revision")
+        if revision:
+          update_kwargs["expected_revision"] = revision
         response = await agent_memory.update_long_term_memory_async(
             memory_id=memory_id,
             **update_kwargs,
         )
 
+      updated_id = read_field(response, "memory_id")
       return {
           "status": "success",
-          "memory_id": read_field(response, "id"),
-          "message": (
-              f"Memory {read_field(response, 'id')} updated successfully"
-          ),
+          "memory_id": updated_id,
+          "message": f"Memory {updated_id} updated successfully",
       }
 
     except Exception as e:
