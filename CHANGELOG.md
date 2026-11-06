@@ -5,6 +5,17 @@ All notable changes to `adk-redis` are recorded in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- The `memory` extra now caps `redis-agent-memory` below 0.3. The
+  dependency had no upper bound, so a fresh install of `adk-redis[memory]`
+  resolved `redis-agent-memory` 1.0.0, released on 2026-11-04, whose
+  release notes rename the search fields, memory record keys and session
+  listing parameters that adk-redis sends. Support for the 1.0 SDK follows
+  in a later version.
+
 ## [0.0.10] - 2026-08-20
 
 ### Added

@@ -38,7 +38,7 @@ jobs:
         # docs extra pulls in mkdocs-material, mkdocstrings, llmstxt, etc.
         # The `all` extra is included so mkdocstrings can import the package
         # surface (e.g., redisvl) when rendering API reference pages.
-        run: uv sync --extra docs --extra all
+        run: uv sync --locked --extra docs --extra all
 
       - name: Build site
         # No --strict: pre-existing griffe warnings in tools/memory/*
