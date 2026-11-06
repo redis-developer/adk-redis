@@ -83,7 +83,7 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "python-dotenv", marker = "extra == 'examples'" },
-    { name = "redis-agent-memory", marker = "extra == 'memory'", specifier = ">=0.2.0,<0.3" },
+    { name = "redis-agent-memory", marker = "extra == 'memory'", specifier = ">=1.0.0,<2" },
     { name = "redisvl", marker = "extra == 'langcache'", specifier = ">=0.18.2" },
     { name = "redisvl", marker = "extra == 'search'", specifier = ">=0.18.2" },
     { name = "redisvl", extras = ["sql-redis"], marker = "extra == 'sql'", specifier = ">=0.18.2" },
@@ -3061,16 +3061,16 @@ wheels = [
 
 [[package]]
 name = "redis-agent-memory"
-version = "0.2.1"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpcore" },
     { name = "httpx" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/be/9c/00ecc64fecbae956a948d59f8a2fadabbcf037f2d56e513c918a7e5a0112/redis_agent_memory-0.2.1.tar.gz", hash = "sha256:5736b81afb71d6dc977cd8c797c61410c7cf439d81713f95993bd2c5ff3bdee0", size = 63029, upload-time = "2026-08-06T09:59:34.879Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ad/fd/05857543ba6a31971b5aa3250dae1c54be21f6e1777eac47bb74d1d26cdf/redis_agent_memory-1.0.0.tar.gz", hash = "sha256:2fd4df689d43f7dccc2e19f72e9f37ef2eaadea037bfc8f0a5531afcef15e7d3", size = 193836, upload-time = "2026-11-04T01:25:57.35Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e6/b7/24b79444280fbe6c54fe5dde30a341b68a6331db6251a286587ed1a4ec11/redis_agent_memory-0.2.1-py3-none-any.whl", hash = "sha256:eff4ef9a4273b302ed78256035f43ad178ce2bfeca793ba85de91afb621be59e", size = 117722, upload-time = "2026-08-06T09:59:33.67Z" },
+    { url = "https://files.pythonhosted.org/packages/ef/4f/caf0df51190d36cfec5e3d6872fe00763554b5999cbae475b4d81ccac980/redis_agent_memory-1.0.0-py3-none-any.whl", hash = "sha256:3983e036c9827ff4f94feab14e880af9d86f20b75216a914070bc137be241662", size = 424609, upload-time = "2026-11-04T01:25:55.674Z" },
 ]
 
 [[package]]
