@@ -199,7 +199,9 @@ class BaseMemoryTool(BaseTool):
 
     The configured default namespace is created on first use. A different
     namespace named in the tool arguments comes from model output, so it is
-    only looked up and never created.
+    only looked up by name and never created. A namespace ID from the model
+    is refused unless it is the configured default, because an ID would
+    otherwise reach personal and child namespaces that no name resolves to.
 
     Args:
         agent_memory: An open Redis Agent Memory SDK client.
@@ -209,12 +211,15 @@ class BaseMemoryTool(BaseTool):
         The namespace ID, or None when a requested namespace does not exist.
     """
     name = self._get_namespace(requested)
+    is_default = name == self._get_namespace(None)
+    if not is_default and is_namespace_id(name):
+      return None
     return await resolve_namespace_id(
         agent_memory,
         server_url=self._config.api_base_url,
         store_id=self._config.store_id,
         name=name,
-        create=name == self._get_namespace(None),
+        create=is_default,
     )
 
   def _get_user_id(

@@ -258,7 +258,7 @@ class RedisLongTermMemoryService(BaseMemoryService):
       app_name: str,
       custom_metadata: Mapping[str, object] | None = None,
   ) -> str:
-    """Resolve the Redis Agent Memory namespace ID for an operation."""
+    """Resolve the namespace ID for a write, creating the namespace."""
     name = self._get_namespace(app_name, custom_metadata)
     namespace_id = await resolve_namespace_id(
         agent_memory,
@@ -270,6 +270,18 @@ class RedisLongTermMemoryService(BaseMemoryService):
     if namespace_id is None:
       raise RuntimeError(f"Namespace '{name}' could not be resolved")
     return namespace_id
+
+  async def _existing_namespace_id(
+      self, agent_memory: Any, app_name: str
+  ) -> str | None:
+    """Resolve the namespace ID for a read, without creating it."""
+    return await resolve_namespace_id(
+        agent_memory,
+        server_url=self._config.api_base_url,
+        store_id=self._config.store_id,
+        name=self._get_namespace(app_name),
+        create=False,
+    )
 
   def _search_threshold(self) -> float | None:
     """Return the configured search threshold."""
@@ -804,7 +816,10 @@ class RedisLongTermMemoryService(BaseMemoryService):
 
       namespace = self._get_namespace(app_name)
       async with self._agent_memory() as agent_memory:
-        namespace_id = await self._managed_namespace_id(agent_memory, app_name)
+        namespace_id = await self._existing_namespace_id(agent_memory, app_name)
+        if namespace_id is None:
+          # A namespace that does not exist yet holds no memories.
+          return SearchMemoryResponse(memories=[])
         request: dict[str, Any] = {
             "query": query,
             "limit": self._config.search_top_k,

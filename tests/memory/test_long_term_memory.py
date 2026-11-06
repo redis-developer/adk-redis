@@ -292,3 +292,21 @@ def test_opensource_backend_emits_deprecation_warning():
   with pytest.warns(DeprecationWarning, match="removed in 0.1.0") as record:
     RedisLongTermMemoryService(config)
   assert record[0].filename == __file__
+
+
+@pytest.mark.asyncio
+async def test_search_memory_does_not_create_a_missing_namespace():
+  """A search in a namespace that does not exist returns nothing."""
+  fake_client = FakeAgentMemory()
+  fake_client.init_namespaces()
+  service = RedisLongTermMemoryService(
+      RedisLongTermMemoryServiceConfig(default_namespace="test_ns")
+  )
+  with patch.object(service, "_get_client", return_value=fake_client):
+    result = await service.search_memory(
+        app_name="app", user_id="alice", query="seat"
+    )
+
+  assert result.memories == []
+  assert fake_client.created_namespaces == []
+  assert fake_client.search_request is None

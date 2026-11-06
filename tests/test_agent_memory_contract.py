@@ -183,3 +183,16 @@ async def test_session_calls_match_sdk_signatures(client):
       "add_session_event_async", client.calls["add_session_event_async"]
   )
   _assert_binds("list_sessions_async", client.calls["list_sessions_async"])
+
+
+def test_namespace_calls_match_sdk_signatures():
+  _assert_binds(
+      "list_namespaces_async", {"scope": "SHARED", "limit": 200, "cursor": None}
+  )
+  _assert_binds(
+      "create_namespace_async",
+      {"request": {"name": "app", "scope": "SHARED"}},
+  )
+  _assert_survives(
+      models.CreateNamespaceRequestContent, {"name": "app", "scope": "SHARED"}
+  )

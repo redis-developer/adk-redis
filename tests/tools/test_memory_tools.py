@@ -639,3 +639,19 @@ def test_opensource_backend_emits_deprecation_warning():
   with pytest.warns(DeprecationWarning, match="removed in 0.1.0") as record:
     SearchMemoryTool(config=config)
   assert record[0].filename == __file__
+
+
+@pytest.mark.asyncio
+async def test_search_tool_refuses_a_model_supplied_namespace_id(
+    config, fake_client
+):
+  """A namespace ID from the model cannot reach namespaces names cannot."""
+  fake_client.init_namespaces("test-ns", "other")
+  tool = SearchMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"query": "seat", "namespace": namespace_id_for("other")}
+    )
+
+  assert result == {"status": "success", "memories": [], "count": 0}
+  assert fake_client.search_request is None
