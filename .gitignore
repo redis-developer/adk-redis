@@ -74,9 +74,6 @@ dmypy.json
 # ruff
 .ruff_cache/
 
-# uv
-uv.lock
-
 # MkDocs build output
 site/
 
