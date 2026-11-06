@@ -12,7 +12,7 @@ resolution-markers = [
 
 [[package]]
 name = "adk-redis"
-version = "0.0.10"
+version = "0.0.11"
 source = { editable = "." }
 dependencies = [
     { name = "google-adk" },

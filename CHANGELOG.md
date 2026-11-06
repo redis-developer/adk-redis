@@ -5,7 +5,14 @@ All notable changes to `adk-redis` are recorded in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.0.11] - 2026-11-06
+
+### Changed
+
+- `uv.lock` is now committed, and the CI and docs workflows install from
+  it with `uv sync --locked`. CI previously resolved the newest release of
+  every dependency on each run, so an upstream release could fail a build
+  that changed nothing related. Published packages are unaffected.
 
 ### Fixed
 
