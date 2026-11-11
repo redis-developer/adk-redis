@@ -106,10 +106,6 @@ class CreateMemoryTool(BaseMemoryTool):
                     type=types.Type.STRING,
                     description="Optional namespace override",
                 ),
-                "user_id": types.Schema(
-                    type=types.Type.STRING,
-                    description="Optional user ID override",
-                ),
             },
             required=["content"],
         ),
@@ -123,8 +119,8 @@ class CreateMemoryTool(BaseMemoryTool):
         topics: Optional list of topics/tags.
         memory_type: Type of memory (semantic, episodic, message).
         namespace: Optional namespace override.
-        user_id: Optional user ID override. When omitted, the user is
-            resolved from the ADK tool_context invocation user, then the
+        user_id: Optional user ID for direct calls. The ADK tool_context
+            invocation user takes precedence, then this argument, then the
             configured defaults.
         id: Optional client-supplied memory ID for idempotent retries.
             This is an application-level parameter and is intentionally

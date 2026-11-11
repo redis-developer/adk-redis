@@ -40,6 +40,7 @@ from adk_redis import RedisSessionMemoryServiceConfig
 from adk_redis.memory._namespaces import resolve_namespace_id
 from adk_redis.tools.memory import CreateMemoryTool
 from adk_redis.tools.memory import DeleteMemoryTool
+from adk_redis.tools.memory import GetMemoryTool
 from adk_redis.tools.memory import MemoryToolConfig
 from adk_redis.tools.memory import SearchMemoryTool
 from adk_redis.tools.memory import UpdateMemoryTool
@@ -204,7 +205,7 @@ async def test_list_sessions_returns_sessions_in_the_namespace(
     )
 
 
-async def test_tools_create_search_update_and_delete_within_scope(
+async def test_tools_create_search_get_update_and_delete_within_scope(
     unique_namespace: str, unique_user_id: str
 ) -> None:
   config = MemoryToolConfig(
@@ -235,9 +236,21 @@ async def test_tools_create_search_update_and_delete_within_scope(
   )
   assert updated["status"] == "success", updated
 
+  intruder_context = SimpleNamespace(user_id=f"{unique_user_id}-intruder")
+  fetched = await GetMemoryTool(config=config).run_async(
+      args={"memory_id": memory_id}, tool_context=context
+  )
+  assert fetched["status"] == "success", fetched
+  hidden = await GetMemoryTool(config=config).run_async(
+      args={"memory_id": memory_id, "user_id": unique_user_id},
+      tool_context=intruder_context,
+  )
+  assert hidden["status"] == "error"
+  assert "not found" in hidden["message"]
+
   intruder = await DeleteMemoryTool(config=config).run_async(
-      args={"memory_ids": [memory_id]},
-      tool_context=SimpleNamespace(user_id=f"{unique_user_id}-intruder"),
+      args={"memory_ids": [memory_id], "user_id": unique_user_id},
+      tool_context=intruder_context,
   )
   assert intruder["status"] == "error"
 

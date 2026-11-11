@@ -99,10 +99,6 @@ class MemoryPromptTool(BaseMemoryTool):
                     type=types.Type.STRING,
                     description="Optional namespace override",
                 ),
-                "user_id": types.Schema(
-                    type=types.Type.STRING,
-                    description="Optional user ID override",
-                ),
             },
             required=["query"],
         ),
@@ -115,8 +111,8 @@ class MemoryPromptTool(BaseMemoryTool):
         query: The query to search for relevant memories.
         system_prompt: Optional base system prompt to enrich.
         namespace: Optional namespace override.
-        user_id: Optional user ID override. When omitted, the user is
-            resolved from the ADK tool_context invocation user, then the
+        user_id: Optional user ID for direct calls. The ADK tool_context
+            invocation user takes precedence, then this argument, then the
             configured defaults.
 
     Returns:

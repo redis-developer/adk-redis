@@ -31,6 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Long-term memory search results carry the namespace ID in
   `custom_metadata["namespace_id"]` alongside the namespace name.
 
+### Security
+
+- **Breaking:** inside an agent loop, the memory tools scope every call to
+  the ADK invocation user. A `user_id` tool argument no longer overrides it,
+  and the tool declarations no longer offer the model a `user_id` argument.
+  Direct calls with no tool context still honour `user_id`.
+- `GetMemoryTool` now checks that the memory belongs to the configured
+  namespace and the invocation user, on both backends. A memory outside that
+  scope is reported as not found.
+
 ### Deprecated
 
 - The `opensource-agent-memory` backend, backed by the self-hosted Agent

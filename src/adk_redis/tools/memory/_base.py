@@ -231,29 +231,38 @@ class BaseMemoryTool(BaseTool):
 
     Resolution order:
 
-    1. Explicit ``user_id`` argument.
-    2. The invocation user from the ADK ``tool_context`` (its public
+    1. The invocation user from the ADK ``tool_context`` (its public
        ``user_id`` property), when the tool runs inside an ADK agent loop.
+    2. Explicit ``user_id`` argument, for direct calls with no context.
     3. ``config.default_owner_id``.
     4. ``config.default_user_id``.
 
+    The invocation user wins over the argument because tool arguments come
+    from model output inside an agent loop, and a prompt must not be able to
+    read or write another user's memories.
+
     Args:
-        user_id: Optional user ID override.
+        user_id: Optional user ID for direct calls outside an agent loop.
+            Ignored when the tool context carries a user.
         tool_context: Optional ADK ToolContext for the current invocation.
             Read defensively; a missing or broken context never raises.
 
     Returns:
         The resolved user ID, or None if no source provides one.
     """
-    if user_id:
-      return user_id
-
     try:
       context_user_id = getattr(tool_context, "user_id", None)
     except Exception:
       context_user_id = None
     if isinstance(context_user_id, str) and context_user_id:
+      if user_id and user_id != context_user_id:
+        logger.warning(
+            "Ignoring user_id argument that differs from the invocation user"
+        )
       return context_user_id
+
+    if user_id:
+      return user_id
 
     return self._config.default_owner_id or self._config.default_user_id
 

@@ -26,6 +26,7 @@ from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory._utils import stable_memory_id
 from adk_redis.tools.memory import CreateMemoryTool
 from adk_redis.tools.memory import DeleteMemoryTool
+from adk_redis.tools.memory import GetMemoryTool
 from adk_redis.tools.memory import MemoryPromptTool
 from adk_redis.tools.memory import MemoryToolConfig
 from adk_redis.tools.memory import SearchMemoryTool
@@ -166,15 +167,18 @@ def test_memory_tool_config_accepts_opensource_backend():
 
 
 def test_get_user_id_resolution_order(config):
-  """_get_user_id resolves explicit arg, context user, then defaults."""
+  """_get_user_id resolves context user, explicit arg, then defaults."""
   tool = SearchMemoryTool(config=config)
   tool_context = SimpleNamespace(user_id="context-user")
 
-  # Explicit user_id beats the tool_context user.
+  # The tool_context user beats an explicit argument from model output.
   assert (
       tool._get_user_id("explicit-user", tool_context=tool_context)
-      == "explicit-user"
+      == "context-user"
   )
+
+  # An explicit argument applies to direct calls with no context user.
+  assert tool._get_user_id("explicit-user") == "explicit-user"
 
   # The tool_context user beats configured defaults.
   assert tool._get_user_id(None, tool_context=tool_context) == "context-user"
@@ -655,3 +659,131 @@ async def test_search_tool_refuses_a_model_supplied_namespace_id(
 
   assert result == {"status": "success", "memories": [], "count": 0}
   assert fake_client.search_request is None
+
+
+@pytest.mark.parametrize(
+    "tool_class",
+    [
+        CreateMemoryTool,
+        DeleteMemoryTool,
+        GetMemoryTool,
+        MemoryPromptTool,
+        SearchMemoryTool,
+        UpdateMemoryTool,
+    ],
+)
+def test_tool_declarations_do_not_offer_user_id(config, tool_class):
+  """The model is not offered a user_id argument on any memory tool."""
+  declaration = tool_class(config=config)._get_declaration()
+  assert "user_id" not in declaration.parameters.properties
+
+
+@pytest.mark.asyncio
+async def test_model_user_id_cannot_override_invocation_user(
+    config, fake_client
+):
+  """A user_id argument from the model does not change the scope."""
+  context = SimpleNamespace(user_id="bob")
+  search = SearchMemoryTool(config=config)
+  create = CreateMemoryTool(config=config)
+  with patch.object(search, "_get_client", return_value=fake_client):
+    await search.run_async(
+        args={"query": "seat", "user_id": "alice"}, tool_context=context
+    )
+  with patch.object(create, "_get_client", return_value=fake_client):
+    await create.run_async(
+        args={"content": "User likes tea.", "user_id": "alice"},
+        tool_context=context,
+    )
+
+  assert fake_client.search_request["filter"]["ownerId"] == {"eq": "bob"}
+  assert fake_client.created_records[0]["ownerId"] == "bob"
+
+
+@pytest.mark.asyncio
+async def test_model_user_id_cannot_reach_another_users_memory(
+    config, fake_client
+):
+  """An update naming the owner as user_id is still checked as the caller."""
+  tool = UpdateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"memory_id": "memory-1", "content": "Hi", "user_id": "alice"},
+        tool_context=SimpleNamespace(user_id="bob"),
+    )
+
+  assert result["status"] == "error"
+  assert fake_client.update_kwargs is None
+
+
+@pytest.mark.asyncio
+async def test_get_memory_tool_returns_memory_in_scope(config, fake_client):
+  """GetMemoryTool returns a memory owned by the caller in the namespace."""
+  tool = GetMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"memory_id": "memory-1"},
+        tool_context=SimpleNamespace(user_id="alice"),
+    )
+
+  assert result["status"] == "success"
+  assert result["memory"]["id"] == "memory-1"
+  assert result["memory"]["namespace_id"] == TEST_NS_ID
+
+
+@pytest.mark.asyncio
+async def test_get_memory_tool_hides_another_users_memory(config, fake_client):
+  """GetMemoryTool reports another user's memory as not found."""
+  tool = GetMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"memory_id": "memory-1"},
+        tool_context=SimpleNamespace(user_id="bob"),
+    )
+
+  assert result == {
+      "status": "error",
+      "message": "Memory with ID 'memory-1' not found",
+  }
+
+
+@pytest.mark.asyncio
+async def test_get_memory_tool_hides_memory_in_another_namespace(
+    config, fake_client
+):
+  """GetMemoryTool reports a memory from another namespace as not found."""
+  fake_client.init_namespaces("test-ns", "other-ns")
+  fake_client.memory_namespace = "other-ns"
+  tool = GetMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"memory_id": "memory-1"},
+        tool_context=SimpleNamespace(user_id="alice"),
+    )
+
+  assert result["status"] == "error"
+  assert "not found" in result["message"]
+
+
+@pytest.mark.asyncio
+async def test_opensource_get_hides_another_users_memory():
+  """Self-hosted gets cannot read another invocation user's memory."""
+  fake_client = FakeAgentMemoryServerClient()
+  config = MemoryToolConfig(
+      backend=OPENSOURCE_AGENT_MEMORY_BACKEND,
+      default_namespace="test_ns",
+  )
+  tool = GetMemoryTool(config=config)
+
+  with patch.object(
+      tool,
+      "_get_agent_memory_server_client",
+      return_value=fake_client,
+  ):
+    result = await tool.run_async(
+        args={"memory_id": "memory-1"},
+        tool_context=SimpleNamespace(user_id="bob"),
+    )
+
+  assert result["status"] == "error"
+  assert "not found" in result["message"]
