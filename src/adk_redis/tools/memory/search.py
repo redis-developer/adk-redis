@@ -108,10 +108,6 @@ class SearchMemoryTool(BaseMemoryTool):
                     type=types.Type.STRING,
                     description="Optional namespace override",
                 ),
-                "user_id": types.Schema(
-                    type=types.Type.STRING,
-                    description="Optional user ID override",
-                ),
             },
             required=["query"],
         ),
@@ -124,8 +120,8 @@ class SearchMemoryTool(BaseMemoryTool):
         query: The search query.
         limit: Maximum number of memories to return.
         namespace: Optional namespace override.
-        user_id: Optional user ID override. When omitted, the user is
-            resolved from the ADK tool_context invocation user, then the
+        user_id: Optional user ID for direct calls. The ADK tool_context
+            invocation user takes precedence, then this argument, then the
             configured defaults.
 
     Returns:
@@ -189,32 +185,40 @@ class SearchMemoryTool(BaseMemoryTool):
             "count": len(memories),
         }
 
-      filters: dict[str, Any] = {"namespace": {"eq": namespace}}
-      if user_id:
-        filters["ownerId"] = {"eq": user_id}
-      request: dict[str, Any] = {
-          "text": query,
-          "limit": limit,
-          "filter": filters,
-          "filterOp": "all",
-      }
-      if self._config.distance_threshold is not None:
-        request["similarityThreshold"] = self._config.distance_threshold
-
       async with self._agent_memory() as agent_memory:
-        response = await agent_memory.search_long_term_memory_async(
-            request=request
+        namespace_id = await self._resolve_namespace_id(
+            agent_memory, args.get("namespace")
         )
+        results: Any
+        if namespace_id is None:
+          # A namespace that does not exist holds no memories.
+          results = {"items": []}
+        else:
+          filters: dict[str, Any] = {
+              "op": "ALL",
+              "namespaceId": {"eq": namespace_id},
+          }
+          if user_id:
+            filters["ownerId"] = {"eq": user_id}
+          request: dict[str, Any] = {
+              "query": query,
+              "limit": limit,
+              "filter": filters,
+          }
+          if self._config.distance_threshold is not None:
+            request["minScore"] = self._config.distance_threshold
+          results = await agent_memory.search_long_term_memory_async(
+              request=request
+          )
 
       memories = []
-      for memory in read_field(response, "items", []) or []:
+      for memory in read_field(results, "items", []) or []:
         memory_type = read_field(memory, "memory_type")
         created_at = read_field(memory, "created_at")
         memories.append(
             {
-                "id": read_field(memory, "id"),
+                "id": read_field(memory, "memory_id"),
                 "content": read_field(memory, "text"),
-                "score": read_field(memory, "score", 0.0),
                 "topics": read_field(memory, "topics", []) or [],
                 "memory_type": str(getattr(memory_type, "value", memory_type))
                 if memory_type

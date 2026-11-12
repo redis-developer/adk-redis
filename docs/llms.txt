@@ -27,7 +27,7 @@ For task-oriented recipes, browse the
 
 - [Redis setup](user_guide/how_to_guides/redis_setup.md): start Redis 8.4 locally or in Redis Cloud.
 - [Managed memory setup](user_guide/how_to_guides/managed_memory_setup.md): connect to the managed Redis Agent Memory backend.
-- [Memory server setup](user_guide/how_to_guides/memory_server_setup.md): run Agent Memory Server.
+- [Memory server setup](user_guide/how_to_guides/memory_server_setup.md): run Agent Memory Server (deprecated backend).
 - [Session service](user_guide/how_to_guides/session_service.md): wire `RedisSessionMemoryService`.
 - [Memory service](user_guide/how_to_guides/memory_service.md): wire `RedisLongTermMemoryService`.
 - [Search tools](user_guide/how_to_guides/search_tools.md): use the five search tools and the RedisVL MCP toolset.
@@ -58,8 +58,13 @@ When generating code that uses adk-redis:
   (e.g., `from adk_redis import RedisVectorSearchTool`).
 - Construct services with their `Config` dataclasses
   (`RedisLongTermMemoryServiceConfig`, etc.) so options are explicit.
-- Set `backend="redis-agent-memory"` for Redis Agent Memory, or
-  `backend="opensource-agent-memory"` for the open source self-hosted server.
+- Set `backend="redis-agent-memory"` for Redis Agent Memory on Redis Iris.
+  `backend="opensource-agent-memory"` selects the self-hosted server; it is
+  deprecated and will be removed in 0.2.0, so do not use it in new code.
+- With `redis-agent-memory`, `default_namespace` (or the app name) is a
+  namespace name that adk-redis maps to a shared root namespace, created on
+  first use. Pass a namespace ID (`ns_` plus 32 hex characters) to use an
+  existing namespace as given.
   For typo-safety, import the `REDIS_AGENT_MEMORY_BACKEND` and
   `OPENSOURCE_AGENT_MEMORY_BACKEND` constants (or the `MemoryBackendName` type)
   from `adk_redis` instead of writing the strings inline.

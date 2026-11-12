@@ -1,18 +1,22 @@
 # Managed Redis Agent Memory Setup
 
 This guide covers the **managed** `redis-agent-memory` backend, which is the
-library default. For the self-hosted alternative, see
-[Agent Memory Server setup](memory_server_setup.md).
+library default. It connects to Redis Agent Memory, the memory service of
+[Redis Iris](https://redis.io/docs/latest/develop/ai/context-engine/), the
+Redis context engine for AI agents.
 
-The managed backend is a hosted Redis Agent Memory data plane: there is no
-local Agent Memory Server, worker, or Docker setup to run. You connect to it
-with an API base URL, an API key, and a store ID.
+There is no local Agent Memory Server, worker, or Docker setup to run. You
+connect with an API base URL, an API key, and a store ID.
+
+The self-hosted `opensource-agent-memory` backend is deprecated and will be
+removed in 0.2.0. See [Agent Memory Server setup](memory_server_setup.md) only
+if you are maintaining an existing deployment.
 
 ## Prerequisites
 
 - Python 3.10+
 - `adk-redis` with the memory extra: `pip install "adk-redis[memory]"`.
-  The extra installs `redis-agent-memory>=0.2.0,<0.3`.
+  The extra installs `redis-agent-memory>=1.0.0,<2`.
 - A managed Redis Agent Memory service on Redis Cloud (see
   [Get credentials](#get-credentials) below).
 
@@ -93,6 +97,27 @@ memory_service = RedisLongTermMemoryService(
 `REDIS_AGENT_MEMORY_BACKEND` is a typo-safe alias for the
 `"redis-agent-memory"` string. Either form works.
 
+## Namespaces
+
+Redis Agent Memory stores each namespace as a server resource with an ID of
+the form `ns_` followed by 32 hex characters. `adk-redis` keeps naming
+namespaces by a plain name, `default_namespace` or the ADK app name, and maps
+each name to a shared root namespace of that name:
+
+- The first operation that needs a namespace looks it up and creates it if it
+  does not exist. The API key therefore needs permission to create namespaces.
+- The name-to-ID mapping is cached for the life of the process, so the lookup
+  happens once per namespace per store.
+- To use a namespace you created yourself, set `default_namespace` to its ID.
+  An ID is used as given, with no lookup and no create.
+- An archived namespace is not restored or replaced; operations on it raise a
+  `ValueError` naming the namespace.
+
+The memory tools accept a `namespace` argument from the model. A namespace
+named there is only looked up, never created, so a prompt cannot create
+namespaces: a search in a namespace that does not exist returns no memories,
+and a write into one fails.
+
 ## Identifier constraints
 
 The managed API accepts only alphanumeric characters and hyphens
@@ -125,5 +150,5 @@ For a runnable minimal agent on the managed backend, see the
 
 - [Session service](session_service.md) and [Memory service](memory_service.md)
   for full configuration options.
-- [Agent Memory Server setup](memory_server_setup.md) for the self-hosted
-  backend with summarization, extraction, and MCP.
+- [Agent Memory Server setup](memory_server_setup.md) for existing deployments
+  of the deprecated self-hosted backend.

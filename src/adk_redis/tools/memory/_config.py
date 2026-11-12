@@ -36,6 +36,9 @@ class MemoryToolConfig(BaseModel):
       timeout: HTTP request timeout in seconds.
       timeout_ms: Optional SDK timeout in milliseconds.
       default_namespace: Default namespace for memory operations.
+        With the redis-agent-memory backend, a name maps to a shared root
+        namespace of that name, created on first use, and a namespace ID
+        (``ns_`` followed by 32 hex characters) is used as given.
       default_user_id: Default user ID for memory operations (optional).
       default_owner_id: Default owner ID for memory operations (optional).
       search_top_k: Default maximum number of memories to retrieve.

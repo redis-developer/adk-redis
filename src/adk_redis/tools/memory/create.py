@@ -106,10 +106,6 @@ class CreateMemoryTool(BaseMemoryTool):
                     type=types.Type.STRING,
                     description="Optional namespace override",
                 ),
-                "user_id": types.Schema(
-                    type=types.Type.STRING,
-                    description="Optional user ID override",
-                ),
             },
             required=["content"],
         ),
@@ -123,8 +119,8 @@ class CreateMemoryTool(BaseMemoryTool):
         topics: Optional list of topics/tags.
         memory_type: Type of memory (semantic, episodic, message).
         namespace: Optional namespace override.
-        user_id: Optional user ID override. When omitted, the user is
-            resolved from the ADK tool_context invocation user, then the
+        user_id: Optional user ID for direct calls. The ADK tool_context
+            invocation user takes precedence, then this argument, then the
             configured defaults.
         id: Optional client-supplied memory ID for idempotent retries.
             This is an application-level parameter and is intentionally
@@ -219,16 +215,26 @@ class CreateMemoryTool(BaseMemoryTool):
             memory_type,
             content,
         )
-      record = {
-          "id": memory_id,
-          "text": content,
-          "ownerId": user_id,
-          "namespace": namespace,
-          "topics": topics if topics else None,
-          "memoryType": memory_type,
-      }
+      if not user_id:
+        raise ValueError(
+            "user_id is required: pass it, run inside an ADK agent, or set"
+            " default_user_id"
+        )
 
       async with self._agent_memory() as agent_memory:
+        namespace_id = await self._resolve_namespace_id(
+            agent_memory, args.get("namespace")
+        )
+        if namespace_id is None:
+          raise ValueError(f"Namespace '{namespace}' does not exist")
+        record = {
+            "memoryId": memory_id,
+            "text": content,
+            "ownerId": user_id,
+            "namespaceId": namespace_id,
+            "topics": topics if topics else None,
+            "memoryType": memory_type,
+        }
         response = await agent_memory.bulk_create_long_term_memories_async(
             memories=[record]
         )

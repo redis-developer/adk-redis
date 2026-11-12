@@ -97,6 +97,10 @@ class GetMemoryTool(BaseMemoryTool):
   async def run_async(self, **kwargs: Any) -> dict[str, Any]:
     """Retrieve a specific memory by ID.
 
+    The memory must belong to the configured namespace and the resolved
+    user. A memory outside that scope is reported as not found, so the tool
+    does not reveal that another user's memory exists.
+
     Args:
         memory_id: The unique ID of the memory to retrieve.
 
@@ -105,11 +109,17 @@ class GetMemoryTool(BaseMemoryTool):
     """
     # ADK passes parameters in kwargs['args']
     args = kwargs.get("args", kwargs)
+    tool_context = kwargs.get("tool_context")
 
     memory_id = args.get("memory_id")
+    user_id = self._get_user_id(args.get("user_id"), tool_context=tool_context)
 
     if not memory_id:
       return {"status": "error", "message": "memory_id is required"}
+    not_found = {
+        "status": "error",
+        "message": f"Memory with ID '{memory_id}' not found",
+    }
 
     try:
       if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
@@ -119,6 +129,9 @@ class GetMemoryTool(BaseMemoryTool):
                     memory_id=memory_id
                 )
             )
+        )
+        self._require_memory_scope(
+            memory, namespace=self._get_namespace(None), user_id=user_id
         )
 
         return {
@@ -142,9 +155,18 @@ class GetMemoryTool(BaseMemoryTool):
         }
 
       async with self._agent_memory() as agent_memory:
+        namespace_id = await self._resolve_namespace_id(agent_memory, None)
+        if namespace_id is None:
+          return not_found
         memory = await agent_memory.get_long_term_memory_async(
             memory_id=memory_id
         )
+      self._require_memory_scope(
+          memory,
+          namespace=namespace_id,
+          user_id=user_id,
+          namespace_field="namespace_id",
+      )
       memory_type = read_field(memory, "memory_type")
       created_at = read_field(memory, "created_at")
       updated_at = read_field(memory, "updated_at")
@@ -152,13 +174,13 @@ class GetMemoryTool(BaseMemoryTool):
       return {
           "status": "success",
           "memory": {
-              "id": read_field(memory, "id"),
+              "id": read_field(memory, "memory_id"),
               "content": read_field(memory, "text"),
               "topics": read_field(memory, "topics", []) or [],
               "memory_type": str(getattr(memory_type, "value", memory_type))
               if memory_type
               else None,
-              "namespace": read_field(memory, "namespace"),
+              "namespace_id": read_field(memory, "namespace_id"),
               "user_id": read_field(memory, "owner_id"),
               "session_id": read_field(memory, "session_id"),
               "created_at": str(created_at) if created_at else None,
@@ -166,13 +188,12 @@ class GetMemoryTool(BaseMemoryTool):
           },
       }
 
+    except PermissionError:
+      return not_found
     except Exception as e:
       error_msg = str(e)
       if "not found" in error_msg.lower() or "404" in error_msg:
-        return {
-            "status": "error",
-            "message": f"Memory with ID '{memory_id}' not found",
-        }
+        return not_found
       logger.error("Failed to get memory: %s", e)
       return {
           "status": "error",

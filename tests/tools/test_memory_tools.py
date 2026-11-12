@@ -26,16 +26,22 @@ from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory._utils import stable_memory_id
 from adk_redis.tools.memory import CreateMemoryTool
 from adk_redis.tools.memory import DeleteMemoryTool
+from adk_redis.tools.memory import GetMemoryTool
 from adk_redis.tools.memory import MemoryPromptTool
 from adk_redis.tools.memory import MemoryToolConfig
 from adk_redis.tools.memory import SearchMemoryTool
 from adk_redis.tools.memory import UpdateMemoryTool
+from tests.agent_memory_fakes import FakeNamespaces
+from tests.agent_memory_fakes import namespace_id_for
+
+TEST_NS_ID = namespace_id_for("test-ns")
 
 
-class FakeAgentMemory:
+class FakeAgentMemory(FakeNamespaces):
   """Fake async Redis Agent Memory client."""
 
   def __init__(self):
+    self.init_namespaces("test-ns")
     self.created_records = []
     self.deleted_ids = []
     self.search_request = None
@@ -54,7 +60,7 @@ class FakeAgentMemory:
   async def bulk_create_long_term_memories_async(self, *, memories):
     self.created_records.extend(memories)
     return SimpleNamespace(
-        created=[memory["id"] for memory in memories],
+        created=[memory["memoryId"] for memory in memories],
         errors=None,
     )
 
@@ -63,7 +69,7 @@ class FakeAgentMemory:
     return SimpleNamespace(
         items=[
             SimpleNamespace(
-                id="memory-1",
+                memory_id="memory-1",
                 text="The user prefers window seats.",
                 topics=["travel"],
                 memory_type="semantic",
@@ -74,7 +80,7 @@ class FakeAgentMemory:
 
   async def update_long_term_memory_async(self, **kwargs):
     self.update_kwargs = kwargs
-    return SimpleNamespace(id=kwargs["memory_id"])
+    return SimpleNamespace(memory_id=kwargs["memory_id"])
 
   async def get_long_term_memory_async(self, *, memory_id):
     self.active_gets += 1
@@ -82,9 +88,10 @@ class FakeAgentMemory:
     try:
       await asyncio.sleep(0)
       return SimpleNamespace(
-          id=memory_id,
-          namespace=self.memory_namespace,
+          memory_id=memory_id,
+          namespace_id=namespace_id_for(self.memory_namespace),
           owner_id=self.memory_owner_id,
+          revision="rev-1",
       )
     finally:
       self.active_gets -= 1
@@ -160,15 +167,18 @@ def test_memory_tool_config_accepts_opensource_backend():
 
 
 def test_get_user_id_resolution_order(config):
-  """_get_user_id resolves explicit arg, context user, then defaults."""
+  """_get_user_id resolves context user, explicit arg, then defaults."""
   tool = SearchMemoryTool(config=config)
   tool_context = SimpleNamespace(user_id="context-user")
 
-  # Explicit user_id beats the tool_context user.
+  # The tool_context user beats an explicit argument from model output.
   assert (
       tool._get_user_id("explicit-user", tool_context=tool_context)
-      == "explicit-user"
+      == "context-user"
   )
+
+  # An explicit argument applies to direct calls with no context user.
+  assert tool._get_user_id("explicit-user") == "explicit-user"
 
   # The tool_context user beats configured defaults.
   assert tool._get_user_id(None, tool_context=tool_context) == "context-user"
@@ -204,7 +214,8 @@ async def test_search_memory_tool_scopes_to_tool_context_user(
 
   assert result["status"] == "success"
   assert fake_client.search_request["filter"] == {
-      "namespace": {"eq": "test-ns"},
+      "op": "ALL",
+      "namespaceId": {"eq": TEST_NS_ID},
       "ownerId": {"eq": "bob"},
   }
 
@@ -234,7 +245,7 @@ async def test_create_memory_tool_writes_record(config, fake_client):
   assert result["status"] == "success"
   assert fake_client.created_records[0]["text"] == "User likes tea."
   assert fake_client.created_records[0]["ownerId"] == "alice"
-  assert fake_client.created_records[0]["namespace"] == "test-ns"
+  assert fake_client.created_records[0]["namespaceId"] == TEST_NS_ID
   assert fake_client.created_records[0]["memoryType"] == "semantic"
 
 
@@ -250,7 +261,7 @@ async def test_create_memory_tool_uses_client_supplied_id(config, fake_client):
   assert result["status"] == "success"
   expected_id = stable_memory_id("client", "test-ns", "alice", "retry-abc-123")
   assert result["memory_id"] == expected_id
-  assert fake_client.created_records[0]["id"] == expected_id
+  assert fake_client.created_records[0]["memoryId"] == expected_id
 
 
 @pytest.mark.asyncio
@@ -268,8 +279,8 @@ async def test_create_memory_tool_preserves_client_id_uniqueness(
     )
 
   assert (
-      fake_client.created_records[0]["id"]
-      != fake_client.created_records[1]["id"]
+      fake_client.created_records[0]["memoryId"]
+      != fake_client.created_records[1]["memoryId"]
   )
 
 
@@ -288,8 +299,8 @@ async def test_create_memory_tool_scopes_client_id(config, fake_client):
     )
 
   assert (
-      fake_client.created_records[0]["id"]
-      != fake_client.created_records[1]["id"]
+      fake_client.created_records[0]["memoryId"]
+      != fake_client.created_records[1]["memoryId"]
   )
 
 
@@ -310,8 +321,8 @@ async def test_create_memory_tool_scopes_client_id_to_context_user(
     )
 
   assert (
-      fake_client.created_records[0]["id"]
-      != fake_client.created_records[1]["id"]
+      fake_client.created_records[0]["memoryId"]
+      != fake_client.created_records[1]["memoryId"]
   )
 
 
@@ -324,7 +335,7 @@ async def test_create_memory_tool_treats_zero_as_client_id(config, fake_client):
 
   expected_id = stable_memory_id("client", "test-ns", "alice", "0")
   assert result["status"] == "success"
-  assert fake_client.created_records[0]["id"] == expected_id
+  assert fake_client.created_records[0]["memoryId"] == expected_id
 
 
 @pytest.mark.asyncio
@@ -338,7 +349,7 @@ async def test_create_memory_tool_defaults_to_stable_id(config, fake_client):
       "tool", "test-ns", "alice", "semantic", "User likes tea."
   )
   assert result["status"] == "success"
-  assert fake_client.created_records[0]["id"] == expected_id
+  assert fake_client.created_records[0]["memoryId"] == expected_id
 
 
 @pytest.mark.asyncio
@@ -351,8 +362,8 @@ async def test_create_memory_tool_same_id_is_idempotent(config, fake_client):
 
   assert len(fake_client.created_records) == 2
   assert (
-      fake_client.created_records[0]["id"]
-      == fake_client.created_records[1]["id"]
+      fake_client.created_records[0]["memoryId"]
+      == fake_client.created_records[1]["memoryId"]
       == stable_memory_id("client", "test-ns", "alice", "retry-1")
   )
 
@@ -368,7 +379,8 @@ async def test_search_memory_tool_uses_owner_and_namespace_filter(
 
   assert result["status"] == "success"
   assert fake_client.search_request["filter"] == {
-      "namespace": {"eq": "test-ns"},
+      "op": "ALL",
+      "namespaceId": {"eq": TEST_NS_ID},
       "ownerId": {"eq": "alice"},
   }
 
@@ -388,7 +400,8 @@ async def test_memory_prompt_tool_scopes_to_tool_context_user(
 
   assert result["status"] == "success"
   assert fake_client.search_request["filter"] == {
-      "namespace": {"eq": "test-ns"},
+      "op": "ALL",
+      "namespaceId": {"eq": TEST_NS_ID},
       "ownerId": {"eq": "bob"},
   }
 
@@ -406,8 +419,7 @@ async def test_update_memory_tool_calls_update(config, fake_client):
   assert fake_client.update_kwargs == {
       "memory_id": "memory-1",
       "text": "Updated",
-      "namespace": "test-ns",
-      "owner_id": "alice",
+      "expected_revision": "rev-1",
   }
 
 
@@ -415,7 +427,7 @@ async def test_update_memory_tool_calls_update(config, fake_client):
 async def test_update_memory_tool_scopes_to_tool_context_user(
     config, fake_client
 ):
-  """UpdateMemoryTool verifies and applies the ADK invocation user."""
+  """UpdateMemoryTool verifies the memory belongs to the invocation user."""
   tool = UpdateMemoryTool(config=config)
   fake_client.memory_owner_id = "bob"
 
@@ -426,7 +438,7 @@ async def test_update_memory_tool_scopes_to_tool_context_user(
     )
 
   assert result["status"] == "success"
-  assert fake_client.update_kwargs["owner_id"] == "bob"
+  assert fake_client.update_kwargs["memory_id"] == "memory-1"
 
 
 @pytest.mark.asyncio
@@ -574,3 +586,204 @@ async def test_create_memory_tool_warns_on_client_id_for_self_hosted(caplog):
   assert "retry-abc-123" not in caplog.text
   assert "not supported by the opensource-agent-memory backend" in caplog.text
   assert "Proceeding without the client id" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_search_tool_does_not_create_a_model_supplied_namespace(
+    config, fake_client
+):
+  """A namespace named by the model is looked up, never created."""
+  tool = SearchMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(args={"query": "seat", "namespace": "other"})
+
+  assert result == {"status": "success", "memories": [], "count": 0}
+  assert fake_client.created_namespaces == []
+  assert fake_client.search_request is None
+
+
+@pytest.mark.asyncio
+async def test_create_tool_rejects_a_model_supplied_namespace_that_is_missing(
+    config, fake_client
+):
+  """CreateMemoryTool refuses to write into a namespace that does not exist."""
+  tool = CreateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"content": "User likes tea.", "namespace": "other"}
+    )
+
+  assert result["status"] == "error"
+  assert "does not exist" in result["message"]
+  assert fake_client.created_namespaces == []
+  assert fake_client.created_records == []
+
+
+@pytest.mark.asyncio
+async def test_create_tool_creates_the_configured_namespace_on_first_use(
+    config,
+):
+  """The configured default namespace is created when it does not exist."""
+  fake_client = FakeAgentMemory()
+  fake_client.init_namespaces()
+  tool = CreateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(args={"content": "User likes tea."})
+
+  assert result["status"] == "success"
+  assert fake_client.created_namespaces == [
+      {"name": "test-ns", "scope": "SHARED"}
+  ]
+  assert fake_client.created_records[0]["namespaceId"] == TEST_NS_ID
+
+
+def test_opensource_backend_emits_deprecation_warning():
+  """Selecting the self-hosted backend warns at the caller's line."""
+  config = MemoryToolConfig(backend=OPENSOURCE_AGENT_MEMORY_BACKEND)
+  with pytest.warns(DeprecationWarning, match="removed in 0.2.0") as record:
+    SearchMemoryTool(config=config)
+  assert record[0].filename == __file__
+
+
+@pytest.mark.asyncio
+async def test_search_tool_refuses_a_model_supplied_namespace_id(
+    config, fake_client
+):
+  """A namespace ID from the model cannot reach namespaces names cannot."""
+  fake_client.init_namespaces("test-ns", "other")
+  tool = SearchMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"query": "seat", "namespace": namespace_id_for("other")}
+    )
+
+  assert result == {"status": "success", "memories": [], "count": 0}
+  assert fake_client.search_request is None
+
+
+@pytest.mark.parametrize(
+    "tool_class",
+    [
+        CreateMemoryTool,
+        DeleteMemoryTool,
+        GetMemoryTool,
+        MemoryPromptTool,
+        SearchMemoryTool,
+        UpdateMemoryTool,
+    ],
+)
+def test_tool_declarations_do_not_offer_user_id(config, tool_class):
+  """The model is not offered a user_id argument on any memory tool."""
+  declaration = tool_class(config=config)._get_declaration()
+  assert "user_id" not in declaration.parameters.properties
+
+
+@pytest.mark.asyncio
+async def test_model_user_id_cannot_override_invocation_user(
+    config, fake_client
+):
+  """A user_id argument from the model does not change the scope."""
+  context = SimpleNamespace(user_id="bob")
+  search = SearchMemoryTool(config=config)
+  create = CreateMemoryTool(config=config)
+  with patch.object(search, "_get_client", return_value=fake_client):
+    await search.run_async(
+        args={"query": "seat", "user_id": "alice"}, tool_context=context
+    )
+  with patch.object(create, "_get_client", return_value=fake_client):
+    await create.run_async(
+        args={"content": "User likes tea.", "user_id": "alice"},
+        tool_context=context,
+    )
+
+  assert fake_client.search_request["filter"]["ownerId"] == {"eq": "bob"}
+  assert fake_client.created_records[0]["ownerId"] == "bob"
+
+
+@pytest.mark.asyncio
+async def test_model_user_id_cannot_reach_another_users_memory(
+    config, fake_client
+):
+  """An update naming the owner as user_id is still checked as the caller."""
+  tool = UpdateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"memory_id": "memory-1", "content": "Hi", "user_id": "alice"},
+        tool_context=SimpleNamespace(user_id="bob"),
+    )
+
+  assert result["status"] == "error"
+  assert fake_client.update_kwargs is None
+
+
+@pytest.mark.asyncio
+async def test_get_memory_tool_returns_memory_in_scope(config, fake_client):
+  """GetMemoryTool returns a memory owned by the caller in the namespace."""
+  tool = GetMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"memory_id": "memory-1"},
+        tool_context=SimpleNamespace(user_id="alice"),
+    )
+
+  assert result["status"] == "success"
+  assert result["memory"]["id"] == "memory-1"
+  assert result["memory"]["namespace_id"] == TEST_NS_ID
+
+
+@pytest.mark.asyncio
+async def test_get_memory_tool_hides_another_users_memory(config, fake_client):
+  """GetMemoryTool reports another user's memory as not found."""
+  tool = GetMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"memory_id": "memory-1"},
+        tool_context=SimpleNamespace(user_id="bob"),
+    )
+
+  assert result == {
+      "status": "error",
+      "message": "Memory with ID 'memory-1' not found",
+  }
+
+
+@pytest.mark.asyncio
+async def test_get_memory_tool_hides_memory_in_another_namespace(
+    config, fake_client
+):
+  """GetMemoryTool reports a memory from another namespace as not found."""
+  fake_client.init_namespaces("test-ns", "other-ns")
+  fake_client.memory_namespace = "other-ns"
+  tool = GetMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    result = await tool.run_async(
+        args={"memory_id": "memory-1"},
+        tool_context=SimpleNamespace(user_id="alice"),
+    )
+
+  assert result["status"] == "error"
+  assert "not found" in result["message"]
+
+
+@pytest.mark.asyncio
+async def test_opensource_get_hides_another_users_memory():
+  """Self-hosted gets cannot read another invocation user's memory."""
+  fake_client = FakeAgentMemoryServerClient()
+  config = MemoryToolConfig(
+      backend=OPENSOURCE_AGENT_MEMORY_BACKEND,
+      default_namespace="test_ns",
+  )
+  tool = GetMemoryTool(config=config)
+
+  with patch.object(
+      tool,
+      "_get_agent_memory_server_client",
+      return_value=fake_client,
+  ):
+    result = await tool.run_async(
+        args={"memory_id": "memory-1"},
+        tool_context=SimpleNamespace(user_id="bob"),
+    )
+
+  assert result["status"] == "error"
+  assert "not found" in result["message"]

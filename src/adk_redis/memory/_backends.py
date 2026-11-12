@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from typing import Literal
+import warnings
 
 REDIS_AGENT_MEMORY_BACKEND: Literal["redis-agent-memory"] = "redis-agent-memory"
 OPENSOURCE_AGENT_MEMORY_BACKEND: Literal["opensource-agent-memory"] = (
@@ -27,3 +28,21 @@ MemoryBackendName = Literal[
     "redis-agent-memory",
     "opensource-agent-memory",
 ]
+
+
+def warn_if_deprecated_backend(backend: str, *, stacklevel: int = 3) -> None:
+  """Warn when the deprecated self-hosted Agent Memory Server is selected.
+
+  Args:
+      backend: The configured memory backend name.
+      stacklevel: Stack level passed to ``warnings.warn``, so the warning
+          points at the caller that constructed the service or tool.
+  """
+  if backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
+    warnings.warn(
+        "The opensource-agent-memory backend is deprecated and will be"
+        " removed in 0.2.0. Use backend='redis-agent-memory' with Redis"
+        " Agent Memory.",
+        DeprecationWarning,
+        stacklevel=stacklevel,
+    )

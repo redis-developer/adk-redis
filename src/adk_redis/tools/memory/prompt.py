@@ -99,10 +99,6 @@ class MemoryPromptTool(BaseMemoryTool):
                     type=types.Type.STRING,
                     description="Optional namespace override",
                 ),
-                "user_id": types.Schema(
-                    type=types.Type.STRING,
-                    description="Optional user ID override",
-                ),
             },
             required=["query"],
         ),
@@ -115,8 +111,8 @@ class MemoryPromptTool(BaseMemoryTool):
         query: The query to search for relevant memories.
         system_prompt: Optional base system prompt to enrich.
         namespace: Optional namespace override.
-        user_id: Optional user ID override. When omitted, the user is
-            resolved from the ADK tool_context invocation user, then the
+        user_id: Optional user ID for direct calls. The ADK tool_context
+            invocation user takes precedence, then this argument, then the
             configured defaults.
 
     Returns:
@@ -152,24 +148,31 @@ class MemoryPromptTool(BaseMemoryTool):
             "memories_used": len(response.get("memories", [])),
         }
 
-      filters: dict[str, Any] = {"namespace": {"eq": namespace}}
-      if user_id:
-        filters["ownerId"] = {"eq": user_id}
-      request = {
-          "text": query,
-          "limit": self._config.search_top_k,
-          "filter": filters,
-          "filterOp": "all",
-      }
-
       async with self._agent_memory() as agent_memory:
-        response = await agent_memory.search_long_term_memory_async(
-            request=request
+        namespace_id = await self._resolve_namespace_id(
+            agent_memory, args.get("namespace")
         )
+        results: Any
+        if namespace_id is None:
+          results = {"items": []}
+        else:
+          filters: dict[str, Any] = {
+              "op": "ALL",
+              "namespaceId": {"eq": namespace_id},
+          }
+          if user_id:
+            filters["ownerId"] = {"eq": user_id}
+          results = await agent_memory.search_long_term_memory_async(
+              request={
+                  "query": query,
+                  "limit": self._config.search_top_k,
+                  "filter": filters,
+              }
+          )
 
       memory_lines = [
           f"- {read_field(memory, 'text')}"
-          for memory in read_field(response, "items", []) or []
+          for memory in read_field(results, "items", []) or []
           if read_field(memory, "text")
       ]
       if memory_lines:

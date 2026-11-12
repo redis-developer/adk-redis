@@ -149,3 +149,18 @@ def is_not_found_error(exc: Exception) -> bool:
       getattr(exc, "status_code", None) == 404
       or exc.__class__.__name__ == "NotFoundErrorResponseContent"
   )
+
+
+def is_conflict_error(exc: Exception) -> bool:
+  """Return True when a Redis Agent Memory exception represents a 409.
+
+  Args:
+      exc: Exception raised by the Redis Agent Memory SDK.
+
+  Returns:
+      True when the SDK reported that the resource already exists.
+  """
+  return (
+      getattr(exc, "status_code", None) == 409
+      or exc.__class__.__name__ == "ConflictErrorResponseContent"
+  )

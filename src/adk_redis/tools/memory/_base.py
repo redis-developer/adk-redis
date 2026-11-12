@@ -25,6 +25,9 @@ from google.adk.tools.base_tool import BaseTool
 
 from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis.memory._backends import REDIS_AGENT_MEMORY_BACKEND
+from adk_redis.memory._backends import warn_if_deprecated_backend
+from adk_redis.memory._namespaces import is_namespace_id
+from adk_redis.memory._namespaces import resolve_namespace_id
 from adk_redis.memory._utils import read_field
 from adk_redis.memory._utils import sanitize_managed_identifier
 from adk_redis.tools.memory._config import MemoryToolConfig
@@ -82,6 +85,8 @@ class BaseMemoryTool(BaseTool):
     """
     super().__init__(name=name, description=description)
     self._config = config
+    # Each concrete tool's __init__ sits between the caller and this one.
+    warn_if_deprecated_backend(self._config.backend, stacklevel=4)
 
   def _get_client(self) -> Any:
     """Get a backend client for compatibility with existing tests."""
@@ -181,9 +186,41 @@ class BaseMemoryTool(BaseTool):
         The namespace to use (override or default).
     """
     resolved = namespace or self._config.default_namespace
-    if self._config.backend == REDIS_AGENT_MEMORY_BACKEND:
+    if self._config.backend == REDIS_AGENT_MEMORY_BACKEND and not (
+        is_namespace_id(resolved)
+    ):
       return sanitize_managed_identifier(resolved)
     return resolved
+
+  async def _resolve_namespace_id(
+      self, agent_memory: Any, requested: str | None
+  ) -> str | None:
+    """Resolve the Redis Agent Memory namespace ID for a tool call.
+
+    The configured default namespace is created on first use. A different
+    namespace named in the tool arguments comes from model output, so it is
+    only looked up by name and never created. A namespace ID from the model
+    is refused unless it is the configured default, because an ID would
+    otherwise reach personal and child namespaces that no name resolves to.
+
+    Args:
+        agent_memory: An open Redis Agent Memory SDK client.
+        requested: Namespace from the tool arguments, if any.
+
+    Returns:
+        The namespace ID, or None when a requested namespace does not exist.
+    """
+    name = self._get_namespace(requested)
+    is_default = name == self._get_namespace(None)
+    if not is_default and is_namespace_id(name):
+      return None
+    return await resolve_namespace_id(
+        agent_memory,
+        server_url=self._config.api_base_url,
+        store_id=self._config.store_id,
+        name=name,
+        create=is_default,
+    )
 
   def _get_user_id(
       self,
@@ -194,29 +231,38 @@ class BaseMemoryTool(BaseTool):
 
     Resolution order:
 
-    1. Explicit ``user_id`` argument.
-    2. The invocation user from the ADK ``tool_context`` (its public
+    1. The invocation user from the ADK ``tool_context`` (its public
        ``user_id`` property), when the tool runs inside an ADK agent loop.
+    2. Explicit ``user_id`` argument, for direct calls with no context.
     3. ``config.default_owner_id``.
     4. ``config.default_user_id``.
 
+    The invocation user wins over the argument because tool arguments come
+    from model output inside an agent loop, and a prompt must not be able to
+    read or write another user's memories.
+
     Args:
-        user_id: Optional user ID override.
+        user_id: Optional user ID for direct calls outside an agent loop.
+            Ignored when the tool context carries a user.
         tool_context: Optional ADK ToolContext for the current invocation.
             Read defensively; a missing or broken context never raises.
 
     Returns:
         The resolved user ID, or None if no source provides one.
     """
-    if user_id:
-      return user_id
-
     try:
       context_user_id = getattr(tool_context, "user_id", None)
     except Exception:
       context_user_id = None
     if isinstance(context_user_id, str) and context_user_id:
+      if user_id and user_id != context_user_id:
+        logger.warning(
+            "Ignoring user_id argument that differs from the invocation user"
+        )
       return context_user_id
+
+    if user_id:
+      return user_id
 
     return self._config.default_owner_id or self._config.default_user_id
 
@@ -226,18 +272,21 @@ class BaseMemoryTool(BaseTool):
       *,
       namespace: str,
       user_id: str | None,
+      namespace_field: str = "namespace",
   ) -> None:
     """Require a memory record to belong to the resolved operation scope.
 
     Args:
         memory: Backend memory record to validate.
-        namespace: Resolved namespace for the current invocation.
+        namespace: Resolved namespace for the current invocation, or its
+            namespace ID with the redis-agent-memory backend.
         user_id: Resolved user for the current invocation, if any.
+        namespace_field: Record field holding the namespace to compare.
 
     Raises:
         PermissionError: If the memory is outside the resolved scope.
     """
-    memory_namespace = read_field(memory, "namespace")
+    memory_namespace = read_field(memory, namespace_field)
     memory_user_id = read_field(memory, "owner_id")
     if memory_user_id is None:
       memory_user_id = read_field(memory, "user_id")
