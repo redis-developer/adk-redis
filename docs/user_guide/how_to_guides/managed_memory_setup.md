@@ -9,7 +9,7 @@ There is no local Agent Memory Server, worker, or Docker setup to run. You
 connect with an API base URL, an API key, and a store ID.
 
 The self-hosted `opensource-agent-memory` backend is deprecated and will be
-removed in 0.1.0. See [Agent Memory Server setup](memory_server_setup.md) only
+removed in 0.2.0. See [Agent Memory Server setup](memory_server_setup.md) only
 if you are maintaining an existing deployment.
 
 ## Prerequisites

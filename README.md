@@ -57,7 +57,7 @@ Memory backends are selected with `backend`:
 | Backend | Use when | Client |
 |---|---|---|
 | `redis-agent-memory` | You want Redis Agent Memory on Redis Iris, managed by Redis or self-managed | `redis-agent-memory` |
-| `opensource-agent-memory` | Deprecated, removed in 0.1.0. You maintain an existing self-hosted Agent Memory Server | `agent-memory-client` |
+| `opensource-agent-memory` | Deprecated, removed in 0.2.0. You maintain an existing self-hosted Agent Memory Server | `agent-memory-client` |
 
 The `memory` extra installs `redis-agent-memory>=1.0.0,<2` for the managed
 backend. Namespace names map to Redis Agent Memory namespaces, created on first
@@ -114,7 +114,7 @@ runner = Runner(
 ```
 
 The self-hosted Agent Memory Server backend, `backend="opensource-agent-memory"`,
-is deprecated and emits a `DeprecationWarning`. It will be removed in 0.1.0.
+is deprecated and emits a `DeprecationWarning`. It will be removed in 0.2.0.
 
 → *More examples: [search tools](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/search_tools/), [MCP search](https://redis-developer.github.io/adk-redis/concepts/search/), [semantic caching](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/semantic_cache/)*
 

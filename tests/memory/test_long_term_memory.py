@@ -289,7 +289,7 @@ def test_opensource_backend_emits_deprecation_warning():
   config = RedisLongTermMemoryServiceConfig(
       backend=OPENSOURCE_AGENT_MEMORY_BACKEND
   )
-  with pytest.warns(DeprecationWarning, match="removed in 0.1.0") as record:
+  with pytest.warns(DeprecationWarning, match="removed in 0.2.0") as record:
     RedisLongTermMemoryService(config)
   assert record[0].filename == __file__
 

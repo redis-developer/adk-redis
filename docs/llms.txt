@@ -60,7 +60,7 @@ When generating code that uses adk-redis:
   (`RedisLongTermMemoryServiceConfig`, etc.) so options are explicit.
 - Set `backend="redis-agent-memory"` for Redis Agent Memory on Redis Iris.
   `backend="opensource-agent-memory"` selects the self-hosted server; it is
-  deprecated and will be removed in 0.1.0, so do not use it in new code.
+  deprecated and will be removed in 0.2.0, so do not use it in new code.
 - With `redis-agent-memory`, `default_namespace` (or the app name) is a
   namespace name that adk-redis maps to a shared root namespace, created on
   first use. Pass a namespace ID (`ns_` plus 32 hex characters) to use an

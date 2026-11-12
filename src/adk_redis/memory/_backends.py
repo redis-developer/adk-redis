@@ -41,7 +41,7 @@ def warn_if_deprecated_backend(backend: str, *, stacklevel: int = 3) -> None:
   if backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
     warnings.warn(
         "The opensource-agent-memory backend is deprecated and will be"
-        " removed in 0.1.0. Use backend='redis-agent-memory' with Redis"
+        " removed in 0.2.0. Use backend='redis-agent-memory' with Redis"
         " Agent Memory.",
         DeprecationWarning,
         stacklevel=stacklevel,

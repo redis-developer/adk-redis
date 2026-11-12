@@ -640,7 +640,7 @@ async def test_create_tool_creates_the_configured_namespace_on_first_use(
 def test_opensource_backend_emits_deprecation_warning():
   """Selecting the self-hosted backend warns at the caller's line."""
   config = MemoryToolConfig(backend=OPENSOURCE_AGENT_MEMORY_BACKEND)
-  with pytest.warns(DeprecationWarning, match="removed in 0.1.0") as record:
+  with pytest.warns(DeprecationWarning, match="removed in 0.2.0") as record:
     SearchMemoryTool(config=config)
   assert record[0].filename == __file__
 

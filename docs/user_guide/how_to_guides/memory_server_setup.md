@@ -2,7 +2,7 @@
 
 !!! warning "Deprecated"
     The `opensource-agent-memory` backend is deprecated and will be removed in
-    0.1.0. New projects should use the managed `redis-agent-memory` backend; see
+    0.2.0. New projects should use the managed `redis-agent-memory` backend; see
     [managed Redis Agent Memory setup](managed_memory_setup.md).
 
 > **See also:** [ADK + Redis on redis.io](https://redis.io/docs/latest/integrate/google-adk/) for additional coverage.

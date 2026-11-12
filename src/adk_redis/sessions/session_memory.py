@@ -24,7 +24,6 @@ import logging
 import time
 from typing import Any, AsyncIterator, Literal
 import uuid
-import warnings
 
 from google.adk.events.event import Event
 from google.adk.sessions.base_session_service import BaseSessionService
@@ -867,35 +866,3 @@ class RedisSessionMemoryService(BaseSessionService):
   async def close(self) -> None:
     """Close the session service and cleanup resources."""
     pass
-
-
-class RedisWorkingMemorySessionServiceConfig(RedisSessionMemoryServiceConfig):
-  """Deprecated alias for :class:`RedisSessionMemoryServiceConfig`.
-
-  Retained for backward compatibility and removed in 0.1.0.
-  """
-
-  def __init__(self, **data: Any):
-    warnings.warn(
-        "RedisWorkingMemorySessionServiceConfig is deprecated; use "
-        "RedisSessionMemoryServiceConfig. The alias will be removed in 0.1.0.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    super().__init__(**data)
-
-
-class RedisWorkingMemorySessionService(RedisSessionMemoryService):
-  """Deprecated alias for :class:`RedisSessionMemoryService`.
-
-  Retained for backward compatibility and removed in 0.1.0.
-  """
-
-  def __init__(self, config: RedisSessionMemoryServiceConfig | None = None):
-    warnings.warn(
-        "RedisWorkingMemorySessionService is deprecated; use "
-        "RedisSessionMemoryService. The alias will be removed in 0.1.0.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    super().__init__(config=config)

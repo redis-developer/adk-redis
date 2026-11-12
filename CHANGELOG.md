@@ -44,9 +44,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Deprecated
 
 - The `opensource-agent-memory` backend, backed by the self-hosted Agent
-  Memory Server, is deprecated and will be removed in 0.1.0. Constructing a
+  Memory Server, is deprecated and will be removed in 0.2.0. Constructing a
   memory service, session service or memory tool with it emits a
   `DeprecationWarning`.
+
+### Removed
+
+- **Breaking:** the `RedisWorkingMemorySessionService` and
+  `RedisWorkingMemorySessionServiceConfig` aliases, deprecated in 0.0.8, are
+  removed. Use `RedisSessionMemoryService` and
+  `RedisSessionMemoryServiceConfig`.
+- **Breaking:** the `adk_redis.sessions.working_memory` module path,
+  deprecated in 0.0.8, is removed. Import from
+  `adk_redis.sessions.session_memory` or the top-level `adk_redis` package.
 
 ### Tests
 
