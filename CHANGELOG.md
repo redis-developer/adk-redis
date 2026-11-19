@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- **Breaking:** the `memory` extra now requires `redis-agent-memory>=1.0.0`,
-  the Redis Iris SDK, and the managed backend speaks its API. Redis Agent
+- **Breaking:** managed memory now requires Python 3.11+ and the unified
+  Redis Iris SDK (`redis-iris>=1.1.0,<2`). Redis Agent
   Memory 1.0 clients and servers are not compatible with 0.x, so the store
   must be a 1.0 store.
 - With the `redis-agent-memory` backend, namespaces are Redis Agent Memory

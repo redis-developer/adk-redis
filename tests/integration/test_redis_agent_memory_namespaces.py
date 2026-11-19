@@ -49,7 +49,7 @@ from tests.integration.conftest import REDIS_AGENT_MEMORY_STORE_ID
 from tests.integration.conftest import REDIS_AGENT_MEMORY_URL
 from tests.integration.conftest import REQUIRES_REDIS_AGENT_MEMORY
 
-redis_agent_memory = pytest.importorskip("redis_agent_memory")
+iris_memory = pytest.importorskip("redis_iris.agent_memory")
 
 pytestmark = REQUIRES_REDIS_AGENT_MEMORY
 
@@ -63,10 +63,12 @@ _CONNECTION = {
 
 
 def _client():
-  return redis_agent_memory.AgentMemory(
-      REDIS_AGENT_MEMORY_URL,
-      api_key=REDIS_AGENT_MEMORY_API_KEY,
-      store_id=REDIS_AGENT_MEMORY_STORE_ID,
+  return iris_memory.connect(
+      iris_memory.AgentMemorySettings(
+          url=REDIS_AGENT_MEMORY_URL,
+          api_key=REDIS_AGENT_MEMORY_API_KEY,
+          store_id=REDIS_AGENT_MEMORY_STORE_ID,
+      )
   )
 
 

@@ -56,10 +56,10 @@ Memory backends are selected with `backend`:
 
 | Backend | Use when | Client |
 |---|---|---|
-| `redis-agent-memory` | You want Redis Agent Memory on Redis Iris, managed by Redis or self-managed | `redis-agent-memory` |
+| `redis-agent-memory` | You want Redis Agent Memory on Redis Iris, managed by Redis or self-managed | `redis-iris` |
 | `opensource-agent-memory` | Deprecated, removed in 0.2.0. You maintain an existing self-hosted Agent Memory Server | `agent-memory-client` |
 
-The `memory` extra installs `redis-agent-memory>=1.0.0,<2` for the managed
+On Python 3.11+, the `memory` extra installs `redis-iris>=1.1.0,<2` for the managed
 backend. Namespace names map to Redis Agent Memory namespaces, created on first
 use; see [managed memory setup](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/managed_memory_setup/#namespaces).
 

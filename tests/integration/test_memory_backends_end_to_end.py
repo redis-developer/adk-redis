@@ -45,7 +45,7 @@ from tests.integration.conftest import REQUIRES_AGENT_MEMORY_SERVER
 from tests.integration.conftest import REQUIRES_REDIS_AGENT_MEMORY
 
 pytest.importorskip("agent_memory_client")
-pytest.importorskip("redis_agent_memory")
+pytest.importorskip("redis_iris.agent_memory")
 
 _APP_NAME = "adk_redis_it"
 _QUERY = "what color does the user like?"

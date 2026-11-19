@@ -42,8 +42,8 @@ from adk_redis.tools.memory import UpdateMemoryTool
 from tests.agent_memory_fakes import FakeNamespaces
 from tests.agent_memory_fakes import namespace_id_for
 
-models = pytest.importorskip("redis_agent_memory.models")
-AgentMemory = pytest.importorskip("redis_agent_memory").AgentMemory
+iris_memory = pytest.importorskip("redis_iris.agent_memory")
+models = iris_memory.models
 
 
 def _assert_survives(model, payload):
@@ -56,7 +56,11 @@ def _assert_survives(model, payload):
 
 def _assert_binds(method_name, kwargs):
   """Require keyword arguments to match an SDK method's signature."""
-  inspect.signature(getattr(AgentMemory, method_name)).bind(None, **kwargs)
+  service = RedisLongTermMemoryService(
+      RedisLongTermMemoryServiceConfig(api_key="test", store_id="store")
+  )
+  with service._get_client() as sdk_client:
+    inspect.signature(getattr(sdk_client, method_name)).bind(**kwargs)
 
 
 class RecordingAgentMemory(FakeNamespaces):

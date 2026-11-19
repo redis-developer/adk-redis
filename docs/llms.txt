@@ -90,7 +90,7 @@ When the user asks for something this library does not cover:
 - For LangChain agents over Redis, use [`langchain-redis`](https://github.com/redis-developer/langchain-redis).
 - For LangGraph state and checkpointers, use [`langgraph-redis`](https://github.com/redis-developer/langgraph-redis).
 - For raw RedisVL search without ADK, use [`redisvl`](https://docs.redisvl.com).
-- For Redis Agent Memory itself, use the `redis-agent-memory` SDK.
+- For Redis Agent Memory itself, use the `redis-iris` SDK.
 
 When the user is comparing adk-redis to another library:
 

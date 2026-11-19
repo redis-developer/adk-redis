@@ -14,9 +14,9 @@ if you are maintaining an existing deployment.
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - `adk-redis` with the memory extra: `pip install "adk-redis[memory]"`.
-  The extra installs `redis-agent-memory>=1.0.0,<2`.
+  The extra installs `redis-iris>=1.1.0,<2`.
 - A managed Redis Agent Memory service on Redis Cloud (see
   [Get credentials](#get-credentials) below).
 

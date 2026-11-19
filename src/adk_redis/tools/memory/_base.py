@@ -26,6 +26,8 @@ from google.adk.tools.base_tool import BaseTool
 from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis.memory._backends import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory._backends import warn_if_deprecated_backend
+from adk_redis.memory._iris import connect_managed_memory
+from adk_redis.memory._iris import managed_store_id
 from adk_redis.memory._namespaces import is_namespace_id
 from adk_redis.memory._namespaces import resolve_namespace_id
 from adk_redis.memory._utils import read_field
@@ -45,13 +47,6 @@ else:
   _MemoryAPIClient = _agent_memory_client_module.MemoryAPIClient
   _MemoryClientConfig = _agent_memory_client_module.MemoryClientConfig
   _RecencyConfig = _agent_memory_models_module.RecencyConfig
-
-try:
-  _redis_agent_memory_module = import_module("redis_agent_memory")
-except ImportError:
-  _AgentMemory: Any = None
-else:
-  _AgentMemory = _redis_agent_memory_module.AgentMemory
 
 
 class BaseMemoryTool(BaseTool):
@@ -92,32 +87,12 @@ class BaseMemoryTool(BaseTool):
     """Get a backend client for compatibility with existing tests."""
     if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
       return self._get_agent_memory_server_client()
-    return self._get_redis_agent_memory_client()
-
-  def _get_redis_agent_memory_client(self) -> Any:
-    """Get a Redis Agent Memory SDK client.
-
-    Note: We create a new client for each call instead of caching it because
-    the ADK Runner creates a new event loop for each run() call, and cached
-    async clients get tied to the first event loop and fail when it closes.
-
-    Returns:
-        An initialized Redis Agent Memory SDK client.
-
-    Raises:
-        ImportError: If redis-agent-memory package is not installed.
-    """
-    if _AgentMemory is None:
-      raise ImportError(
-          "redis-agent-memory package is required for memory tools. "
-          "Install it with: pip install adk-redis[memory]"
-      )
-
-    return _AgentMemory(
-        self._config.api_base_url,
+    return connect_managed_memory(
+        url=self._config.api_base_url,
         api_key=self._config.api_key,
         store_id=self._config.store_id,
-        timeout_ms=self._timeout_ms(),
+        timeout=self._config.timeout,
+        timeout_ms=self._config.timeout_ms,
     )
 
   def _get_agent_memory_server_client(self) -> Any:
@@ -135,10 +110,6 @@ class BaseMemoryTool(BaseTool):
         default_namespace=self._config.default_namespace,
     )
     return _MemoryAPIClient(client_config)
-
-  def _timeout_ms(self) -> int:
-    """Return the configured SDK timeout in milliseconds."""
-    return self._config.timeout_ms or int(self._config.timeout * 1000)
 
   @asynccontextmanager
   async def _agent_memory(self) -> AsyncIterator[Any]:
@@ -217,7 +188,7 @@ class BaseMemoryTool(BaseTool):
     return await resolve_namespace_id(
         agent_memory,
         server_url=self._config.api_base_url,
-        store_id=self._config.store_id,
+        store_id=managed_store_id(self._config.store_id),
         name=name,
         create=is_default,
     )

@@ -39,6 +39,8 @@ from adk_redis.memory._backends import MemoryBackendName
 from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis.memory._backends import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory._backends import warn_if_deprecated_backend
+from adk_redis.memory._iris import connect_managed_memory
+from adk_redis.memory._iris import managed_store_id
 from adk_redis.memory._namespaces import is_namespace_id
 from adk_redis.memory._namespaces import resolve_namespace_id
 from adk_redis.memory._utils import extract_text_from_event
@@ -74,13 +76,6 @@ else:
   _MemoryNotFoundError = _agent_memory_exceptions_module.MemoryNotFoundError
   _MemoryMessage = _agent_memory_models_module.MemoryMessage
   _MemoryStrategyConfig = _agent_memory_models_module.MemoryStrategyConfig
-
-try:
-  _redis_agent_memory_module = import_module("redis_agent_memory")
-except ImportError:
-  _AgentMemory: Any = None
-else:
-  _AgentMemory = _redis_agent_memory_module.AgentMemory
 
 
 class RedisSessionMemoryServiceConfig(BaseModel):
@@ -141,30 +136,16 @@ class RedisSessionMemoryService(BaseSessionService):
     self._config = config or RedisSessionMemoryServiceConfig()
     warn_if_deprecated_backend(self._config.backend)
 
-  def _timeout_ms(self) -> int:
-    """Return the configured SDK timeout in milliseconds."""
-    return self._config.timeout_ms or int(self._config.timeout * 1000)
-
   def _get_client(self) -> Any:
     """Get a backend client for compatibility with existing tests."""
     if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
       return self._get_agent_memory_server_client()
-    return self._get_redis_agent_memory_client()
-
-  def _get_redis_agent_memory_client(self) -> Any:
-    """Get a Redis Agent Memory SDK client."""
-    if _AgentMemory is None:
-      raise ImportError(
-          "redis-agent-memory package is required for "
-          "RedisSessionMemoryService. "
-          "Install it with: pip install adk-redis[memory]"
-      )
-
-    return _AgentMemory(
-        self._config.api_base_url,
+    return connect_managed_memory(
+        url=self._config.api_base_url,
         api_key=self._config.api_key,
         store_id=self._config.store_id,
-        timeout_ms=self._timeout_ms(),
+        timeout=self._config.timeout,
+        timeout_ms=self._config.timeout_ms,
     )
 
   def _get_agent_memory_server_client(self) -> Any:
@@ -211,7 +192,7 @@ class RedisSessionMemoryService(BaseSessionService):
     return await resolve_namespace_id(
         agent_memory,
         server_url=self._config.api_base_url,
-        store_id=self._config.store_id,
+        store_id=managed_store_id(self._config.store_id),
         name=self._get_namespace(app_name),
         create=create,
     )
