@@ -59,15 +59,13 @@ Memory backends are selected with `backend`:
 | `redis-agent-memory` | You want Redis Agent Memory on Redis Iris, managed by Redis or self-managed | `redis-iris` |
 | `opensource-agent-memory` | Deprecated, removed in 0.2.0. You maintain an existing self-hosted Agent Memory Server | `agent-memory-client` |
 
-On Python 3.11+, the `memory` extra installs `redis-iris>=1.1.0,<2` for the managed
-backend. Namespace names map to Redis Agent Memory namespaces, created on first
-use; see [managed memory setup](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/managed_memory_setup/#namespaces).
+The managed backend requires Python 3.11 or later. The `memory` extra installs the unified Redis Iris SDK (`redis-iris>=1.1.0,<2`). For namespace names, IDs and permissions, see the [managed memory setup guide](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/managed_memory_setup/#namespaces).
 
 ---
 
 ## Quick start
 
-**Prerequisites:** Python 3.10+, Redis 8.4+, and one memory backend. See the [Quickstart](https://redis-developer.github.io/adk-redis/user_guide/01_integration/) for full setup steps.
+This example uses Python 3.11 or later and a Redis Agent Memory endpoint, API key and store ID. Follow the [quickstart](https://redis-developer.github.io/adk-redis/user_guide/01_integration/) to install the dependencies.
 
 ```python
 from google.adk import Agent

@@ -19,6 +19,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from collections.abc import Sequence
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from functools import cached_property
 from importlib import import_module
 import logging
@@ -39,11 +40,12 @@ from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis.memory._backends import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory._backends import warn_if_deprecated_backend
 from adk_redis.memory._iris import connect_managed_memory
-from adk_redis.memory._iris import managed_store_id
+from adk_redis.memory._iris import ManagedMemoryUnavailable
 from adk_redis.memory._namespaces import is_namespace_id
 from adk_redis.memory._namespaces import resolve_namespace_id
 from adk_redis.memory._utils import extract_text_from_content
 from adk_redis.memory._utils import extract_text_from_event
+from adk_redis.memory._utils import managed_memory_id
 from adk_redis.memory._utils import read_field
 from adk_redis.memory._utils import sanitize_managed_identifier
 from adk_redis.memory._utils import stable_memory_id
@@ -72,6 +74,14 @@ else:
 MemoryTypeName = Literal["semantic", "episodic", "message"]
 
 
+@dataclass
+class _PendingRecord:
+  """Validated payload and inputs for generating its namespace-scoped ID."""
+
+  payload: dict[str, Any]
+  id_parts: tuple[object, ...]
+
+
 class RedisLongTermMemoryServiceConfig(BaseModel):
   """Configuration for Redis long-term memory.
 
@@ -82,10 +92,7 @@ class RedisLongTermMemoryServiceConfig(BaseModel):
       store_id: Redis Agent Memory store ID.
       timeout: HTTP timeout in seconds.
       timeout_ms: Optional SDK timeout in milliseconds.
-      default_namespace: Default namespace for memory operations.
-        With the redis-agent-memory backend, a name maps to a shared root
-        namespace of that name, created on first use, and a namespace ID
-        (``ns_`` followed by 32 hex characters) is used as given.
+      default_namespace: Shared root name or namespace ID for memory operations.
       search_top_k: Maximum number of memories to retrieve per search.
       similarity_threshold: Minimum similarity threshold for search results.
       distance_threshold: Backward-compatible alias for similarity_threshold.
@@ -173,7 +180,11 @@ class RedisLongTermMemoryService(BaseMemoryService):
     if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
       return self._get_agent_memory_server_client()
     return connect_managed_memory(
-        url=self._config.api_base_url,
+        url=(
+            self._config.api_base_url
+            if "api_base_url" in self._config.model_fields_set
+            else None
+        ),
         api_key=self._config.api_key,
         store_id=self._config.store_id,
         timeout=self._config.timeout,
@@ -244,8 +255,6 @@ class RedisLongTermMemoryService(BaseMemoryService):
     name = self._get_namespace(app_name, custom_metadata)
     namespace_id = await resolve_namespace_id(
         agent_memory,
-        server_url=self._config.api_base_url,
-        store_id=managed_store_id(self._config.store_id),
         name=name,
         create=True,
     )
@@ -259,8 +268,6 @@ class RedisLongTermMemoryService(BaseMemoryService):
     """Resolve the namespace ID for a read, without creating it."""
     return await resolve_namespace_id(
         agent_memory,
-        server_url=self._config.api_base_url,
-        store_id=managed_store_id(self._config.store_id),
         name=self._get_namespace(app_name),
         create=False,
     )
@@ -483,10 +490,8 @@ class RedisLongTermMemoryService(BaseMemoryService):
       events: Sequence[Event],
       session_id: str | None,
       custom_metadata: Mapping[str, object] | None,
-      namespace_id: str,
-  ) -> list[dict[str, Any]]:
+  ) -> list[_PendingRecord]:
     """Convert ADK events into Redis Agent Memory records."""
-    namespace = self._get_namespace(app_name, custom_metadata)
     memory_type = self._memory_type_from_metadata(
         custom_metadata,
         default="message",
@@ -499,26 +504,19 @@ class RedisLongTermMemoryService(BaseMemoryService):
         continue
       event_id = event.id or event.timestamp
       records.append(
-          {
-              "memoryId": stable_memory_id(
-                  self._config.source,
-                  "event",
-                  namespace,
-                  user_id,
-                  session_id or "",
-                  event_id,
-                  text,
-              ),
-              "text": text,
-              "ownerId": user_id,
-              "namespaceId": namespace_id,
-              "sessionId": session_id,
-              "topics": self._coerce_topics(
-                  app_name=app_name,
-                  custom_metadata=custom_metadata,
-              ),
-              "memoryType": memory_type,
-          }
+          _PendingRecord(
+              payload={
+                  "text": text,
+                  "ownerId": user_id,
+                  "sessionId": session_id,
+                  "topics": self._coerce_topics(
+                      app_name=app_name,
+                      custom_metadata=custom_metadata,
+                  ),
+                  "memoryType": memory_type,
+              },
+              id_parts=("event", user_id, session_id or "", event_id, text),
+          )
       )
 
     return records
@@ -530,10 +528,8 @@ class RedisLongTermMemoryService(BaseMemoryService):
       user_id: str,
       memories: Sequence[MemoryEntry],
       custom_metadata: Mapping[str, object] | None,
-      namespace_id: str,
-  ) -> list[dict[str, Any]]:
+  ) -> list[_PendingRecord]:
     """Convert ADK MemoryEntry objects into Redis Agent Memory records."""
-    namespace = self._get_namespace(app_name, custom_metadata)
     records = []
 
     for index, memory in enumerate(memories):
@@ -549,42 +545,50 @@ class RedisLongTermMemoryService(BaseMemoryService):
 
       session_id = merged_metadata.get("session_id")
       records.append(
-          {
-              "memoryId": memory.id
-              or stable_memory_id(
-                  self._config.source,
-                  "memory",
-                  namespace,
-                  user_id,
-                  text,
-              ),
-              "text": text,
-              "ownerId": user_id,
-              "namespaceId": namespace_id,
-              "sessionId": str(session_id) if session_id else None,
-              "topics": self._coerce_topics(
-                  app_name=app_name,
-                  custom_metadata=custom_metadata,
-                  memory=memory,
-              ),
-              "memoryType": self._memory_type_from_metadata(
-                  custom_metadata,
-                  memory,
-              ),
-          }
+          _PendingRecord(
+              payload={
+                  "memoryId": memory.id,
+                  "text": text,
+                  "ownerId": user_id,
+                  "sessionId": str(session_id) if session_id else None,
+                  "topics": self._coerce_topics(
+                      app_name=app_name,
+                      custom_metadata=custom_metadata,
+                      memory=memory,
+                  ),
+                  "memoryType": self._memory_type_from_metadata(
+                      custom_metadata,
+                      memory,
+                  ),
+              },
+              id_parts=("memory", user_id, text),
+          )
       )
 
     return records
 
   async def _bulk_create(
-      self, agent_memory: Any, records: list[dict[str, Any]]
+      self,
+      records: list[_PendingRecord],
+      app_name: str,
+      custom_metadata: Mapping[str, object] | None,
   ) -> None:
-    """Create long-term memory records in Redis Agent Memory."""
+    """Write a validated batch into its managed namespace."""
     if not records:
       return
-    response = await agent_memory.bulk_create_long_term_memories_async(
-        memories=records
-    )
+    async with self._agent_memory() as agent_memory:
+      namespace_id = await self._managed_namespace_id(
+          agent_memory, app_name, custom_metadata
+      )
+      for record in records:
+        record.payload["namespaceId"] = namespace_id
+        if not record.payload.get("memoryId"):
+          record.payload["memoryId"] = managed_memory_id(
+              self._config.source, namespace_id, *record.id_parts
+          )
+      response = await agent_memory.bulk_create_long_term_memories_async(
+          memories=[record.payload for record in records]
+      )
     errors = read_field(response, "errors")
     if errors:
       logger.warning("Redis Agent Memory reported write errors: %s", errors)
@@ -650,20 +654,17 @@ class RedisLongTermMemoryService(BaseMemoryService):
         )
         return
 
-      async with self._agent_memory() as agent_memory:
-        namespace_id = await self._managed_namespace_id(
-            agent_memory, app_name, custom_metadata
-        )
-        records = self._build_event_records(
-            app_name=app_name,
-            user_id=user_id,
-            events=events,
-            session_id=session_id,
-            custom_metadata=custom_metadata,
-            namespace_id=namespace_id,
-        )
-        await self._bulk_create(agent_memory, records)
+      records = self._build_event_records(
+          app_name=app_name,
+          user_id=user_id,
+          events=events,
+          session_id=session_id,
+          custom_metadata=custom_metadata,
+      )
+      await self._bulk_create(records, app_name, custom_metadata)
       logger.info("Stored %d event memory records", len(records))
+    except ManagedMemoryUnavailable:
+      raise
     except Exception as e:
       logger.error("Failed to add events to memory: %s", e)
 
@@ -687,19 +688,16 @@ class RedisLongTermMemoryService(BaseMemoryService):
         logger.info("Stored %d explicit memory records", len(memories))
         return
 
-      async with self._agent_memory() as agent_memory:
-        namespace_id = await self._managed_namespace_id(
-            agent_memory, app_name, custom_metadata
-        )
-        records = self._build_memory_records(
-            app_name=app_name,
-            user_id=user_id,
-            memories=memories,
-            custom_metadata=custom_metadata,
-            namespace_id=namespace_id,
-        )
-        await self._bulk_create(agent_memory, records)
+      records = self._build_memory_records(
+          app_name=app_name,
+          user_id=user_id,
+          memories=memories,
+          custom_metadata=custom_metadata,
+      )
+      await self._bulk_create(records, app_name, custom_metadata)
       logger.info("Stored %d explicit memory records", len(records))
+    except ManagedMemoryUnavailable:
+      raise
     except Exception as e:
       logger.error("Failed to add explicit memories: %s", e)
 
@@ -854,6 +852,8 @@ class RedisLongTermMemoryService(BaseMemoryService):
       )
       return SearchMemoryResponse(memories=memories)
 
+    except ManagedMemoryUnavailable:
+      raise
     except Exception as e:
       logger.error("Failed to search memories: %s", e)
       return SearchMemoryResponse(memories=[])

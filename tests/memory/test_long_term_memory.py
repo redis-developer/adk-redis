@@ -19,6 +19,7 @@ from datetime import timezone
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from google.adk.events.event import Event
 from google.adk.memory.memory_entry import MemoryEntry
 from google.adk.sessions.session import Session
 from google.genai import types
@@ -227,10 +228,29 @@ class TestRedisLongTermMemoryServiceMethods:
     ]
 
   @pytest.mark.asyncio
-  async def test_add_session_to_memory_creates_message_records(
+  async def test_namespace_replacement_scopes_generated_memory_ids(
       self, service, fake_client
   ):
-    """Test add_session_to_memory stores event text as message memory."""
+    content = types.Content(parts=[types.Part(text="Tea")])
+    event = Event(author="alice", content=content)
+    memory = MemoryEntry(content=content)
+    replacement = namespace_id_for("replacement")
+    for namespace_id in (TEST_NS_ID, TEST_NS_ID, replacement):
+      fake_client.namespaces["test-ns"] = namespace_id
+      await service.add_events_to_memory(
+          app_name="app", user_id="alice", events=[event]
+      )
+      await service.add_memory(
+          app_name="app", user_id="alice", memories=[memory]
+      )
+    ids = [record["memoryId"] for record in fake_client.created_records]
+    assert len(ids) == 6
+    assert ids[:2] == ids[2:4]
+    assert set(ids[:2]).isdisjoint(ids[4:])
+
+  @pytest.mark.asyncio
+  async def test_empty_session_does_not_open_a_memory_client(self, service):
+    """A session without text has nothing to write."""
     session = Session(
         id="session-1",
         app_name="app",
@@ -240,7 +260,20 @@ class TestRedisLongTermMemoryServiceMethods:
 
     await service.add_session_to_memory(session)
 
-    assert fake_client.created_records == []
+    service._get_client.assert_not_called()
+
+  @pytest.mark.asyncio
+  async def test_invalid_memory_batch_does_not_open_a_client(self, service):
+    """Validate the entire batch before creating its shared namespace."""
+    await service.add_memory(
+        app_name="app",
+        user_id="alice",
+        memories=[
+            MemoryEntry(content=types.Content(parts=[types.Part(text="ok")])),
+            MemoryEntry(content=types.Content(parts=[])),
+        ],
+    )
+    service._get_client.assert_not_called()
 
   @pytest.mark.asyncio
   async def test_search_memory_can_use_agent_memory_server_backend(self):
@@ -310,3 +343,12 @@ async def test_search_memory_does_not_create_a_missing_namespace():
   assert result.memories == []
   assert fake_client.created_namespaces == []
   assert fake_client.search_request is None
+
+
+@pytest.mark.asyncio
+async def test_search_reports_missing_managed_sdk(monkeypatch):
+  monkeypatch.setattr("adk_redis.memory._iris.iris_memory", None)
+  with pytest.raises(ImportError, match="Python 3.11"):
+    await RedisLongTermMemoryService().search_memory(
+        app_name="app", user_id="alice", query="tea"
+    )

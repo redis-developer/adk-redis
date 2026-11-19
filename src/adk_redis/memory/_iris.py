@@ -28,18 +28,13 @@ except ModuleNotFoundError as exc:
   iris_memory = None
 
 
-def managed_store_id(store_id: str | None) -> str | None:
-  """Resolve the store used by the client and the namespace cache."""
-  return (
-      store_id
-      or os.getenv("IRIS_AGENT_MEMORY_STORE_ID")
-      or os.getenv("AGENT_MEMORY_STORE_ID")
-  )
+class ManagedMemoryUnavailable(ImportError):
+  """The managed memory extra is unavailable on this interpreter."""
 
 
 def connect_managed_memory(
     *,
-    url: str,
+    url: str | None,
     api_key: str | None,
     store_id: str | None,
     timeout: float,
@@ -47,16 +42,18 @@ def connect_managed_memory(
 ) -> Any:
   """Open a fresh Iris client for the current event loop."""
   if iris_memory is None:
-    raise ImportError(
+    raise ManagedMemoryUnavailable(
         "Managed memory requires Python 3.11+ and redis-iris. "
         "Install it with: pip install 'adk-redis[memory]'"
     )
   settings = iris_memory.AgentMemorySettings(
-      url=url,
+      url=url or os.getenv("IRIS_AGENT_MEMORY_URL") or "http://localhost:8000",
       api_key=api_key
       or os.getenv("IRIS_AGENT_MEMORY_API_KEY")
       or os.getenv("AGENT_MEMORY_API_KEY"),
-      store_id=managed_store_id(store_id),
+      store_id=store_id
+      or os.getenv("IRIS_AGENT_MEMORY_STORE_ID")
+      or os.getenv("AGENT_MEMORY_STORE_ID"),
       timeout=timeout if timeout_ms is None else timeout_ms / 1000,
   )
   return iris_memory.connect(settings)

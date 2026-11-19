@@ -134,12 +134,14 @@ class SearchMemoryTool(BaseMemoryTool):
     query = args.get("query")
     limit = args.get("limit", self._config.search_top_k)
     namespace = self._get_namespace(args.get("namespace"))
-    user_id = self._get_user_id(args.get("user_id"), tool_context=tool_context)
 
     if not query:
       return {"status": "error", "message": "query is required"}
 
     try:
+      user_id = self._get_user_id(
+          args.get("user_id"), tool_context=tool_context
+      )
       if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
         if _Namespace is None or _UserId is None:
           raise ImportError(

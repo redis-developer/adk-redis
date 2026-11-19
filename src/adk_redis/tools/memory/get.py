@@ -112,7 +112,6 @@ class GetMemoryTool(BaseMemoryTool):
     tool_context = kwargs.get("tool_context")
 
     memory_id = args.get("memory_id")
-    user_id = self._get_user_id(args.get("user_id"), tool_context=tool_context)
 
     if not memory_id:
       return {"status": "error", "message": "memory_id is required"}
@@ -122,6 +121,9 @@ class GetMemoryTool(BaseMemoryTool):
     }
 
     try:
+      user_id = self._get_user_id(
+          args.get("user_id"), tool_context=tool_context
+      )
       if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
         memory = (
             await (

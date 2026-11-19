@@ -125,12 +125,14 @@ class MemoryPromptTool(BaseMemoryTool):
     query = args.get("query")
     system_prompt = args.get("system_prompt", "")
     namespace = self._get_namespace(args.get("namespace"))
-    user_id = self._get_user_id(args.get("user_id"), tool_context=tool_context)
 
     if not query:
       return {"status": "error", "message": "query is required"}
 
     try:
+      user_id = self._get_user_id(
+          args.get("user_id"), tool_context=tool_context
+      )
       if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
         response = await self._get_agent_memory_server_client().memory_prompt(
             query=query,

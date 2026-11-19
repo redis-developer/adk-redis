@@ -99,40 +99,19 @@ memory_service = RedisLongTermMemoryService(
 
 ## Namespaces
 
-Redis Agent Memory stores each namespace as a server resource with an ID of
-the form `ns_` followed by 32 hex characters. `adk-redis` keeps naming
-namespaces by a plain name, `default_namespace` or the ADK app name, and maps
-each name to a shared root namespace of that name:
+A managed namespace has a server-assigned ID consisting of `ns_` followed by 32 hexadecimal characters. Set `default_namespace` to an existing ID to use it directly. A name such as `support` selects the shared root namespace of that name. The memory and session services use the ADK app name when you omit `default_namespace`.
 
-- The first operation that needs a namespace looks it up and creates it if it
-  does not exist. The API key therefore needs permission to create namespaces.
-- The name-to-ID mapping is cached for the life of the process, so the lookup
-  happens once per namespace per store.
-- To use a namespace you created yourself, set `default_namespace` to its ID.
-  An ID is used as given, with no lookup and no create.
-- An archived namespace is not restored or replaced; operations on it raise a
-  `ValueError` naming the namespace.
+The services create a missing namespace when they write memories or append a session event. Searching with the memory service or listing sessions returns an empty result for a missing namespace. Memory tools can create their configured default namespace on first use, including a search. The API key needs permission to create a namespace when any of these operations first creates it.
 
-The memory tools accept a `namespace` argument from the model. A namespace
-named there is only looked up, never created, so a prompt cannot create
-namespaces: a search in a namespace that does not exist returns no memories,
-and a write into one fails.
+When a tool receives a different namespace name from the model, it looks up an existing shared root. For example, if a tool’s default is `support`, a search for a missing `sales` namespace returns no memories and an attempt to create a memory there returns an error. A model-supplied namespace ID is accepted only if it is the configured default.
+
+Named namespaces are looked up on each operation. If the namespace is archived, choose an active namespace.
 
 ## Identifier constraints
 
-The managed API accepts only alphanumeric characters and hyphens
-(`[A-Za-z0-9-]`) in identifier fields such as namespace, session ID, and actor
-ID, and caps session IDs at 64 characters. `adk-redis` adapts ADK identifiers
-to fit:
+The managed backend normalises namespace names and event authors by replacing unsupported characters with hyphens. For example, `my_app` and `my-app` select the same shared root namespace. A configured namespace ID is used directly.
 
-- Namespaces and authors are sanitized: unsupported characters (including `_`
-  and `:`) are replaced with hyphens. For example, `my_app` becomes `my-app`.
-- ADK session IDs that exceed the limit or contain unsupported characters are
-  hashed to a stable hex value that fits the 64-character cap.
-
-This adaptation is automatic. You do not need to pre-sanitize identifiers, but
-be aware that two raw namespaces that differ only by an unsupported character
-(for example `my_app` and `my-app`) collapse to the same managed namespace.
+For each session, the backend hashes the resolved namespace ID, the ADK user ID and the ADK session ID into a 64-character storage ID. ADK callers continue to use the original session ID.
 
 ## Differences from the self-hosted backend
 

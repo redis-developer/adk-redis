@@ -24,13 +24,13 @@ REDIS_AGENT_MEMORY_STORE_ID are set.
 from __future__ import annotations
 
 import asyncio
+from contextlib import AsyncExitStack
 from types import SimpleNamespace
 import uuid
 
 from google.adk.events.event import Event
 from google.adk.memory.memory_entry import MemoryEntry
 from google.genai import types
-import pytest
 
 from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis import RedisLongTermMemoryService
@@ -44,12 +44,12 @@ from adk_redis.tools.memory import GetMemoryTool
 from adk_redis.tools.memory import MemoryToolConfig
 from adk_redis.tools.memory import SearchMemoryTool
 from adk_redis.tools.memory import UpdateMemoryTool
+from tests.integration.conftest import delete_test_memory
+from tests.integration.conftest import iris_client
 from tests.integration.conftest import REDIS_AGENT_MEMORY_API_KEY
 from tests.integration.conftest import REDIS_AGENT_MEMORY_STORE_ID
 from tests.integration.conftest import REDIS_AGENT_MEMORY_URL
 from tests.integration.conftest import REQUIRES_REDIS_AGENT_MEMORY
-
-iris_memory = pytest.importorskip("redis_iris.agent_memory")
 
 pytestmark = REQUIRES_REDIS_AGENT_MEMORY
 
@@ -62,22 +62,10 @@ _CONNECTION = {
 }
 
 
-def _client():
-  return iris_memory.connect(
-      iris_memory.AgentMemorySettings(
-          url=REDIS_AGENT_MEMORY_URL,
-          api_key=REDIS_AGENT_MEMORY_API_KEY,
-          store_id=REDIS_AGENT_MEMORY_STORE_ID,
-      )
-  )
-
-
 async def _lookup(name: str) -> str | None:
-  async with _client() as client:
+  async with iris_client() as client:
     return await resolve_namespace_id(
         client,
-        server_url=REDIS_AGENT_MEMORY_URL or "",
-        store_id=REDIS_AGENT_MEMORY_STORE_ID,
         name=name,
         create=False,
     )
@@ -94,7 +82,7 @@ async def _eventually(check, attempts: int = 10):
 
 
 async def test_memory_lands_in_a_shared_root_named_after_the_namespace(
-    unique_namespace: str, unique_user_id: str
+    unique_namespace: str, unique_user_id: str, iris_cleanup: AsyncExitStack
 ) -> None:
   service = RedisLongTermMemoryService(
       RedisLongTermMemoryServiceConfig(
@@ -102,6 +90,7 @@ async def test_memory_lands_in_a_shared_root_named_after_the_namespace(
       )
   )
   memory_id = f"adk-{uuid.uuid4().hex}"
+  iris_cleanup.push_async_callback(delete_test_memory, memory_id)
   await service.add_memory(
       app_name=_APP_NAME,
       user_id=unique_user_id,
@@ -114,7 +103,7 @@ async def test_memory_lands_in_a_shared_root_named_after_the_namespace(
   )
 
   sanitized = unique_namespace.replace("_", "-")
-  async with _client() as client:
+  async with iris_client() as client:
     namespace = None
     cursor = None
     while namespace is None:
@@ -134,19 +123,22 @@ async def test_memory_lands_in_a_shared_root_named_after_the_namespace(
 
 
 async def test_search_in_another_namespace_finds_nothing_and_creates_nothing(
-    unique_namespace: str, unique_user_id: str
+    unique_namespace: str, unique_user_id: str, iris_cleanup: AsyncExitStack
 ) -> None:
   writer = RedisLongTermMemoryService(
       RedisLongTermMemoryServiceConfig(
           **_CONNECTION, default_namespace=unique_namespace
       )
   )
+  memory_id = f"adk-{uuid.uuid4().hex}"
+  iris_cleanup.push_async_callback(delete_test_memory, memory_id)
   await writer.add_memory(
       app_name=_APP_NAME,
       user_id=unique_user_id,
       memories=[
           MemoryEntry(
-              content=types.Content(parts=[types.Part(text="Likes teal.")])
+              id=memory_id,
+              content=types.Content(parts=[types.Part(text="Likes teal.")]),
           )
       ],
   )
@@ -174,7 +166,7 @@ async def test_search_in_another_namespace_finds_nothing_and_creates_nothing(
 
 
 async def test_list_sessions_returns_sessions_in_the_namespace(
-    unique_namespace: str, unique_user_id: str
+    unique_namespace: str, unique_user_id: str, iris_cleanup: AsyncExitStack
 ) -> None:
   sessions = RedisSessionMemoryService(
       RedisSessionMemoryServiceConfig(
@@ -182,6 +174,12 @@ async def test_list_sessions_returns_sessions_in_the_namespace(
       )
   )
   session_id = f"sess_{uuid.uuid4().hex[:8]}"
+  iris_cleanup.push_async_callback(
+      sessions.delete_session,
+      app_name=_APP_NAME,
+      user_id=unique_user_id,
+      session_id=session_id,
+  )
   session = await sessions.create_session(
       app_name=_APP_NAME, user_id=unique_user_id, session_id=session_id
   )
@@ -199,16 +197,11 @@ async def test_list_sessions_returns_sessions_in_the_namespace(
     )
     return [s.id for s in response.sessions]
 
-  try:
-    assert await _eventually(listed) == [session_id]
-  finally:
-    await sessions.delete_session(
-        app_name=_APP_NAME, user_id=unique_user_id, session_id=session_id
-    )
+  assert await _eventually(listed) == [session_id]
 
 
 async def test_tools_create_search_get_update_and_delete_within_scope(
-    unique_namespace: str, unique_user_id: str
+    unique_namespace: str, unique_user_id: str, iris_cleanup: AsyncExitStack
 ) -> None:
   config = MemoryToolConfig(
       **_CONNECTION,
@@ -223,6 +216,7 @@ async def test_tools_create_search_get_update_and_delete_within_scope(
   )
   assert created["status"] == "success", created
   memory_id = created["memory_id"]
+  iris_cleanup.push_async_callback(delete_test_memory, memory_id)
 
   async def found():
     result = await SearchMemoryTool(config=config).run_async(

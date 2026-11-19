@@ -9,8 +9,7 @@ For the concepts behind sessions and working memory, see
 
 ## Prerequisites
 
-- Redis Agent Memory endpoint, store ID, and API key, or a self-hosted Agent
-  Memory Server endpoint.
+- For managed memory, Python 3.11 or later, a Redis Agent Memory endpoint, a store ID and an API key. For the deprecated self-hosted backend, an Agent Memory Server endpoint.
 - `adk-redis` with the memory extra: `pip install "adk-redis[memory]"`.
 
 ## Basic usage

@@ -19,8 +19,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from adk_redis.memory import _namespaces
-
 
 @pytest.fixture
 def mock_vectorizer():
@@ -109,11 +107,3 @@ def mock_session_client():
   client.append_messages_to_working_memory = AsyncMock()
   client.close = AsyncMock()
   return client
-
-
-@pytest.fixture(autouse=True)
-def clear_namespace_cache():
-  """Isolate the process-wide namespace ID cache between tests."""
-  _namespaces._namespace_ids.clear()
-  yield
-  _namespaces._namespace_ids.clear()

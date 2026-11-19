@@ -76,6 +76,14 @@ class RecordingAgentMemory(FakeNamespaces):
   async def __aexit__(self, exc_type, exc_val, exc_tb):
     return None
 
+  async def list_namespaces_async(self, **kwargs):
+    self.calls["list_namespaces_async"] = kwargs
+    return await super().list_namespaces_async(**kwargs)
+
+  async def create_namespace_async(self, **kwargs):
+    self.calls["create_namespace_async"] = kwargs
+    return await super().create_namespace_async(**kwargs)
+
   async def bulk_create_long_term_memories_async(self, **kwargs):
     self.calls["bulk_create_long_term_memories_async"] = kwargs
     return SimpleNamespace(created=[], errors=None)
@@ -189,14 +197,44 @@ async def test_session_calls_match_sdk_signatures(client):
   _assert_binds("list_sessions_async", client.calls["list_sessions_async"])
 
 
-def test_namespace_calls_match_sdk_signatures():
-  _assert_binds(
-      "list_namespaces_async", {"scope": "SHARED", "limit": 200, "cursor": None}
-  )
-  _assert_binds(
-      "create_namespace_async",
-      {"request": {"name": "app", "scope": "SHARED"}},
-  )
-  _assert_survives(
-      models.CreateNamespaceRequestContent, {"name": "app", "scope": "SHARED"}
-  )
+@pytest.mark.asyncio
+async def test_namespace_calls_match_sdk_signatures(client):
+  service = RedisLongTermMemoryService()
+  memory = MemoryEntry(content=types.Content(parts=[types.Part(text="Tea.")]))
+  with patch.object(service, "_get_client", return_value=client):
+    await service.add_memory(
+        app_name="new-app", user_id="alice", memories=[memory]
+    )
+
+  _assert_binds("list_namespaces_async", client.calls["list_namespaces_async"])
+  create = client.calls["create_namespace_async"]
+  _assert_binds("create_namespace_async", create)
+  _assert_survives(models.CreateNamespaceRequestContent, create["request"])
+
+
+def test_iris_connection_uses_one_endpoint_and_credential_set(monkeypatch):
+  monkeypatch.setenv("IRIS_AGENT_MEMORY_URL", "https://iris.example")
+  monkeypatch.setenv("IRIS_AGENT_MEMORY_STORE_ID", "env-store")
+  monkeypatch.setenv("IRIS_AGENT_MEMORY_API_KEY", "env-key")
+  with patch.object(
+      iris_memory, "connect", side_effect=lambda settings: settings
+  ):
+    settings = RedisLongTermMemoryService()._get_client()
+    assert (settings.url, settings.store_id, settings.api_key) == (
+        "https://iris.example",
+        "env-store",
+        "env-key",
+    )
+    config = RedisSessionMemoryServiceConfig(
+        api_base_url="http://localhost:8000",
+        store_id="explicit-store",
+        api_key="explicit-key",
+        timeout_ms=125,
+    )
+    settings = RedisSessionMemoryService(config)._get_client()
+    assert (
+        settings.url,
+        settings.store_id,
+        settings.api_key,
+        settings.timeout,
+    ) == ("http://localhost:8000", "explicit-store", "explicit-key", 0.125)

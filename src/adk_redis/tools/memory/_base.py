@@ -27,7 +27,6 @@ from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis.memory._backends import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory._backends import warn_if_deprecated_backend
 from adk_redis.memory._iris import connect_managed_memory
-from adk_redis.memory._iris import managed_store_id
 from adk_redis.memory._namespaces import is_namespace_id
 from adk_redis.memory._namespaces import resolve_namespace_id
 from adk_redis.memory._utils import read_field
@@ -88,7 +87,11 @@ class BaseMemoryTool(BaseTool):
     if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
       return self._get_agent_memory_server_client()
     return connect_managed_memory(
-        url=self._config.api_base_url,
+        url=(
+            self._config.api_base_url
+            if "api_base_url" in self._config.model_fields_set
+            else None
+        ),
         api_key=self._config.api_key,
         store_id=self._config.store_id,
         timeout=self._config.timeout,
@@ -187,8 +190,6 @@ class BaseMemoryTool(BaseTool):
       return None
     return await resolve_namespace_id(
         agent_memory,
-        server_url=self._config.api_base_url,
-        store_id=managed_store_id(self._config.store_id),
         name=name,
         create=is_default,
     )
@@ -216,16 +217,15 @@ class BaseMemoryTool(BaseTool):
         user_id: Optional user ID for direct calls outside an agent loop.
             Ignored when the tool context carries a user.
         tool_context: Optional ADK ToolContext for the current invocation.
-            Read defensively; a missing or broken context never raises.
+            A supplied context must identify the invocation user.
 
     Returns:
         The resolved user ID, or None if no source provides one.
     """
-    try:
+    if tool_context is not None:
       context_user_id = getattr(tool_context, "user_id", None)
-    except Exception:
-      context_user_id = None
-    if isinstance(context_user_id, str) and context_user_id:
+      if not isinstance(context_user_id, str) or not context_user_id:
+        raise PermissionError("The ADK tool context must identify a user")
       if user_id and user_id != context_user_id:
         logger.warning(
             "Ignoring user_id argument that differs from the invocation user"

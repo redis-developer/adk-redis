@@ -17,7 +17,7 @@
 Redis Agent Memory 1.0 stores namespaces as server resources identified by
 an ID of the form ``ns_<32 hex>``. adk-redis configuration names namespaces
 by a plain name, so each name maps to a shared root namespace of that name.
-The mapping is cached per store for the life of the process.
+Names are resolved on each operation because they can be reassigned.
 """
 
 from __future__ import annotations
@@ -34,14 +34,18 @@ logger = logging.getLogger(__name__)
 _NAMESPACE_ID_RE = re.compile(r"^ns_[0-9a-f]{32}$")
 _LIST_PAGE_SIZE = 200
 
-# Keyed by (server URL, store ID, namespace name). Namespace IDs never change
-# for a given name within a store, so entries are never invalidated.
-_namespace_ids: dict[tuple[str, str | None, str], str] = {}
-
 
 def is_namespace_id(value: str) -> bool:
   """Return True when a value is already a Redis Agent Memory namespace ID."""
-  return bool(_NAMESPACE_ID_RE.match(value))
+  return bool(_NAMESPACE_ID_RE.fullmatch(value))
+
+
+def _namespace_id(namespace: object) -> str:
+  """Read the required ID from a namespace returned by Iris."""
+  value = read_field(namespace, "namespace_id")
+  if not isinstance(value, str) or not is_namespace_id(value):
+    raise ValueError("Iris returned an invalid namespace ID")
+  return value
 
 
 async def _find_shared_root(agent_memory: Any, name: str) -> str | None:
@@ -61,10 +65,10 @@ async def _find_shared_root(agent_memory: Any, name: str) -> str | None:
       state = read_field(namespace, "state")
       if str(getattr(state, "value", state)) != "ACTIVE":
         raise ValueError(
-            f"Namespace '{name}' exists but is archived. Restore it, or"
+            f"Namespace '{name}' is archived. Please"
             " configure a different namespace."
         )
-      return str(read_field(namespace, "namespace_id"))
+      return _namespace_id(namespace)
     cursor = read_field(response, "next_cursor")
     if not cursor:
       return None
@@ -73,8 +77,6 @@ async def _find_shared_root(agent_memory: Any, name: str) -> str | None:
 async def resolve_namespace_id(
     agent_memory: Any,
     *,
-    server_url: str,
-    store_id: str | None,
     name: str,
     create: bool,
 ) -> str | None:
@@ -86,8 +88,6 @@ async def resolve_namespace_id(
 
   Args:
       agent_memory: An open Redis Agent Memory SDK client.
-      server_url: The client's server URL, used as part of the cache key.
-      store_id: The client's store ID, used as part of the cache key.
       name: Namespace name, or a namespace ID.
       create: Create the namespace when it does not exist. Pass False for
           names that come from model output, so a prompt cannot create
@@ -103,27 +103,23 @@ async def resolve_namespace_id(
   if is_namespace_id(name):
     return name
 
-  key = (server_url, store_id, name)
-  cached = _namespace_ids.get(key)
-  if cached:
-    return cached
-
   namespace_id = await _find_shared_root(agent_memory, name)
-  if namespace_id is None and create:
-    try:
-      response = await agent_memory.create_namespace_async(
-          request={"name": name, "scope": "SHARED"}
-      )
-      namespace_id = str(
-          read_field(read_field(response, "namespace"), "namespace_id")
-      )
-      logger.info("Created shared namespace '%s' (%s)", name, namespace_id)
-    except Exception as e:
-      # Another process created it between the lookup and the create.
-      if not is_conflict_error(e):
-        raise
-      namespace_id = await _find_shared_root(agent_memory, name)
+  if namespace_id is not None or not create:
+    return namespace_id
 
-  if namespace_id:
-    _namespace_ids[key] = namespace_id
+  try:
+    response = await agent_memory.create_namespace_async(
+        request={"name": name, "scope": "SHARED"}
+    )
+  except Exception as exc:
+    if not is_conflict_error(exc):
+      raise
+    # Another process may have created the namespace since the lookup.
+    namespace_id = await _find_shared_root(agent_memory, name)
+    if namespace_id is None:
+      raise
+    return namespace_id
+
+  namespace_id = _namespace_id(read_field(response, "namespace"))
+  logger.info("Created shared namespace '%s' (%s)", name, namespace_id)
   return namespace_id

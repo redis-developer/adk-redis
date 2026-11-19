@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - With the `redis-agent-memory` backend, namespaces are Redis Agent Memory
   namespace resources. `default_namespace`, or the ADK app name, is a name
   that maps to a shared root namespace of that name, looked up and created on
-  first use and cached per process. The API key needs permission to create
+  first use. The API key needs permission to create
   namespaces. A namespace ID (`ns_` followed by 32 hex characters) is used as
   given.
 - The memory tools only look up a namespace named in the model's `namespace`

@@ -23,8 +23,8 @@ import uuid
 from google.genai import types
 
 from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis.memory._utils import managed_memory_id
 from adk_redis.memory._utils import read_field
-from adk_redis.memory._utils import stable_memory_id
 from adk_redis.tools.memory._base import BaseMemoryTool
 from adk_redis.tools.memory._config import MemoryToolConfig
 
@@ -146,7 +146,6 @@ class CreateMemoryTool(BaseMemoryTool):
     topics = args.get("topics", [])
     memory_type_raw = args.get("memory_type", "semantic")
     namespace = self._get_namespace(args.get("namespace"))
-    user_id = self._get_user_id(args.get("user_id"), tool_context=tool_context)
     client_memory_id = args.get("id")
 
     if not content:
@@ -166,6 +165,9 @@ class CreateMemoryTool(BaseMemoryTool):
       memory_type = "semantic"  # Default fallback
 
     try:
+      user_id = self._get_user_id(
+          args.get("user_id"), tool_context=tool_context
+      )
       if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
         if client_memory_id is not None:
           logger.warning(
@@ -197,24 +199,8 @@ class CreateMemoryTool(BaseMemoryTool):
             "message": response.get("summary", "Failed to create memory"),
         }
 
-      if client_memory_id is not None:
-        raw_client_memory_id = str(client_memory_id)
-        if not raw_client_memory_id.strip():
-          raise ValueError("Client-supplied memory id must not be empty")
-        memory_id = stable_memory_id(
-            "client",
-            namespace,
-            user_id or "",
-            raw_client_memory_id,
-        )
-      else:
-        memory_id = stable_memory_id(
-            "tool",
-            namespace,
-            user_id or "",
-            memory_type,
-            content,
-        )
+      if client_memory_id is not None and not str(client_memory_id).strip():
+        raise ValueError("Client-supplied memory id must not be empty")
       if not user_id:
         raise ValueError(
             "user_id is required: pass it, run inside an ADK agent, or set"
@@ -227,6 +213,14 @@ class CreateMemoryTool(BaseMemoryTool):
         )
         if namespace_id is None:
           raise ValueError(f"Namespace '{namespace}' does not exist")
+        if client_memory_id is not None:
+          memory_id = managed_memory_id(
+              "client", namespace_id, user_id, str(client_memory_id)
+          )
+        else:
+          memory_id = managed_memory_id(
+              "tool", namespace_id, user_id, memory_type, content
+          )
         record = {
             "memoryId": memory_id,
             "text": content,

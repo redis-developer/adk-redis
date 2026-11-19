@@ -24,6 +24,8 @@ against real backends. Tests skip when env vars are not set:
 
 from __future__ import annotations
 
+from contextlib import AsyncExitStack
+from importlib.util import find_spec
 import uuid
 
 from google.adk.events.event import Event
@@ -38,14 +40,12 @@ from adk_redis import RedisLongTermMemoryServiceConfig
 from adk_redis import RedisSessionMemoryService
 from adk_redis import RedisSessionMemoryServiceConfig
 from tests.integration.conftest import AGENT_MEMORY_SERVER_URL
+from tests.integration.conftest import delete_test_memory
 from tests.integration.conftest import REDIS_AGENT_MEMORY_API_KEY
 from tests.integration.conftest import REDIS_AGENT_MEMORY_STORE_ID
 from tests.integration.conftest import REDIS_AGENT_MEMORY_URL
 from tests.integration.conftest import REQUIRES_AGENT_MEMORY_SERVER
 from tests.integration.conftest import REQUIRES_REDIS_AGENT_MEMORY
-
-pytest.importorskip("agent_memory_client")
-pytest.importorskip("redis_iris.agent_memory")
 
 _APP_NAME = "adk_redis_it"
 _QUERY = "what color does the user like?"
@@ -89,13 +89,19 @@ class TestRedisAgentMemoryBackendEndToEnd:
     )
 
   async def test_add_memory_then_search(
-      self, unique_namespace: str, unique_user_id: str
+      self,
+      unique_namespace: str,
+      unique_user_id: str,
+      iris_cleanup: AsyncExitStack,
   ) -> None:
     service = self._long_term(unique_namespace)
+    memory = _memory_entry(_MEMORY_TEXT)
+    memory.id = f"adk-{uuid.uuid4().hex}"
+    iris_cleanup.push_async_callback(delete_test_memory, memory.id)
     await service.add_memory(
         app_name=_APP_NAME,
         user_id=unique_user_id,
-        memories=[_memory_entry(_MEMORY_TEXT)],
+        memories=[memory],
     )
     response = await service.search_memory(
         app_name=_APP_NAME, user_id=unique_user_id, query=_QUERY
@@ -103,7 +109,10 @@ class TestRedisAgentMemoryBackendEndToEnd:
     assert any("teal" in _text_of(m) for m in response.memories)
 
   async def test_session_append_and_get(
-      self, unique_namespace: str, unique_user_id: str
+      self,
+      unique_namespace: str,
+      unique_user_id: str,
+      iris_cleanup: AsyncExitStack,
   ) -> None:
     sessions = RedisSessionMemoryService(
         config=RedisSessionMemoryServiceConfig(
@@ -115,6 +124,12 @@ class TestRedisAgentMemoryBackendEndToEnd:
         )
     )
     session_id = f"sess_{uuid.uuid4().hex[:8]}"
+    iris_cleanup.push_async_callback(
+        sessions.delete_session,
+        app_name=_APP_NAME,
+        user_id=unique_user_id,
+        session_id=session_id,
+    )
     session = await sessions.create_session(
         app_name=_APP_NAME, user_id=unique_user_id, session_id=session_id
     )
@@ -126,12 +141,13 @@ class TestRedisAgentMemoryBackendEndToEnd:
     )
     assert fetched is not None and fetched.id == session_id
     assert any("integration test" in _text_of(e) for e in fetched.events)
-    await sessions.delete_session(
-        app_name=_APP_NAME, user_id=unique_user_id, session_id=session_id
-    )
 
 
 @REQUIRES_AGENT_MEMORY_SERVER
+@pytest.mark.skipif(
+    find_spec("agent_memory_client") is None,
+    reason="Install agent-memory-client",
+)
 class TestAgentMemoryServerBackendEndToEnd:
   """Round-trip the self-hosted Agent Memory Server backend."""
 

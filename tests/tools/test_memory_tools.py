@@ -23,7 +23,7 @@ import pytest
 
 from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis import REDIS_AGENT_MEMORY_BACKEND
-from adk_redis.memory._utils import stable_memory_id
+from adk_redis.memory._utils import managed_memory_id
 from adk_redis.tools.memory import CreateMemoryTool
 from adk_redis.tools.memory import DeleteMemoryTool
 from adk_redis.tools.memory import GetMemoryTool
@@ -186,18 +186,23 @@ def test_get_user_id_resolution_order(config):
   # Configured defaults still apply with no tool_context.
   assert tool._get_user_id(None) == "alice"
 
-  # An empty context user counts as absent.
-  empty_context = SimpleNamespace(user_id="")
-  assert tool._get_user_id(None, tool_context=empty_context) == "alice"
-
-  # A context without a user_id attribute falls through safely.
-  assert tool._get_user_id(None, tool_context=object()) == "alice"
-
 
 def test_get_user_id_without_defaults_returns_none():
-  """_get_user_id returns None when no source provides a user."""
+  """Direct calls can omit the owner."""
   tool = SearchMemoryTool(config=MemoryToolConfig())
-  assert tool._get_user_id(None, tool_context=object()) is None
+  assert tool._get_user_id(None) is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("context", [SimpleNamespace(user_id=""), object()])
+async def test_search_rejects_context_without_user(config, context):
+  tool = SearchMemoryTool(config=config)
+  with patch.object(tool, "_get_client", side_effect=AssertionError) as client:
+    result = await tool.run_async(
+        args={"query": "tea", "user_id": "alice"}, tool_context=context
+    )
+  assert result["status"] == "error"
+  client.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -259,7 +264,9 @@ async def test_create_memory_tool_uses_client_supplied_id(config, fake_client):
     )
 
   assert result["status"] == "success"
-  expected_id = stable_memory_id("client", "test-ns", "alice", "retry-abc-123")
+  expected_id = managed_memory_id(
+      "client", TEST_NS_ID, "alice", "retry-abc-123"
+  )
   assert result["memory_id"] == expected_id
   assert fake_client.created_records[0]["memoryId"] == expected_id
 
@@ -305,6 +312,21 @@ async def test_create_memory_tool_scopes_client_id(config, fake_client):
 
 
 @pytest.mark.asyncio
+async def test_client_id_preserves_owner_and_retry_id_boundaries(
+    config, fake_client
+):
+  tool = CreateMemoryTool(config=config)
+  with patch.object(tool, "_get_client", return_value=fake_client):
+    for owner, retry_id in [("team:alice", "first"), ("team", "alice:first")]:
+      await tool.run_async(
+          args={"content": "Tea", "id": retry_id},
+          tool_context=SimpleNamespace(user_id=owner),
+      )
+  first, second = fake_client.created_records
+  assert first["memoryId"] != second["memoryId"]
+
+
+@pytest.mark.asyncio
 async def test_create_memory_tool_scopes_client_id_to_context_user(
     config, fake_client
 ):
@@ -333,7 +355,7 @@ async def test_create_memory_tool_treats_zero_as_client_id(config, fake_client):
   with patch.object(tool, "_get_client", return_value=fake_client):
     result = await tool.run_async(args={"content": "User likes tea.", "id": 0})
 
-  expected_id = stable_memory_id("client", "test-ns", "alice", "0")
+  expected_id = managed_memory_id("client", TEST_NS_ID, "alice", "0")
   assert result["status"] == "success"
   assert fake_client.created_records[0]["memoryId"] == expected_id
 
@@ -345,8 +367,8 @@ async def test_create_memory_tool_defaults_to_stable_id(config, fake_client):
   with patch.object(tool, "_get_client", return_value=fake_client):
     result = await tool.run_async(args={"content": "User likes tea."})
 
-  expected_id = stable_memory_id(
-      "tool", "test-ns", "alice", "semantic", "User likes tea."
+  expected_id = managed_memory_id(
+      "tool", TEST_NS_ID, "alice", "semantic", "User likes tea."
   )
   assert result["status"] == "success"
   assert fake_client.created_records[0]["memoryId"] == expected_id
@@ -364,7 +386,7 @@ async def test_create_memory_tool_same_id_is_idempotent(config, fake_client):
   assert (
       fake_client.created_records[0]["memoryId"]
       == fake_client.created_records[1]["memoryId"]
-      == stable_memory_id("client", "test-ns", "alice", "retry-1")
+      == managed_memory_id("client", TEST_NS_ID, "alice", "retry-1")
   )
 
 

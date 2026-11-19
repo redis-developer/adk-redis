@@ -129,7 +129,6 @@ class UpdateMemoryTool(BaseMemoryTool):
     content = args.get("content")
     topics = args.get("topics")
     namespace = self._get_namespace(args.get("namespace"))
-    user_id = self._get_user_id(args.get("user_id"), tool_context=tool_context)
 
     if not memory_id:
       return {"status": "error", "message": "memory_id is required"}
@@ -141,6 +140,9 @@ class UpdateMemoryTool(BaseMemoryTool):
       }
 
     try:
+      user_id = self._get_user_id(
+          args.get("user_id"), tool_context=tool_context
+      )
       if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
         updates: dict[str, Any] = {}
         if content:

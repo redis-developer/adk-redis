@@ -35,11 +35,9 @@ class CountingNamespaces(FakeNamespaces):
     return await super().list_namespaces_async(**kwargs)
 
 
-async def _resolve(client, name, *, create, store_id="store-1"):
+async def _resolve(client, name, *, create):
   return await resolve_namespace_id(
       client,
-      server_url="https://memory.example",
-      store_id=store_id,
       name=name,
       create=create,
   )
@@ -56,7 +54,7 @@ async def test_resolves_existing_namespace_without_creating():
 
 
 @pytest.mark.asyncio
-async def test_creates_missing_shared_root_and_caches_it():
+async def test_creates_missing_shared_root_only_once():
   client = CountingNamespaces()
 
   first = await _resolve(client, "travel", create=True)
@@ -64,17 +62,42 @@ async def test_creates_missing_shared_root_and_caches_it():
 
   assert first == second == namespace_id_for("travel")
   assert client.created_namespaces == [{"name": "travel", "scope": "SHARED"}]
-  assert client.list_calls == 1
 
 
 @pytest.mark.asyncio
-async def test_cache_is_scoped_to_the_store():
+async def test_resolves_replacement_namespace_after_rename():
   client = CountingNamespaces("travel")
+  original = await _resolve(client, "travel", create=False)
+  client.namespaces["archive"] = client.namespaces.pop("travel")
+  assert await _resolve(client, "travel", create=False) is None
+  replacement = namespace_id_for("replacement")
+  client.namespaces["travel"] = replacement
+  assert await _resolve(client, "travel", create=True) == replacement
+  assert await _resolve(client, "archive", create=False) == original
 
-  await _resolve(client, "travel", create=True, store_id="store-1")
-  await _resolve(client, "travel", create=True, store_id="store-2")
 
-  assert client.list_calls == 2
+@pytest.mark.asyncio
+async def test_unresolved_creation_conflict_raises():
+  class ConflictClient(CountingNamespaces):
+
+    async def create_namespace_async(self, *, request):
+      error = RuntimeError("conflict")
+      error.status_code = 409
+      raise error
+
+  with pytest.raises(RuntimeError, match="conflict"):
+    await _resolve(ConflictClient(), "travel", create=True)
+
+
+@pytest.mark.asyncio
+async def test_creation_requires_a_namespace_id():
+  class IncompleteClient(CountingNamespaces):
+
+    async def create_namespace_async(self, *, request):
+      return SimpleNamespace(namespace=SimpleNamespace(namespace_id=None))
+
+  with pytest.raises(ValueError, match="namespace ID"):
+    await _resolve(IncompleteClient(), "travel", create=True)
 
 
 @pytest.mark.asyncio
