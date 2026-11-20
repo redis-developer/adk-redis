@@ -375,7 +375,9 @@ async def test_create_memory_tool_defaults_to_stable_id(config, fake_client):
 
 
 @pytest.mark.asyncio
-async def test_create_memory_tool_same_id_is_idempotent(config, fake_client):
+async def test_create_memory_tool_reuses_record_id_for_same_client_id(
+    config, fake_client
+):
   """Two calls with the same client id send the same record ID."""
   tool = CreateMemoryTool(config=config)
   with patch.object(tool, "_get_client", return_value=fake_client):

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Managed `CreateMemoryTool` inserts a record once. A repeated create with the same caller-supplied ID in the same namespace and user scope returns an error. Pass the original `memory_id` to `UpdateMemoryTool` to edit the record.
+
 - **Breaking:** managed memory now requires Python 3.11+ and the unified
   Redis Iris SDK (`redis-iris>=1.1.0,<2`). Redis Agent
   Memory 1.0 clients and servers are not compatible with 0.x, so the store

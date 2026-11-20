@@ -210,13 +210,24 @@ async def test_tools_create_search_get_update_and_delete_within_scope(
   )
   context = SimpleNamespace(user_id=unique_user_id)
 
-  created = await CreateMemoryTool(config=config).run_async(
-      args={"content": "The user's seat preference is the window."},
-      tool_context=context,
+  create = CreateMemoryTool(config=config)
+  original = "The user's seat preference is the window."
+  created = await create.run_async(
+      args={"id": "seat", "content": original}, tool_context=context
   )
   assert created["status"] == "success", created
   memory_id = created["memory_id"]
   iris_cleanup.push_async_callback(delete_test_memory, memory_id)
+
+  for content in (original, "A different preference."):
+    duplicate = await create.run_async(
+        args={"id": "seat", "content": content}, tool_context=context
+    )
+    assert duplicate["status"] == "error", duplicate
+  stored = await GetMemoryTool(config=config).run_async(
+      args={"memory_id": memory_id}, tool_context=context
+  )
+  assert stored["memory"]["content"] == original
 
   async def found():
     result = await SearchMemoryTool(config=config).run_async(
@@ -237,6 +248,7 @@ async def test_tools_create_search_get_update_and_delete_within_scope(
       args={"memory_id": memory_id}, tool_context=context
   )
   assert fetched["status"] == "success", fetched
+  assert fetched["memory"]["content"] == "The user prefers aisle seats."
   hidden = await GetMemoryTool(config=config).run_async(
       args={"memory_id": memory_id, "user_id": unique_user_id},
       tool_context=intruder_context,

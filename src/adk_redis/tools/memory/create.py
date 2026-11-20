@@ -122,18 +122,11 @@ class CreateMemoryTool(BaseMemoryTool):
         user_id: Optional user ID for direct calls. The ADK tool_context
             invocation user takes precedence, then this argument, then the
             configured defaults.
-        id: Optional client-supplied memory ID for idempotent retries.
-            This is an application-level parameter and is intentionally
-            not exposed in the LLM tool declaration; direct callers pass
-            it via ``run_async(id=..., content=...)`` or
-            ``run_async(args={"id": ..., ...})``. On the managed Redis
-            Agent Memory backend the ID and resolved namespace/user scope
-            are mapped to a collision-resistant record ID, so retrying with
-            the same ID in the same scope upserts instead of creating a
-            duplicate. The self-hosted
-            opensource-agent-memory backend cannot honor client IDs; a
-            warning is logged and the write proceeds with a
-            server-generated ID.
+        id: Optional application-level ID for direct callers. In managed
+            memory, the ID is scoped to the namespace and user. Creating the
+            same ID again returns an error and preserves the original record.
+            To edit it, pass the returned memory_id to UpdateMemoryTool.
+            The self-hosted backend logs a warning and generates its own ID.
 
     Returns:
         A dictionary with status and memory_id.
