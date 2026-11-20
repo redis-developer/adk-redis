@@ -83,8 +83,6 @@ from adk_redis.memory import RedisLongTermMemoryServiceConfig
 # Session services
 from adk_redis.sessions import RedisSessionMemoryService
 from adk_redis.sessions import RedisSessionMemoryServiceConfig
-from adk_redis.sessions import RedisWorkingMemorySessionService
-from adk_redis.sessions import RedisWorkingMemorySessionServiceConfig
 # Search tools - import from tools submodule
 from adk_redis.tools import BaseRedisSearchTool
 from adk_redis.tools import RedisAggregatedHybridQueryConfig
@@ -133,9 +131,6 @@ __all__ = [
     # Session services
     "RedisSessionMemoryService",
     "RedisSessionMemoryServiceConfig",
-    # Deprecated session-service aliases, removed in 0.1.0.
-    "RedisWorkingMemorySessionService",
-    "RedisWorkingMemorySessionServiceConfig",
     # Search tools - base classes
     "BaseRedisSearchTool",
     "VectorizedSearchTool",

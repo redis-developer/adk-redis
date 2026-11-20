@@ -29,6 +29,8 @@ and `adk-redis`. Each example ships with a README and `.env.example`.
 - **`opensource-agent-memory`** — Self-hosted
   [Agent Memory Server](https://github.com/redis/agent-memory-server). Supports
   auto-summarization, extraction strategies, recency-boosted search, and MCP.
+  Deprecated: adk-redis emits a `DeprecationWarning` for this backend and will
+  remove it in 0.2.0.
 
 Set `REDIS_MEMORY_BACKEND` in examples that support both backends.
 

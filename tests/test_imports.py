@@ -15,10 +15,11 @@
 """Tests for package imports."""
 
 import importlib
-import sys
-import warnings
 
 import pytest
+
+import adk_redis
+import adk_redis.sessions
 
 
 class TestMemoryImports:
@@ -68,40 +69,13 @@ class TestSessionImports:
     assert RedisSessionMemoryService is not None
     assert RedisSessionMemoryServiceConfig is not None
 
-  def test_deprecated_session_aliases(self):
-    """Deprecated aliases still import and subclass the new names."""
-    from adk_redis import RedisSessionMemoryService
-    from adk_redis import RedisSessionMemoryServiceConfig
-    from adk_redis import RedisWorkingMemorySessionService
-    from adk_redis import RedisWorkingMemorySessionServiceConfig
-
-    assert issubclass(
-        RedisWorkingMemorySessionService, RedisSessionMemoryService
-    )
-    assert issubclass(
-        RedisWorkingMemorySessionServiceConfig, RedisSessionMemoryServiceConfig
-    )
-
-    with warnings.catch_warnings(record=True) as caught:
-      warnings.simplefilter("always")
-      RedisWorkingMemorySessionService()
-      RedisWorkingMemorySessionServiceConfig()
-
-    categories = [w.category for w in caught]
-    assert categories.count(DeprecationWarning) == 2
-
-  def test_deprecated_session_module_path(self):
-    """Legacy module path still imports and warns until 0.1.0."""
-    sys.modules.pop("adk_redis.sessions.working_memory", None)
-    with warnings.catch_warnings(record=True) as caught:
-      warnings.simplefilter("always")
-      working_memory = importlib.import_module(
-          "adk_redis.sessions.working_memory"
-      )
-
-    assert working_memory.RedisWorkingMemorySessionService is not None
-    assert working_memory.RedisSessionMemoryService is not None
-    assert any(issubclass(w.category, DeprecationWarning) for w in caught)
+  def test_removed_session_aliases(self):
+    """The WorkingMemory aliases and module path were removed in 0.1.0."""
+    for module in (adk_redis, adk_redis.sessions):
+      assert not hasattr(module, "RedisWorkingMemorySessionService")
+      assert not hasattr(module, "RedisWorkingMemorySessionServiceConfig")
+    with pytest.raises(ModuleNotFoundError):
+      importlib.import_module("adk_redis.sessions.working_memory")
 
 
 class TestToolImports:

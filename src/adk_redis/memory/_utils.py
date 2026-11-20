@@ -19,6 +19,7 @@ from __future__ import annotations
 from datetime import datetime
 from datetime import timezone
 import hashlib
+import json
 import re
 from typing import Any, TYPE_CHECKING
 
@@ -102,6 +103,17 @@ def stable_memory_id(*parts: object) -> str:
   return f"adk-{digest[:32]}"
 
 
+def managed_scope_digest(*parts: object) -> str:
+  """Hash a JSON array so separators in user input cannot merge ID components."""
+  encoded = json.dumps(parts, separators=(",", ":")).encode("utf-8")
+  return hashlib.sha256(encoded).hexdigest()
+
+
+def managed_memory_id(*parts: object) -> str:
+  """Build a managed memory record ID from its scope and identity."""
+  return f"adk-{managed_scope_digest(*parts)[:32]}"
+
+
 def read_field(value: object, name: str, default: Any = None) -> Any:
   """Read a field from either a dict or an object.
 
@@ -148,4 +160,19 @@ def is_not_found_error(exc: Exception) -> bool:
   return (
       getattr(exc, "status_code", None) == 404
       or exc.__class__.__name__ == "NotFoundErrorResponseContent"
+  )
+
+
+def is_conflict_error(exc: Exception) -> bool:
+  """Return True when a Redis Agent Memory exception represents a 409.
+
+  Args:
+      exc: Exception raised by the Redis Agent Memory SDK.
+
+  Returns:
+      True when the SDK reported that the resource already exists.
+  """
+  return (
+      getattr(exc, "status_code", None) == 409
+      or exc.__class__.__name__ == "ConflictErrorResponseContent"
   )

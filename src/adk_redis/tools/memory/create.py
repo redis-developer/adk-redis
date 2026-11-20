@@ -23,8 +23,8 @@ import uuid
 from google.genai import types
 
 from adk_redis.memory._backends import OPENSOURCE_AGENT_MEMORY_BACKEND
+from adk_redis.memory._utils import managed_memory_id
 from adk_redis.memory._utils import read_field
-from adk_redis.memory._utils import stable_memory_id
 from adk_redis.tools.memory._base import BaseMemoryTool
 from adk_redis.tools.memory._config import MemoryToolConfig
 
@@ -106,10 +106,6 @@ class CreateMemoryTool(BaseMemoryTool):
                     type=types.Type.STRING,
                     description="Optional namespace override",
                 ),
-                "user_id": types.Schema(
-                    type=types.Type.STRING,
-                    description="Optional user ID override",
-                ),
             },
             required=["content"],
         ),
@@ -123,21 +119,14 @@ class CreateMemoryTool(BaseMemoryTool):
         topics: Optional list of topics/tags.
         memory_type: Type of memory (semantic, episodic, message).
         namespace: Optional namespace override.
-        user_id: Optional user ID override. When omitted, the user is
-            resolved from the ADK tool_context invocation user, then the
+        user_id: Optional user ID for direct calls. The ADK tool_context
+            invocation user takes precedence, then this argument, then the
             configured defaults.
-        id: Optional client-supplied memory ID for idempotent retries.
-            This is an application-level parameter and is intentionally
-            not exposed in the LLM tool declaration; direct callers pass
-            it via ``run_async(id=..., content=...)`` or
-            ``run_async(args={"id": ..., ...})``. On the managed Redis
-            Agent Memory backend the ID and resolved namespace/user scope
-            are mapped to a collision-resistant record ID, so retrying with
-            the same ID in the same scope upserts instead of creating a
-            duplicate. The self-hosted
-            opensource-agent-memory backend cannot honor client IDs; a
-            warning is logged and the write proceeds with a
-            server-generated ID.
+        id: Optional application-level ID for direct callers. In managed
+            memory, the ID is scoped to the namespace and user. Creating the
+            same ID again returns an error and preserves the original record.
+            To edit it, pass the returned memory_id to UpdateMemoryTool.
+            The self-hosted backend logs a warning and generates its own ID.
 
     Returns:
         A dictionary with status and memory_id.
@@ -150,7 +139,6 @@ class CreateMemoryTool(BaseMemoryTool):
     topics = args.get("topics", [])
     memory_type_raw = args.get("memory_type", "semantic")
     namespace = self._get_namespace(args.get("namespace"))
-    user_id = self._get_user_id(args.get("user_id"), tool_context=tool_context)
     client_memory_id = args.get("id")
 
     if not content:
@@ -170,6 +158,9 @@ class CreateMemoryTool(BaseMemoryTool):
       memory_type = "semantic"  # Default fallback
 
     try:
+      user_id = self._get_user_id(
+          args.get("user_id"), tool_context=tool_context
+      )
       if self._config.backend == OPENSOURCE_AGENT_MEMORY_BACKEND:
         if client_memory_id is not None:
           logger.warning(
@@ -201,34 +192,36 @@ class CreateMemoryTool(BaseMemoryTool):
             "message": response.get("summary", "Failed to create memory"),
         }
 
-      if client_memory_id is not None:
-        raw_client_memory_id = str(client_memory_id)
-        if not raw_client_memory_id.strip():
-          raise ValueError("Client-supplied memory id must not be empty")
-        memory_id = stable_memory_id(
-            "client",
-            namespace,
-            user_id or "",
-            raw_client_memory_id,
+      if client_memory_id is not None and not str(client_memory_id).strip():
+        raise ValueError("Client-supplied memory id must not be empty")
+      if not user_id:
+        raise ValueError(
+            "user_id is required: pass it, run inside an ADK agent, or set"
+            " default_user_id"
         )
-      else:
-        memory_id = stable_memory_id(
-            "tool",
-            namespace,
-            user_id or "",
-            memory_type,
-            content,
-        )
-      record = {
-          "id": memory_id,
-          "text": content,
-          "ownerId": user_id,
-          "namespace": namespace,
-          "topics": topics if topics else None,
-          "memoryType": memory_type,
-      }
 
       async with self._agent_memory() as agent_memory:
+        namespace_id = await self._resolve_namespace_id(
+            agent_memory, args.get("namespace")
+        )
+        if namespace_id is None:
+          raise ValueError(f"Namespace '{namespace}' does not exist")
+        if client_memory_id is not None:
+          memory_id = managed_memory_id(
+              "client", namespace_id, user_id, str(client_memory_id)
+          )
+        else:
+          memory_id = managed_memory_id(
+              "tool", namespace_id, user_id, memory_type, content
+          )
+        record = {
+            "memoryId": memory_id,
+            "text": content,
+            "ownerId": user_id,
+            "namespaceId": namespace_id,
+            "topics": topics if topics else None,
+            "memoryType": memory_type,
+        }
         response = await agent_memory.bulk_create_long_term_memories_async(
             memories=[record]
         )

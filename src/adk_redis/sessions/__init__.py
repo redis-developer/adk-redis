@@ -16,15 +16,8 @@
 
 from adk_redis.sessions.session_memory import RedisSessionMemoryService
 from adk_redis.sessions.session_memory import RedisSessionMemoryServiceConfig
-from adk_redis.sessions.session_memory import RedisWorkingMemorySessionService
-from adk_redis.sessions.session_memory import (
-    RedisWorkingMemorySessionServiceConfig,
-)
 
 __all__ = [
     "RedisSessionMemoryService",
     "RedisSessionMemoryServiceConfig",
-    # Deprecated aliases, removed in 0.1.0.
-    "RedisWorkingMemorySessionService",
-    "RedisWorkingMemorySessionServiceConfig",
 ]

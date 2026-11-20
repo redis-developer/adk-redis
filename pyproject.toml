@@ -43,7 +43,7 @@ dependencies = [
 # Redis Agent Memory integrations (long-term memory + working memory sessions)
 memory = [
     "agent-memory-client>=0.14.0",
-    "redis-agent-memory>=0.2.0,<0.3",
+    "redis-iris>=1.1.0,<2; python_version >= '3.11'",
 ]
 
 # RedisVL-based search tools

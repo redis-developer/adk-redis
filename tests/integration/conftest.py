@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+from contextlib import AsyncExitStack
 import os
 from urllib.parse import urlparse
 import uuid
@@ -86,6 +87,54 @@ REQUIRES_AGENT_MEMORY_SERVER = pytest.mark.skipif(
         "(for example http://localhost:8000) to enable."
     ),
 )
+
+
+def iris_client():
+  """Connect to the Iris test store, when the managed SDK is installed."""
+  iris_memory = pytest.importorskip("redis_iris.agent_memory")
+  return iris_memory.connect(
+      iris_memory.AgentMemorySettings(
+          url=REDIS_AGENT_MEMORY_URL,
+          api_key=REDIS_AGENT_MEMORY_API_KEY,
+          store_id=REDIS_AGENT_MEMORY_STORE_ID,
+      )
+  )
+
+
+async def delete_test_memory(memory_id: str) -> None:
+  """Remove one test-owned record, which the test may already have deleted."""
+  async with iris_client() as client:
+    result = await client.bulk_delete_long_term_memories_async(
+        memory_ids=[memory_id]
+    )
+  assert all(
+      error.status == 404 for error in result.errors or []
+  ), result.errors
+
+
+@pytest.fixture
+async def iris_cleanup(unique_namespace: str, monkeypatch):
+  """Remove test-owned records first, then namespaces created by this test."""
+  async with (
+      iris_client() as client,
+      AsyncExitStack() as namespaces,
+      AsyncExitStack() as records,
+  ):
+    client_type = type(client)
+    create_namespace = client_type.create_namespace_async
+    test_name = unique_namespace.replace("_", "-")
+
+    async def track_namespace(sdk_client, *, request):
+      response = await create_namespace(sdk_client, request=request)
+      if request["name"] in (test_name, f"{test_name}-other"):
+        namespaces.push_async_callback(
+            client.delete_namespace_async,
+            namespace_id=response.namespace.namespace_id,
+        )
+      return response
+
+    monkeypatch.setattr(client_type, "create_namespace_async", track_namespace)
+    yield records
 
 
 @pytest.fixture(scope="session")

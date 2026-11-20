@@ -26,6 +26,8 @@ store ID unless your deployment requires them.
 
 ## 2. Install dependencies
 
+Use Python 3.11 or later for the managed backend.
+
 ```bash
 pip install google-adk "adk-redis[memory]"
 ```

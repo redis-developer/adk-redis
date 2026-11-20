@@ -28,16 +28,23 @@ from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.sessions import RedisSessionMemoryService
 from adk_redis.sessions import RedisSessionMemoryServiceConfig
+from tests.agent_memory_fakes import FakeNamespaces
+from tests.agent_memory_fakes import namespace_id_for
+
+TEST_NS_ID = namespace_id_for("test-ns")
 
 
-class FakeAgentMemory:
+class FakeAgentMemory(FakeNamespaces):
   """Fake async Redis Agent Memory client."""
 
   def __init__(self):
+    self.init_namespaces("test-ns")
     self.added_events = []
     self.deleted_session_id = None
+    self.read_session_id = None
     self.get_response = None
-    self.list_response = SimpleNamespace(items=[], next_page_token=None)
+    self.list_kwargs = None
+    self.list_response = SimpleNamespace(items=[], next_cursor=None)
 
   async def __aenter__(self):
     return self
@@ -50,6 +57,7 @@ class FakeAgentMemory:
     return SimpleNamespace(event=kwargs)
 
   async def get_session_memory_async(self, *, session_id):
+    self.read_session_id = session_id
     if self.get_response is None:
       error = RuntimeError("not found")
       error.status_code = 404  # type: ignore[attr-defined]
@@ -59,7 +67,12 @@ class FakeAgentMemory:
   async def delete_session_memory_async(self, *, session_id):
     self.deleted_session_id = session_id
 
-  async def list_sessions_async(self, *, limit, page_token):
+  async def list_sessions_async(self, *, limit, cursor, namespace_id):
+    self.list_kwargs = {
+        "limit": limit,
+        "cursor": cursor,
+        "namespace_id": namespace_id,
+    }
     return self.list_response
 
 
@@ -161,7 +174,7 @@ class TestRedisSessionMemoryServiceMethods:
   def test_storage_session_id_uses_managed_safe_hex(self, service):
     """Test managed storage session IDs fit API charset and length limits."""
     storage_id = service._storage_session_id(
-        app_name="app",
+        namespace_id=TEST_NS_ID,
         user_id="alice",
         session_id="session-1",
     )
@@ -170,7 +183,7 @@ class TestRedisSessionMemoryServiceMethods:
     assert storage_id.isalnum()
     assert (
         service._storage_session_id(
-            app_name="app",
+            namespace_id=TEST_NS_ID,
             user_id="alice",
             session_id="session-1",
         )
@@ -180,7 +193,7 @@ class TestRedisSessionMemoryServiceMethods:
   def test_storage_session_id_hashes_uuid_session_ids(self, service):
     """Test ADK UUID session IDs map to deterministic managed storage IDs."""
     storage_id = service._storage_session_id(
-        app_name="app",
+        namespace_id=TEST_NS_ID,
         user_id="user",
         session_id="28a7d6e2-0f0f-43b6-b22c-47e03635ed34",
     )
@@ -213,14 +226,18 @@ class TestRedisSessionMemoryServiceMethods:
     stored = fake_client.added_events[0]
     assert stored["actor_id"] == "alice"
     assert stored["content"] == [{"text": "I prefer window seats."}]
+    assert stored["namespace_id"] == TEST_NS_ID
     assert stored["metadata"]["namespace"] == "test-ns"
     assert stored["metadata"]["adk_event_id"] == "event-1"
 
   @pytest.mark.asyncio
+  @pytest.mark.parametrize("namespace_exists", [True, False])
   async def test_get_session_returns_empty_before_first_event(
-      self, service, fake_client
+      self, service, fake_client, namespace_exists
   ):
     """Test get_session returns an empty session before Redis materializes it."""
+    if not namespace_exists:
+      fake_client.namespaces.clear()
     session = await service.get_session(
         app_name="app",
         user_id="alice",
@@ -230,6 +247,8 @@ class TestRedisSessionMemoryServiceMethods:
     assert session is not None
     assert session.id == "fa58803d-9a11-4466-8f3f-40baf61b41c0"
     assert session.events == []
+    assert (fake_client.read_session_id is not None) == namespace_exists
+    assert fake_client.created_namespaces == []
 
   @pytest.mark.asyncio
   async def test_get_session_reconstructs_adk_events(
@@ -237,7 +256,7 @@ class TestRedisSessionMemoryServiceMethods:
   ):
     """Test get_session converts Redis events into ADK events."""
     storage_id = service._storage_session_id(
-        app_name="app",
+        namespace_id=TEST_NS_ID,
         user_id="alice",
         session_id="session-1",
     )
@@ -278,7 +297,7 @@ class TestRedisSessionMemoryServiceMethods:
   ):
     """Test list_sessions resolves managed storage IDs from event metadata."""
     storage_id = service._storage_session_id(
-        app_name="app",
+        namespace_id=TEST_NS_ID,
         user_id="alice",
         session_id="28a7d6e2-0f0f-43b6-b22c-47e03635ed34",
     )
@@ -296,8 +315,8 @@ class TestRedisSessionMemoryServiceMethods:
         ],
     )
     fake_client.list_response = SimpleNamespace(
-        items=[storage_id],
-        next_page_token=None,
+        items=[SimpleNamespace(session_id=storage_id)],
+        next_cursor=None,
     )
 
     response = await service.list_sessions(app_name="app", user_id="alice")
@@ -310,7 +329,7 @@ class TestRedisSessionMemoryServiceMethods:
   async def test_list_sessions_filters_internal_ids(self, service, fake_client):
     """Test list_sessions filters by namespace and user."""
     storage_id = service._storage_session_id(
-        app_name="app",
+        namespace_id=TEST_NS_ID,
         user_id="alice",
         session_id="session-1",
     )
@@ -328,17 +347,67 @@ class TestRedisSessionMemoryServiceMethods:
         ],
     )
     fake_client.list_response = SimpleNamespace(
-        items=[storage_id],
-        next_page_token=None,
+        items=[SimpleNamespace(session_id=storage_id)],
+        next_cursor=None,
     )
 
     response = await service.list_sessions(app_name="app", user_id="alice")
 
+    assert fake_client.list_kwargs["namespace_id"] == TEST_NS_ID
     assert [session.id for session in response.sessions] == ["session-1"]
     response_other_user = await service.list_sessions(
         app_name="app", user_id="bob"
     )
     assert response_other_user.sessions == []
+
+  @pytest.mark.asyncio
+  async def test_session_identity_follows_namespace_id(
+      self, service, fake_client
+  ):
+    """Renaming a namespace preserves sessions; reusing its name isolates them."""
+    session = Session(id="s1", app_name="app", user_id="alice")
+    event = Event(
+        author="user", content=types.Content(parts=[types.Part(text="hi")])
+    )
+    await service.append_event(session, event)
+    written = fake_client.added_events[0]
+    original_id = written["session_id"]
+    fake_client.get_response = SimpleNamespace(
+        events=[
+            SimpleNamespace(
+                metadata=written["metadata"],
+                content=written["content"],
+            )
+        ]
+    )
+    fake_client.list_response = SimpleNamespace(
+        items=[SimpleNamespace(session_id=original_id)], next_cursor=None
+    )
+    fake_client.namespaces = {
+        "renamed": TEST_NS_ID,
+        "test-ns": namespace_id_for("replacement"),
+    }
+    renamed = RedisSessionMemoryService(
+        RedisSessionMemoryServiceConfig(default_namespace="renamed")
+    )
+    scope = dict(app_name="app", user_id="alice", session_id="s1")
+    with patch.object(renamed, "_get_client", return_value=fake_client):
+      results = await renamed.list_sessions(app_name="app", user_id="alice")
+      assert [item.id for item in results.sessions] == ["s1"]
+      await renamed.get_session(**scope)
+      assert fake_client.read_session_id == original_id
+      await renamed.append_event(session, event)
+      assert fake_client.added_events[-1]["session_id"] == original_id
+      await renamed.delete_session(**scope)
+      assert fake_client.deleted_session_id == original_id
+
+    await service.append_event(session, event)
+    replacement_id = fake_client.added_events[-1]["session_id"]
+    assert replacement_id != original_id
+    await service.get_session(**scope)
+    assert fake_client.read_session_id == replacement_id
+    await service.delete_session(**scope)
+    assert fake_client.deleted_session_id == replacement_id
 
   @pytest.mark.asyncio
   async def test_close_completes_without_error(self, service):

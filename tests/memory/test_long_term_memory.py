@@ -19,6 +19,7 @@ from datetime import timezone
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from google.adk.events.event import Event
 from google.adk.memory.memory_entry import MemoryEntry
 from google.adk.sessions.session import Session
 from google.genai import types
@@ -28,12 +29,17 @@ from adk_redis import OPENSOURCE_AGENT_MEMORY_BACKEND
 from adk_redis import REDIS_AGENT_MEMORY_BACKEND
 from adk_redis.memory import RedisLongTermMemoryService
 from adk_redis.memory import RedisLongTermMemoryServiceConfig
+from tests.agent_memory_fakes import FakeNamespaces
+from tests.agent_memory_fakes import namespace_id_for
+
+TEST_NS_ID = namespace_id_for("test-ns")
 
 
-class FakeAgentMemory:
+class FakeAgentMemory(FakeNamespaces):
   """Fake async Redis Agent Memory client."""
 
   def __init__(self):
+    self.init_namespaces("test-ns")
     self.created_records = []
     self.search_request = None
     self.search_response = SimpleNamespace(items=[])
@@ -47,7 +53,7 @@ class FakeAgentMemory:
   async def bulk_create_long_term_memories_async(self, *, memories):
     self.created_records.extend(memories)
     return SimpleNamespace(
-        created=[memory["id"] for memory in memories],
+        created=[memory["memoryId"] for memory in memories],
         errors=None,
     )
 
@@ -160,10 +166,10 @@ class TestRedisLongTermMemoryServiceMethods:
     fake_client.search_response = SimpleNamespace(
         items=[
             SimpleNamespace(
-                id="memory-1",
+                memory_id="memory-1",
                 text="The user prefers window seats.",
                 owner_id="alice",
-                namespace="test_ns",
+                namespace_id=TEST_NS_ID,
                 session_id="session-1",
                 topics=["travel"],
                 memory_type="semantic",
@@ -178,9 +184,11 @@ class TestRedisLongTermMemoryServiceMethods:
         query="seat preference",
     )
 
+    assert fake_client.search_request["query"] == "seat preference"
     assert fake_client.search_request["filter"] == {
+        "op": "ALL",
         "ownerId": {"eq": "alice"},
-        "namespace": {"eq": "test-ns"},
+        "namespaceId": {"eq": TEST_NS_ID},
     }
     assert result.memories[0].id == "memory-1"
     assert (
@@ -209,10 +217,10 @@ class TestRedisLongTermMemoryServiceMethods:
 
     assert fake_client.created_records == [
         {
-            "id": "memory-1",
+            "memoryId": "memory-1",
             "text": "The user prefers window seats.",
             "ownerId": "alice",
-            "namespace": "test-ns",
+            "namespaceId": TEST_NS_ID,
             "sessionId": None,
             "topics": ["travel", "app"],
             "memoryType": "semantic",
@@ -220,10 +228,29 @@ class TestRedisLongTermMemoryServiceMethods:
     ]
 
   @pytest.mark.asyncio
-  async def test_add_session_to_memory_creates_message_records(
+  async def test_namespace_replacement_scopes_generated_memory_ids(
       self, service, fake_client
   ):
-    """Test add_session_to_memory stores event text as message memory."""
+    content = types.Content(parts=[types.Part(text="Tea")])
+    event = Event(author="alice", content=content)
+    memory = MemoryEntry(content=content)
+    replacement = namespace_id_for("replacement")
+    for namespace_id in (TEST_NS_ID, TEST_NS_ID, replacement):
+      fake_client.namespaces["test-ns"] = namespace_id
+      await service.add_events_to_memory(
+          app_name="app", user_id="alice", events=[event]
+      )
+      await service.add_memory(
+          app_name="app", user_id="alice", memories=[memory]
+      )
+    ids = [record["memoryId"] for record in fake_client.created_records]
+    assert len(ids) == 6
+    assert ids[:2] == ids[2:4]
+    assert set(ids[:2]).isdisjoint(ids[4:])
+
+  @pytest.mark.asyncio
+  async def test_empty_session_does_not_open_a_memory_client(self, service):
+    """A session without text has nothing to write."""
     session = Session(
         id="session-1",
         app_name="app",
@@ -233,7 +260,20 @@ class TestRedisLongTermMemoryServiceMethods:
 
     await service.add_session_to_memory(session)
 
-    assert fake_client.created_records == []
+    service._get_client.assert_not_called()
+
+  @pytest.mark.asyncio
+  async def test_invalid_memory_batch_does_not_open_a_client(self, service):
+    """Validate the entire batch before creating its shared namespace."""
+    await service.add_memory(
+        app_name="app",
+        user_id="alice",
+        memories=[
+            MemoryEntry(content=types.Content(parts=[types.Part(text="ok")])),
+            MemoryEntry(content=types.Content(parts=[])),
+        ],
+    )
+    service._get_client.assert_not_called()
 
   @pytest.mark.asyncio
   async def test_search_memory_can_use_agent_memory_server_backend(self):
@@ -275,3 +315,40 @@ class TestRedisLongTermMemoryServiceMethods:
     assert fake_client.search_kwargs["namespace"] == {"eq": "test_ns"}
     assert fake_client.search_kwargs["user_id"] == {"eq": "alice"}
     assert result.memories[0].id == "memory-1"
+
+
+def test_opensource_backend_emits_deprecation_warning():
+  """Selecting the self-hosted backend warns at the caller's line."""
+  config = RedisLongTermMemoryServiceConfig(
+      backend=OPENSOURCE_AGENT_MEMORY_BACKEND
+  )
+  with pytest.warns(DeprecationWarning, match="removed in 0.2.0") as record:
+    RedisLongTermMemoryService(config)
+  assert record[0].filename == __file__
+
+
+@pytest.mark.asyncio
+async def test_search_memory_does_not_create_a_missing_namespace():
+  """A search in a namespace that does not exist returns nothing."""
+  fake_client = FakeAgentMemory()
+  fake_client.init_namespaces()
+  service = RedisLongTermMemoryService(
+      RedisLongTermMemoryServiceConfig(default_namespace="test_ns")
+  )
+  with patch.object(service, "_get_client", return_value=fake_client):
+    result = await service.search_memory(
+        app_name="app", user_id="alice", query="seat"
+    )
+
+  assert result.memories == []
+  assert fake_client.created_namespaces == []
+  assert fake_client.search_request is None
+
+
+@pytest.mark.asyncio
+async def test_search_reports_missing_managed_sdk(monkeypatch):
+  monkeypatch.setattr("adk_redis.memory._iris.iris_memory", None)
+  with pytest.raises(ImportError, match="Python 3.11"):
+    await RedisLongTermMemoryService().search_memory(
+        app_name="app", user_id="alice", query="tea"
+    )

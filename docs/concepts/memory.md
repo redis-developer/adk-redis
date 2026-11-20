@@ -94,9 +94,7 @@ agent = Agent(
 
 ## Option 2: SDK-Based Tools
 
-Use the Python memory tool classes for direct SDK access. Tools can call Redis
-Agent Memory through `redis-agent-memory`, or the self-hosted Agent Memory
-Server through `agent-memory-client`.
+The Python memory tools use the unified Redis Iris SDK (`redis-iris`) for managed memory. The deprecated self-hosted backend uses `agent-memory-client`.
 
 ```python
 from google.adk import Agent
@@ -144,19 +142,11 @@ agent = Agent(
 | `DeleteMemoryTool` | Remove memories by ID |
 | `MemoryPromptTool` | Enrich a system prompt with relevant memories |
 
-When a tool runs inside an ADK agent loop, it resolves the user in this order:
-an explicit `user_id` argument, the invocation user from the ADK tool context,
-`default_owner_id`, then `default_user_id`. Configured defaults are only used
-when no per-call or context user is available.
+Inside an ADK agent loop, memory tools use the invocation user from the tool context. For example, a search made during Alice’s session uses Alice’s identity even if the model supplies a different `user_id`. For direct calls without a tool context, pass `user_id` or configure `default_owner_id`. The legacy `default_user_id` is the final fallback.
 
-For idempotent retries, `CreateMemoryTool.run_async` accepts an optional
-application-level `id` argument that is not exposed to the LLM. On the managed
-Redis Agent Memory backend, a client-supplied `id` is combined with the resolved
-namespace and user to derive a collision-resistant, managed-safe record ID.
-Retrying with the same `id` in the same scope upserts instead of creating a
-duplicate, while the same application ID in another scope remains isolated.
-The self-hosted `opensource-agent-memory` backend cannot honor client IDs; the
-tool logs a warning and writes with a server-generated ID.
+Direct callers can pass an application-level `id` to `CreateMemoryTool.run_async`. On the managed backend, the namespace, user and supplied ID determine the record ID. The first create returns a `memory_id`. A later create with the same ID in the same scope returns an error and preserves the original content, even if the payload is identical. To edit the record, pass the returned `memory_id` to `UpdateMemoryTool`.
+
+The self-hosted `opensource-agent-memory` backend generates its own record IDs and logs a warning when a caller supplies one.
 
 ## MCP vs SDK Decision
 

@@ -1,18 +1,22 @@
 # Managed Redis Agent Memory Setup
 
 This guide covers the **managed** `redis-agent-memory` backend, which is the
-library default. For the self-hosted alternative, see
-[Agent Memory Server setup](memory_server_setup.md).
+library default. It connects to Redis Agent Memory, the memory service of
+[Redis Iris](https://redis.io/docs/latest/develop/ai/context-engine/), the
+Redis context engine for AI agents.
 
-The managed backend is a hosted Redis Agent Memory data plane: there is no
-local Agent Memory Server, worker, or Docker setup to run. You connect to it
-with an API base URL, an API key, and a store ID.
+There is no local Agent Memory Server, worker, or Docker setup to run. You
+connect with an API base URL, an API key, and a store ID.
+
+The self-hosted `opensource-agent-memory` backend is deprecated and will be
+removed in 0.2.0. See [Agent Memory Server setup](memory_server_setup.md) only
+if you are maintaining an existing deployment.
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - `adk-redis` with the memory extra: `pip install "adk-redis[memory]"`.
-  The extra installs `redis-agent-memory>=0.2.0,<0.3`.
+  The extra installs `redis-iris>=1.1.0,<2`.
 - A managed Redis Agent Memory service on Redis Cloud (see
   [Get credentials](#get-credentials) below).
 
@@ -93,21 +97,21 @@ memory_service = RedisLongTermMemoryService(
 `REDIS_AGENT_MEMORY_BACKEND` is a typo-safe alias for the
 `"redis-agent-memory"` string. Either form works.
 
+## Namespaces
+
+A managed namespace has a server-assigned ID consisting of `ns_` followed by 32 hexadecimal characters. Set `default_namespace` to an existing ID to use it directly. A name such as `support` selects the shared root namespace of that name. The memory and session services use the ADK app name when you omit `default_namespace`.
+
+The services create a missing namespace when they write memories or append a session event. Searching with the memory service or listing sessions returns an empty result for a missing namespace. Memory tools can create their configured default namespace on first use, including a search. The API key needs permission to create a namespace when any of these operations first creates it.
+
+When a tool receives a different namespace name from the model, it looks up an existing shared root. For example, if a tool’s default is `support`, a search for a missing `sales` namespace returns no memories and an attempt to create a memory there returns an error. A model-supplied namespace ID is accepted only if it is the configured default.
+
+Named namespaces are looked up on each operation. If the namespace is archived, choose an active namespace.
+
 ## Identifier constraints
 
-The managed API accepts only alphanumeric characters and hyphens
-(`[A-Za-z0-9-]`) in identifier fields such as namespace, session ID, and actor
-ID, and caps session IDs at 64 characters. `adk-redis` adapts ADK identifiers
-to fit:
+The managed backend normalises namespace names and event authors by replacing unsupported characters with hyphens. For example, `my_app` and `my-app` select the same shared root namespace. A configured namespace ID is used directly.
 
-- Namespaces and authors are sanitized: unsupported characters (including `_`
-  and `:`) are replaced with hyphens. For example, `my_app` becomes `my-app`.
-- ADK session IDs that exceed the limit or contain unsupported characters are
-  hashed to a stable hex value that fits the 64-character cap.
-
-This adaptation is automatic. You do not need to pre-sanitize identifiers, but
-be aware that two raw namespaces that differ only by an unsupported character
-(for example `my_app` and `my-app`) collapse to the same managed namespace.
+For each session, the backend hashes the resolved namespace ID, the ADK user ID and the ADK session ID into a 64-character storage ID. ADK callers continue to use the original session ID.
 
 ## Differences from the self-hosted backend
 
@@ -125,5 +129,5 @@ For a runnable minimal agent on the managed backend, see the
 
 - [Session service](session_service.md) and [Memory service](memory_service.md)
   for full configuration options.
-- [Agent Memory Server setup](memory_server_setup.md) for the self-hosted
-  backend with summarization, extraction, and MCP.
+- [Agent Memory Server setup](memory_server_setup.md) for existing deployments
+  of the deprecated self-hosted backend.

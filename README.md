@@ -21,7 +21,7 @@
 
 ---
 
-`adk-redis` is the Redis layer for [Google ADK](https://github.com/google/adk-python) agents. It implements ADK's `BaseMemoryService`, `BaseSessionService`, and `BaseTool` interfaces against Redis, [Redis Vector Library](https://docs.redisvl.com), Redis Agent Memory. It also ships MCP toolset helpers and semantic-cache providers.
+`adk-redis` is the Redis layer for [Google ADK](https://github.com/google/adk-python) agents. It implements ADK's `BaseMemoryService`, `BaseSessionService`, and `BaseTool` interfaces against Redis, [Redis Vector Library](https://docs.redisvl.com), and Redis Agent Memory, the memory service of [Redis Iris](https://redis.io/docs/latest/develop/ai/context-engine/). It also ships MCP toolset helpers and semantic-cache providers.
 
 | Surface | What you get | Backed by |
 |---|---|---|
@@ -56,17 +56,16 @@ Memory backends are selected with `backend`:
 
 | Backend | Use when | Client |
 |---|---|---|
-| `redis-agent-memory` | You want Redis Agent Memory managed by Redis or the Redis Agent Memory data plane | `redis-agent-memory` |
-| `opensource-agent-memory` | You want the open source self-hosted Agent Memory Server | `agent-memory-client` |
+| `redis-agent-memory` | You want Redis Agent Memory on Redis Iris, managed by Redis or self-managed | `redis-iris` |
+| `opensource-agent-memory` | Deprecated, removed in 0.2.0. You maintain an existing self-hosted Agent Memory Server | `agent-memory-client` |
 
-The `memory` extra installs `redis-agent-memory>=0.2.0,<0.3` for the managed
-backend.
+The managed backend requires Python 3.11 or later. The `memory` extra installs the unified Redis Iris SDK (`redis-iris>=1.1.0,<2`). For namespace names, IDs and permissions, see the [managed memory setup guide](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/managed_memory_setup/#namespaces).
 
 ---
 
 ## Quick start
 
-**Prerequisites:** Python 3.10+, Redis 8.4+, and one memory backend. See the [Quickstart](https://redis-developer.github.io/adk-redis/user_guide/01_integration/) for full setup steps.
+This example uses Python 3.11 or later and a Redis Agent Memory endpoint, API key and store ID. Follow the [quickstart](https://redis-developer.github.io/adk-redis/user_guide/01_integration/) to install the dependencies.
 
 ```python
 from google.adk import Agent
@@ -112,9 +111,8 @@ runner = Runner(
 )
 ```
 
-For the open source self-hosted Agent Memory Server, set
-`backend="opensource-agent-memory"` and omit `api_key` and `store_id` unless your
-server requires them.
+The self-hosted Agent Memory Server backend, `backend="opensource-agent-memory"`,
+is deprecated and emits a `DeprecationWarning`. It will be removed in 0.2.0.
 
 → *More examples: [search tools](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/search_tools/), [MCP search](https://redis-developer.github.io/adk-redis/concepts/search/), [semantic caching](https://redis-developer.github.io/adk-redis/user_guide/how_to_guides/semantic_cache/)*
 

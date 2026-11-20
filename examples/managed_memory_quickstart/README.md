@@ -15,7 +15,7 @@ auto-summarization, extraction strategies, recency-boosted search, and MCP.
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - A Redis Agent Memory store (`REDIS_AGENT_MEMORY_STORE_ID` + API key)
 - Google API key for Gemini
 
