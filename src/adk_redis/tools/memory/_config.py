@@ -39,8 +39,8 @@ class MemoryToolConfig(BaseModel):
       default_user_id: Default user ID for memory operations (optional).
       default_owner_id: Default owner ID for memory operations (optional).
       search_top_k: Default maximum number of memories to retrieve.
-      distance_threshold: Maximum distance threshold for search (0.0-1.0).
-      recency_boost: Enable recency-aware re-ranking of search results.
+      distance_threshold: Minimum score for Iris, maximum distance otherwise.
+      recency_boost: Enable recency-aware re-ranking on the open-source backend.
       semantic_weight: Weight for semantic similarity (0.0-1.0).
       recency_weight: Weight for recency score (0.0-1.0).
       freshness_weight: Weight for freshness within recency score.

@@ -20,7 +20,6 @@ FastAPI runner.
 """
 
 import os
-from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -43,23 +42,11 @@ def _api_base_url() -> str:
   return os.environ["REDIS_AGENT_MEMORY_API_BASE_URL"]
 
 
-def parse_base_url(uri: str) -> str:
-  """Parse a service URI to extract the base URL."""
-  parsed = urlparse(uri)
-  location = parsed.netloc + parsed.path
-  return (
-      location
-      if location.startswith(("http://", "https://"))
-      else f"http://{location}"
-  )
-
-
-def redis_session_factory(uri: str, **kwargs):
+def redis_session_factory(_uri: str, **_kwargs):
   """Factory for RedisSessionMemoryService."""
-  base_url = parse_base_url(uri)
   config = RedisSessionMemoryServiceConfig(
       backend=_BACKEND,
-      api_base_url=base_url,
+      api_base_url=_api_base_url(),
       api_key=os.environ["REDIS_AGENT_MEMORY_API_KEY"],
       store_id=os.environ["REDIS_AGENT_MEMORY_STORE_ID"],
       default_namespace=os.getenv(
@@ -69,12 +56,11 @@ def redis_session_factory(uri: str, **kwargs):
   return RedisSessionMemoryService(config=config)
 
 
-def redis_memory_factory(uri: str, **kwargs):
+def redis_memory_factory(_uri: str, **_kwargs):
   """Factory for RedisLongTermMemoryService."""
-  base_url = parse_base_url(uri)
   config = RedisLongTermMemoryServiceConfig(
       backend=_BACKEND,
-      api_base_url=base_url,
+      api_base_url=_api_base_url(),
       api_key=os.environ["REDIS_AGENT_MEMORY_API_KEY"],
       store_id=os.environ["REDIS_AGENT_MEMORY_STORE_ID"],
       default_namespace=os.getenv(
@@ -89,9 +75,10 @@ registry = get_service_registry()
 registry.register_session_service("redis-working-memory", redis_session_factory)
 registry.register_memory_service("redis-long-term-memory", redis_memory_factory)
 
-api_host = _api_base_url().replace("http://", "").replace("https://", "")
-SESSION_SERVICE_URI = f"redis-working-memory://{api_host}"
-MEMORY_SERVICE_URI = f"redis-long-term-memory://{api_host}"
+# ADK uses these URI schemes to select factories. The factories read the
+# complete configured endpoint, including HTTPS, directly from the environment.
+SESSION_SERVICE_URI = "redis-working-memory://configured"
+MEMORY_SERVICE_URI = "redis-long-term-memory://configured"
 
 app: FastAPI = get_fast_api_app(
     agents_dir=".",

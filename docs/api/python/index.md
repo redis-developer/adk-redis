@@ -9,6 +9,12 @@ Google-style docstrings via [mkdocstrings](https://mkdocstrings.github.io/).
 
 <div class="grid cards" markdown>
 
+-   :material-link-variant:{ .lg .middle } **[Redis Iris](iris.md)**
+
+    ---
+
+    ADK integrations for Playbooks, Gateway, routing, Lens, and Agent Mesh.
+
 -   :material-account-multiple:{ .lg .middle } **[Sessions](sessions.md)**
 
     ---

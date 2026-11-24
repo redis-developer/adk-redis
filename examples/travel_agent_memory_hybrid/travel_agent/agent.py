@@ -103,7 +103,7 @@ else:
 
 # Create the travel agent
 root_agent = Agent(
-    model="gemini-2.5-flash",
+    model=os.getenv("GOOGLE_MODEL", "gemini-flash-latest"),
     name="travel_agent",
     description="AI travel planning assistant with memory, web search, and personalized recommendations",
     tools=tools,

@@ -111,7 +111,7 @@ SYSTEM_PROMPT = SYSTEM_PROMPT_PART1 + SYSTEM_PROMPT_PART2
 
 # Create the fitness coach agent
 root_agent = Agent(
-    model="gemini-2.5-flash",
+    model=os.getenv("GOOGLE_MODEL", "gemini-flash-latest"),
     name="fitness_coach",
     description="Personal fitness coach with persistent memory",
     tools=[memory_tools],

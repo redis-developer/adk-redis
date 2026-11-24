@@ -92,7 +92,7 @@ Create a `.env` file in this directory:
 5. Run the agent:
    ```bash
    cd examples/redis_search_tools
-   uv run adk web redis_search_tools_agent
+   uv run adk web .
    ```
 
 ## Files

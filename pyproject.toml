@@ -46,6 +46,22 @@ memory = [
     "redis-iris>=1.1.0,<2; python_version >= '3.11'",
 ]
 
+# ADK adapters for the Iris runtime services
+iris = [
+    # The package root imports RedisVL-backed tools.
+    "adk-redis[memory,search]; python_version >= '3.11'",
+    "google-adk>=2.7,<3; python_version >= '3.11'",
+    "redis-iris[llm-tracing]>=1.1.0,<2; python_version >= '3.11'",
+]
+
+# Beta transport integrations, opt-in because they require Redis 8
+mesh = [
+    "adk-redis[iris]; python_version >= '3.11'",
+    "google-adk[a2a]>=2.7,<3; python_version >= '3.11'",
+    "redis-iris[a2a,fastapi-sse]>=1.2.0,<2; python_version >= '3.11'",
+    "fastapi-redis-sdk==0.10.0b1; python_version >= '3.11'",
+]
+
 # RedisVL-based search tools
 search = [
     "redisvl>=0.18.2",
@@ -76,9 +92,9 @@ docs = [
     "mkdocs-autorefs>=1.2",
 ]
 
-# All Redis integrations
+# Stable Redis integrations
 all = [
-    "adk-redis[memory,search,langcache,sql]",
+    "adk-redis[memory,iris,search,langcache,sql]",
 ]
 
 # Development dependencies

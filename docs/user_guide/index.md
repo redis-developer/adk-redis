@@ -14,7 +14,13 @@ Integrate adk-redis into a Google ADK agent.
 
     ---
 
-    Stand up Redis, wire in session and memory services, and run your first agent.
+    Connect Redis Agent Memory, wire in ADK services, and run your first agent.
+
+-   :material-link-variant:{ .lg .middle } **[Redis Iris integrations](../api/python/iris.md)**
+
+    ---
+
+    Install and connect Iris runtime adapters or Agent Mesh transports.
 
 </div>
 

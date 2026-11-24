@@ -44,10 +44,13 @@ Use this example to compare the two deployment shapes side by side:
 
 ### 1. Install dependencies
 
-From the repository root:
+From the repository root, use a Python 3.11+ environment. Install ADK with
+its MCP extra so the ADK client can import the current MCP SDK:
 
 ```bash
-uv pip install 'adk-redis[examples]' 'redisvl[mcp]>=0.18.2' sentence-transformers
+uv venv --python 3.12
+uv pip install 'google-adk[mcp]==2.15.0' python-dotenv 'redisvl[mcp]>=0.18.2' sentence-transformers
+source .venv/bin/activate
 ```
 
 ### 2. Start Redis 8.4
@@ -79,9 +82,10 @@ to Redis with stable keys so re-running is idempotent.
 
 ### 5. Start the RedisVL MCP server
 
-In a separate terminal:
+In a separate terminal, activate the same virtual environment from the repository root:
 
 ```bash
+source .venv/bin/activate
 cd examples/redisvl_mcp_search
 rvl mcp --config mcp_config.yaml \
   --transport streamable-http \
@@ -95,7 +99,7 @@ and listens on `http://127.0.0.1:8765/mcp`.
 ### 6. Run the agent
 
 ```bash
-adk web redisvl_mcp_search_agent
+adk web .
 ```
 
 ADK web opens at `http://127.0.0.1:8000`. Pick the

@@ -83,7 +83,7 @@ except KeyError as e:
 # Create the root agent with caching callbacks
 root_agent = Agent(
     name="langcache_assistant",
-    model="gemini-2.0-flash",
+    model=os.getenv("GOOGLE_MODEL", "gemini-flash-latest"),
     instruction="""You are a helpful assistant with LangCache semantic caching enabled.
 
 Your responses are cached using Redis LangCache, a managed semantic caching

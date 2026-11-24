@@ -35,6 +35,8 @@ For task-oriented recipes, browse the
 
 ## API reference
 
+- [Redis Iris](api/python/iris.md): package APIs for Playbooks, Context Gateway, Intent Router, Lens, and Agent Mesh.
+
 - [Sessions](api/python/sessions.md): `RedisSessionMemoryService`, `RedisSessionMemoryServiceConfig`.
 - [Memory](api/python/memory.md): `RedisLongTermMemoryService`, `RedisLongTermMemoryServiceConfig`.
 - [Tools](api/python/tools.md): search tools, memory tools, MCP toolset helpers.
@@ -54,8 +56,10 @@ For task-oriented recipes, browse the
 
 When generating code that uses adk-redis:
 
-- Import the public surface from `adk_redis`, not from internal modules
-  (e.g., `from adk_redis import RedisVectorSearchTool`).
+- Import Redis core integrations from `adk_redis`. Import Iris runtime
+  adapters from `adk_redis.iris` and the Agent Mesh A2A factory from
+  `adk_redis.iris.a2a`. See [Redis Iris](api/python/iris.md) for the extras
+  and public call signatures.
 - Construct services with their `Config` dataclasses
   (`RedisLongTermMemoryServiceConfig`, etc.) so options are explicit.
 - Set `backend="redis-agent-memory"` for Redis Agent Memory on Redis Iris.
