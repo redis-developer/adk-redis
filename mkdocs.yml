@@ -112,6 +112,7 @@ plugins:
           - user_guide/how_to_guides/*.md
         API Reference:
           - api/*.md
+          - api/python/iris.md
         For AI Agents:
           - for-ais-only/*.md
 
@@ -184,6 +185,7 @@ nav:
       - api/index.md
       - Python package:
           - api/python/index.md
+          - Redis Iris: api/python/iris.md
           - Sessions: api/python/sessions.md
           - Memory: api/python/memory.md
           - Tools: api/python/tools.md

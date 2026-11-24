@@ -54,7 +54,9 @@ pip install 'adk-redis[memory]'      # sessions + long-term memory services
 pip install 'adk-redis[search]'      # RedisVL-backed search tools
 pip install 'adk-redis[sql]'         # RedisSQLSearchTool
 pip install 'adk-redis[langcache]'   # managed semantic cache provider
-pip install 'adk-redis[all]'         # everything above
+pip install 'adk-redis[iris]'        # Iris runtime adapters
+pip install 'adk-redis[mesh]'        # Iris runtime adapters and Agent Mesh transports
+pip install 'adk-redis[all]'         # memory, Iris, search, SQL, and semantic cache
 ```
 
 Memory backends are selected with `backend`:
@@ -132,6 +134,7 @@ example's README and the [Examples index](https://redis-developer.github.io/adk-
 
 | Category | Examples |
 |---|---|
+| **Iris suite** | [`iris_suite`](examples/iris_suite/) |
 | **Memory and sessions** | [`managed_memory_quickstart`](examples/managed_memory_quickstart/) · [`simple_redis_memory`](examples/simple_redis_memory/) · [`travel_agent_memory_hybrid`](examples/travel_agent_memory_hybrid/) · [`travel_agent_memory_tools`](examples/travel_agent_memory_tools/) · [`fitness_coach_mcp`](examples/fitness_coach_mcp/) |
 | **Search** | [`redis_search_tools`](examples/redis_search_tools/) · [`redis_sql_search`](examples/redis_sql_search/) · [`redisvl_mcp_search`](examples/redisvl_mcp_search/) |
 | **Caching** | [`semantic_cache`](examples/semantic_cache/) · [`langcache_cache`](examples/langcache_cache/) |
@@ -143,7 +146,7 @@ example's README and the [Examples index](https://redis-developer.github.io/adk-
 ```bash
 git clone https://github.com/redis-developer/adk-redis.git
 cd adk-redis
-make dev               # install with all extras + dev deps
+make dev               # install the all bundle and development tools
 make check             # format, lint, type-check, and test
 ```
 

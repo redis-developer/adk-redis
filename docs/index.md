@@ -23,7 +23,7 @@ pip install adk-redis
 docker run -d --name redis -p 6379:6379 redis:8
 ```
 
-→ *[Quickstart](user_guide/01_integration.md)*
+→ *[Memory quickstart](user_guide/01_integration.md) · [Iris integrations](api/python/iris.md)*
 
 ---
 
@@ -47,7 +47,7 @@ docker run -d --name redis -p 6379:6379 redis:8
 
     ---
 
-    Ten runnable agents covering memory, search, and caching.
+    Runnable agents for Iris, memory, search, and caching.
 
 -   :material-api:{ .lg .middle } **[API Reference](api/index.md)**
 
