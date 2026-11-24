@@ -26,15 +26,12 @@ auto-summarization, extraction strategies, recency-boosted search, and MCP.
 From the repository root (editable install for local PR testing):
 
 ```bash
-uv venv
-uv pip install -e ".[all,examples]"
+uv sync --locked --extra memory --extra search --extra examples
 ```
-
-Or use `make dev` if you also want test/lint tooling.
 
 > **Note:** Even memory-only examples import `adk_redis`, whose top-level
 > `__init__.py` currently pulls in search tools that require `redisvl`. The
-> `[all]` extra installs that dependency. `[memory]` alone is not enough today.
+> `search` extra supplies that dependency.
 
 ### 2. Configure environment
 
@@ -47,7 +44,7 @@ cp .env.example .env
 ### 3. Start the agent
 
 ```bash
-uv run python main.py
+uv run --locked --extra memory --extra search --extra examples python main.py
 ```
 
 Open http://localhost:8080 in your browser.
@@ -81,6 +78,7 @@ callback — there is no separate seed step.
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `GOOGLE_API_KEY` | Yes | — | Gemini API key |
+| `GOOGLE_MODEL` | No | `gemini-flash-latest` | Gemini model for the agent |
 | `REDIS_AGENT_MEMORY_API_BASE_URL` | Yes | — | Managed API base URL |
 | `REDIS_AGENT_MEMORY_API_KEY` | Yes | — | Managed API key |
 | `REDIS_AGENT_MEMORY_STORE_ID` | Yes | — | Memory store ID |
@@ -105,4 +103,5 @@ For a tools-only example that runs with `adk web`, see
 | [`simple_redis_memory`](../simple_redis_memory/) | Self-hosted (default) | `python main.py` |
 | [`travel_agent_memory_tools`](../travel_agent_memory_tools/) | Either (env switch) | `adk web .` |
 
-See [`examples/README.md`](../README.md) for the full matrix.
+See the [Iris suite quickstart](../iris_suite/) for an example that combines
+Agent Memory with Playbooks, Context Gateway, Intent Router, and Lens.

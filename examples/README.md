@@ -7,6 +7,9 @@ See the [Iris suite quickstart](iris_suite/) for a single ADK turn that uses
 Agent Memory, Agent Playbooks, Context Gateway, Intent Router, and Lens, plus
 an optional Agent Mesh streaming example.
 
+Gemini agents default to `gemini-flash-latest`. Set `GOOGLE_MODEL` to use a
+different Gemini model available to your API key.
+
 ## Memory and sessions
 
 | Example | Backend default | Runner | What it exercises |

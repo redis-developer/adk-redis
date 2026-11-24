@@ -24,7 +24,6 @@ This provides the complete two-tier memory architecture:
 """
 
 import os
-from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -40,17 +39,6 @@ from adk_redis.sessions import RedisSessionMemoryService
 from adk_redis.sessions import RedisSessionMemoryServiceConfig
 
 load_dotenv()
-
-
-def parse_base_url(uri: str) -> str:
-  """Parse URI to extract base URL."""
-  parsed = urlparse(uri)
-  location = parsed.netloc + parsed.path
-  return (
-      location
-      if location.startswith(("http://", "https://"))
-      else f"http://{location}"
-  )
 
 
 def get_managed_credential(*env_names: str) -> str | None:
@@ -109,14 +97,15 @@ def resolve_managed_credentials(backend: str) -> tuple[str | None, str | None]:
   return api_key, store_id
 
 
-def redis_session_factory(uri: str, **kwargs):
+def redis_session_factory(_uri: str, **_kwargs):
   """Factory function for creating RedisSessionMemoryService from URI."""
-  base_url = parse_base_url(uri)
   backend = os.getenv("REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND)
   api_key, store_id = resolve_managed_credentials(backend)
   config = RedisSessionMemoryServiceConfig(
       backend=backend,
-      api_base_url=base_url,
+      api_base_url=os.getenv(
+          "REDIS_MEMORY_SERVER_URL", "http://localhost:8000"
+      ),
       api_key=api_key,
       store_id=store_id,
       default_namespace=os.getenv("REDIS_MEMORY_NAMESPACE", "adk_agent_memory"),
@@ -129,14 +118,15 @@ def redis_session_factory(uri: str, **kwargs):
   return RedisSessionMemoryService(config=config)
 
 
-def redis_memory_factory(uri: str, **kwargs):
+def redis_memory_factory(_uri: str, **_kwargs):
   """Factory function for creating RedisLongTermMemoryService from URI."""
-  base_url = parse_base_url(uri)
   backend = os.getenv("REDIS_MEMORY_BACKEND", OPENSOURCE_AGENT_MEMORY_BACKEND)
   api_key, store_id = resolve_managed_credentials(backend)
   config = RedisLongTermMemoryServiceConfig(
       backend=backend,
-      api_base_url=base_url,
+      api_base_url=os.getenv(
+          "REDIS_MEMORY_SERVER_URL", "http://localhost:8000"
+      ),
       api_key=api_key,
       store_id=store_id,
       default_namespace=os.getenv("REDIS_MEMORY_NAMESPACE", "adk_agent_memory"),
@@ -156,14 +146,10 @@ registry = get_service_registry()
 registry.register_session_service("redis-working-memory", redis_session_factory)
 registry.register_memory_service("redis-long-term-memory", redis_memory_factory)
 
-# Build URIs from environment
-server_url = (
-    os.getenv("REDIS_MEMORY_SERVER_URL", "http://localhost:8000")
-    .replace("http://", "")
-    .replace("https://", "")
-)
-SESSION_SERVICE_URI = f"redis-working-memory://{server_url}"
-MEMORY_SERVICE_URI = f"redis-long-term-memory://{server_url}"
+# ADK uses these URI schemes to select factories. The factories read the
+# complete configured endpoint, including HTTPS, directly from the environment.
+SESSION_SERVICE_URI = "redis-working-memory://configured"
+MEMORY_SERVICE_URI = "redis-long-term-memory://configured"
 
 # Create the FastAPI app with both services
 app: FastAPI = get_fast_api_app(

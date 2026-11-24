@@ -72,7 +72,7 @@ def create_cached_agent() -> tuple[Agent, LLMResponseCache]:
   # Create agent with caching callbacks
   agent = Agent(
       name="cached_assistant",
-      model="gemini-2.0-flash",
+      model=os.getenv("GOOGLE_MODEL", "gemini-flash-latest"),
       instruction="""You are a helpful assistant. Answer questions clearly
       and concisely. When asked about programming, provide practical examples.""",
       before_model_callback=before_cb,

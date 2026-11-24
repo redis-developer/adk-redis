@@ -24,11 +24,11 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - GENERATION_MODEL=gemini/gemini-2.0-flash
+      - GENERATION_MODEL=gemini/gemini-flash-latest
       - EMBEDDING_MODEL=gemini/gemini-embedding-001
       - REDISVL_VECTOR_DIMENSIONS=3072
-      - FAST_MODEL=gemini/gemini-2.0-flash
-      - SLOW_MODEL=gemini/gemini-2.0-flash
+      - FAST_MODEL=gemini/gemini-flash-latest
+      - SLOW_MODEL=gemini/gemini-flash-latest
       - EXTRACTION_DEBOUNCE_SECONDS=5
     command: agent-memory api --host 0.0.0.0 --port 8088 --task-backend=asyncio
     depends_on:
@@ -45,11 +45,11 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - GENERATION_MODEL=gemini/gemini-2.0-flash
+      - GENERATION_MODEL=gemini/gemini-flash-latest
       - EMBEDDING_MODEL=gemini/gemini-embedding-001
       - REDISVL_VECTOR_DIMENSIONS=3072
-      - FAST_MODEL=gemini/gemini-2.0-flash
-      - SLOW_MODEL=gemini/gemini-2.0-flash
+      - FAST_MODEL=gemini/gemini-flash-latest
+      - SLOW_MODEL=gemini/gemini-flash-latest
     command: agent-memory mcp --mode sse --port 9000
     depends_on:
       redis:

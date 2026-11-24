@@ -15,6 +15,7 @@
 """Minimal agent using managed Redis Agent Memory services."""
 
 from datetime import datetime
+import os
 
 from google.adk import Agent
 from google.adk.agents.callback_context import CallbackContext
@@ -33,7 +34,7 @@ async def after_agent(callback_context: CallbackContext):
 
 
 root_agent = Agent(
-    model="gemini-2.5-flash",
+    model=os.getenv("GOOGLE_MODEL", "gemini-flash-latest"),
     name="managed_memory_agent",
     description=(
         "Minimal agent with managed Redis Agent Memory session and"

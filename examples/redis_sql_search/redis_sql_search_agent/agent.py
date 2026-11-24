@@ -98,7 +98,7 @@ def create_agent() -> Agent:
   )
 
   return Agent(
-      model="gemini-2.5-flash",
+      model=os.getenv("GOOGLE_MODEL", "gemini-flash-latest"),
       name="redis_sql_search_agent",
       instruction=INSTRUCTION,
       tools=[sql_tool],

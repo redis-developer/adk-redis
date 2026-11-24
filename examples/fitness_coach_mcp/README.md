@@ -14,7 +14,7 @@ This example showcases MCP (Model Context Protocol) tools for memory operations:
 
 | Example | Memory Approach | How to Run |
 |---------|-----------------|------------|
-| `simple_redis_memory` | ADK services (`BaseMemoryService`) | `adk web .` |
+| `simple_redis_memory` | ADK services (`BaseMemoryService`) | `python main.py` |
 | `travel_agent_memory_hybrid` | REST services + tools | `python main.py` |
 | `travel_agent_memory_tools` | REST tools only | `adk web .` |
 | **`fitness_coach_mcp`** | **MCP tools via SSE** | `adk web .` |
@@ -41,12 +41,15 @@ cp .env.example .env
 
 ### 3. Run the Agent
 
+From the example directory:
+
 ```bash
-cd examples/fitness_coach_mcp
-uv run adk web .
+uv run --locked --extra examples --with 'google-adk[mcp]==2.15.0' adk web .
 ```
 
-Open **http://localhost:8000** in your browser.
+Open **http://localhost:8000** in your browser. Run with Python 3.11 or
+later. The command selects an ADK release compatible with the MCP client
+used by the current Iris SDK.
 
 ---
 
@@ -69,7 +72,7 @@ memory_tools = McpToolset(
 )
 
 agent = Agent(
-    model="gemini-2.5-flash",
+    model="gemini-flash-latest",
     name="fitness_coach",
     tools=[memory_tools],
 )
@@ -261,7 +264,7 @@ ModuleNotFoundError: No module named 'adk_redis'
 
 **Solution:** Use `uv run` to run commands:
 ```bash
-uv run adk web .
+uv run --locked --extra examples --with 'google-adk[mcp]==2.15.0' adk web .
 ```
 
 ---
@@ -269,7 +272,7 @@ uv run adk web .
 ## Learn More
 
 - [ADK-Redis Documentation](../../README.md)
-- [Integration Guide](../../docs/integration-guide.md)
+- [Integration Guide](../../docs/user_guide/01_integration.md)
 - [Agent Memory Server Docs](https://redis.github.io/agent-memory-server/)
 - [Memory Types](https://redis.github.io/agent-memory-server/long-term-memory/)
 

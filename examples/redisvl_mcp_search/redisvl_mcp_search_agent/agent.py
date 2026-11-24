@@ -109,7 +109,7 @@ def create_agent() -> Agent:
   """Create the RedisVL MCP search agent."""
   load_dotenv(Path(__file__).parent.parent / ".env")
   return Agent(
-      model="gemini-2.5-flash",
+      model=os.getenv("GOOGLE_MODEL", "gemini-flash-latest"),
       name="redisvl_mcp_search_agent",
       instruction=INSTRUCTION,
       tools=[_build_toolset()],

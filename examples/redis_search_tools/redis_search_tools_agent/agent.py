@@ -138,7 +138,7 @@ def create_agent() -> Agent:
   tools = get_search_tools(index, vectorizer)
 
   return Agent(
-      model="gemini-2.5-flash",
+      model=os.getenv("GOOGLE_MODEL", "gemini-flash-latest"),
       name="redis_search_tools_agent",
       instruction=INSTRUCTION,
       tools=tools,

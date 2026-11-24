@@ -78,6 +78,7 @@ iris = [
     { name = "agent-memory-client", marker = "python_full_version >= '3.11'" },
     { name = "google-adk", marker = "python_full_version >= '3.11'" },
     { name = "redis-iris", extra = ["llm-tracing"], marker = "python_full_version >= '3.11'" },
+    { name = "redisvl", version = "0.33.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 langcache = [
     { name = "langcache" },
@@ -93,6 +94,7 @@ mesh = [
     { name = "fastapi-redis-sdk", marker = "python_full_version >= '3.11'" },
     { name = "google-adk", extra = ["a2a"], marker = "python_full_version >= '3.11'" },
     { name = "redis-iris", extra = ["a2a", "fastapi-sse", "llm-tracing"], marker = "python_full_version >= '3.11'" },
+    { name = "redisvl", version = "0.33.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 search = [
     { name = "redisvl", version = "0.26.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -106,8 +108,8 @@ sql = [
 [package.metadata]
 requires-dist = [
     { name = "adk-redis", extras = ["iris"], marker = "python_full_version >= '3.11' and extra == 'mesh'" },
-    { name = "adk-redis", extras = ["memory"], marker = "python_full_version >= '3.11' and extra == 'iris'" },
     { name = "adk-redis", extras = ["memory", "iris", "search", "langcache", "sql"], marker = "extra == 'all'" },
+    { name = "adk-redis", extras = ["memory", "search"], marker = "python_full_version >= '3.11' and extra == 'iris'" },
     { name = "agent-memory-client", marker = "extra == 'memory'", specifier = ">=0.14.0" },
     { name = "fakeredis", marker = "extra == 'dev'", specifier = ">=2.20.0" },
     { name = "fastapi-redis-sdk", marker = "python_full_version >= '3.11' and extra == 'mesh'", specifier = "==0.10.0b1" },

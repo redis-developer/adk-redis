@@ -61,7 +61,7 @@ electronics, fitness, kitchen, and office categories.
 ### 5. Run the agent
 
 ```bash
-adk web redis_sql_search_agent
+adk web .
 ```
 
 ADK web opens at `http://127.0.0.1:8000`. Pick the

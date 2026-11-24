@@ -73,7 +73,7 @@ except ImportError:
 # Create the root agent with caching callbacks
 root_agent = Agent(
     name="cached_assistant",
-    model="gemini-2.0-flash",
+    model=os.getenv("GOOGLE_MODEL", "gemini-flash-latest"),
     instruction="""You are a helpful assistant with semantic caching enabled.
 
 Your responses are cached based on semantic similarity, so similar questions

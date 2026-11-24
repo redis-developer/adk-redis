@@ -48,7 +48,8 @@ memory = [
 
 # ADK adapters for the Iris runtime services
 iris = [
-    "adk-redis[memory]; python_version >= '3.11'",
+    # The package root imports RedisVL-backed tools.
+    "adk-redis[memory,search]; python_version >= '3.11'",
     "google-adk>=2.7,<3; python_version >= '3.11'",
     "redis-iris[llm-tracing]>=1.1.0,<2; python_version >= '3.11'",
 ]

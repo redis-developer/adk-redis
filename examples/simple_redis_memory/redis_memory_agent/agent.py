@@ -20,6 +20,7 @@ This agent demonstrates the complete two-tier memory architecture:
 """
 
 from datetime import datetime
+import os
 
 from google.adk import Agent
 from google.adk.agents.callback_context import CallbackContext
@@ -39,7 +40,7 @@ async def after_agent(callback_context: CallbackContext):
 
 
 root_agent = Agent(
-    model="gemini-2.5-flash",
+    model=os.getenv("GOOGLE_MODEL", "gemini-flash-latest"),
     name="redis_memory_agent",
     description=(
         "Agent with full two-tier Redis memory: working memory for sessions,"
