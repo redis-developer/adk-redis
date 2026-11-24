@@ -3,6 +3,10 @@
 Runnable agents built with [Google ADK](https://github.com/google/adk-python)
 and `adk-redis`. Each example ships with a README and `.env.example`.
 
+See the [Iris suite quickstart](iris_suite/) for a single ADK turn that uses
+Agent Memory, Agent Playbooks, Context Gateway, Intent Router, and Lens, plus
+an optional Agent Mesh streaming example.
+
 ## Memory and sessions
 
 | Example | Backend default | Runner | What it exercises |

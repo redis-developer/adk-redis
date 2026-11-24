@@ -7,6 +7,10 @@ description: Worked agents built with adk-redis and the Google ADK.
 Runnable agents built with the Google ADK and Redis. Each links to its source
 directory and explains what it demonstrates.
 
+The [Iris suite quickstart](https://github.com/redis-developer/adk-redis/tree/main/examples/iris_suite)
+combines Agent Memory, Agent Playbooks, Context Gateway, Intent Router, and
+Lens in one ADK turn. It includes an optional Agent Mesh streaming example.
+
 ## Memory and Sessions
 
 Each memory example targets a specific backend. The examples that exercise
