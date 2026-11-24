@@ -1,13 +1,3 @@
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#   "fastapi-redis-sdk==0.10.0b1",
-#   "google-adk>=2.7,<3",
-#   "python-dotenv",
-#   "redis-iris[fastapi-sse]==1.2.0",
-#   "uvicorn",
-# ]
-# ///
 # Copyright 2025 Redis, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,8 +23,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi import Request
 from google.adk.agents import Agent
-from google.adk.agents.run_config import RunConfig
-from google.adk.agents.run_config import StreamingMode
 from google.adk.runners import InMemoryRunner
 from google.genai import types
 from pydantic import BaseModel
@@ -43,6 +31,8 @@ from redis_iris.agent_mesh.fastapi_sse import FastAPIRedis
 from redis_iris.agent_mesh.fastapi_sse import StreamBackendDep
 from redis_iris.agent_mesh.fastapi_sse import StreamWriter
 import uvicorn
+
+from adk_redis.iris import stream_adk_turn
 
 APP_NAME = "iris_mesh_demo"
 USER_ID = "local-demo"
@@ -69,30 +59,13 @@ async def produce_answer(prompt: str, writer: StreamWriter) -> None:
     await runner.session_service.create_session(
         app_name=APP_NAME, user_id=USER_ID, session_id=writer.stream_id
     )
-    message = types.Content(role="user", parts=[types.Part(text=prompt)])
-    answer = ""
-    async for event in runner.run_async(
+    await stream_adk_turn(
+        runner,
+        writer,
         user_id=USER_ID,
         session_id=writer.stream_id,
-        new_message=message,
-        run_config=RunConfig(streaming_mode=StreamingMode.SSE),
-    ):
-      if event.error_code:
-        raise RuntimeError(f"ADK returned {event.error_code}")
-      if not event.content:
-        continue
-      text = "".join(
-          part.text or ""
-          for part in event.content.parts or []
-          if not part.thought
-      )
-      if event.partial and text:
-        await writer.append("delta", {"text": text})
-      elif event.is_final_response():
-        answer = text
-    if not answer:
-      raise RuntimeError("ADK returned no final text")
-  await writer.finish("message", {"text": answer})
+        message=types.Content(role="user", parts=[types.Part(text=prompt)]),
+    )
 
 
 @app.post("/runs", status_code=202)

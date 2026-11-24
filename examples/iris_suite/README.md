@@ -26,8 +26,8 @@ repository root.
    skill when its score meets the hook threshold.
 3. [Context Gateway](https://redis.io/docs/latest/develop/ai/context-engine/context-gateway/quickstart/).
    Load the sample clinic directory and use the full-mode Gateway's MCP
-   endpoint. The ADK `find_providers` tool invokes the sample
-   `scheduling__filter_provider` tool through the Iris SDK over MCP.
+   endpoint. `IrisGatewayToolset` discovers `scheduling__filter_provider`
+   and exposes its schema directly to ADK.
 4. [Intent Router](https://redis.io/docs/latest/develop/ai/context-engine/intent-router/quickstart/).
    Define an intent named `clinic_search` with target
    `{"type":"agent","ref":"clinic_search"}` and example phrases such as
@@ -40,8 +40,7 @@ repository root.
 ## Run and inspect a turn
 
 ```bash
-uv run --locked --extra memory --extra examples \
-  --with 'redis-iris[llm-tracing]==1.1.0' python examples/iris_suite/main.py \
+uv run --locked --extra iris --extra examples python examples/iris_suite/main.py \
   "Which clinic has the most cardiologists, and how many does it have?"
 ```
 
@@ -63,8 +62,8 @@ The adapter's recall filters on both the configured namespace and the user ID.
 
 This local example uses an in-memory ADK session, Gemini, and a separate Redis
 database for resumable SSE. Only the Gemini and Redis settings from `.env`
-are needed. `uv` installs the script's Mesh dependencies in a separate
-environment. Keep this demo on loopback. A shared deployment must authorize
+are needed. The `mesh` extra installs both Mesh transports and requires
+Redis 8 client libraries. Keep this demo on loopback. A shared deployment must authorize
 both the start and read endpoints.
 
 Run Redis 8.6.2 or later with native producer idempotency. For example:
@@ -76,7 +75,7 @@ docker run --rm -p 127.0.0.1:6386:6379 redis:8.6.6-alpine
 In a separate terminal, run:
 
 ```bash
-uv run examples/iris_suite/mesh.py
+uv run --locked --extra mesh --extra examples python examples/iris_suite/mesh.py
 ```
 
 Start a turn. Copy the returned `stream_id` into `RUN_ID`:
@@ -101,3 +100,49 @@ Replay also works after the producer finishes and before the retention window
 expires. See the
 [Agent Mesh FastAPI guide](https://redis.io/docs/latest/develop/ai/context-engine/agent-mesh/fastapi-sse-sdk/)
 for SDK beta limits.
+
+## Use the integrations in your own app
+
+Install `adk-redis[iris]` with Python 3.11 or later. The adapters read the
+same `IRIS_*` environment variables as the Redis Iris SDK and also accept
+configured clients. Enable only the adapters your application uses.
+
+| Capability | Public API |
+| --- | --- |
+| Agent Memory | Pass `RedisSessionMemoryService` and `RedisLongTermMemoryService` to an ADK `Runner`. |
+| Agent Playbooks | Add `IrisPlaybooksPlugin()` to `App.plugins` for published FAQs and skill instructions on model requests. Pass SDK hooks to configure the retrieval policy. |
+| Context Gateway | Add `IrisGatewayToolset()` to an agent's tools. Full mode exposes catalog tools and search mode exposes the Gateway's search, dispatch, and result tools. Use `tool_filter` to control the exposed tool names. |
+| Intent Router | Call `await IrisIntentRouter(routes, fallback=runner).select(message)`. Key `routes` by `(target.type, target.ref)` and register the agents, runners, or handlers your app permits. |
+| Lens | Initialize `IrisLens(agent_id=...)` at startup. Use `run_async()` to trace the runner or `turn()` to include routing and retrieval before the runner. Use one turn boundary per invocation and call `shutdown()` at process exit. |
+| Agent Mesh SSE | Install `adk-redis[mesh]`. Pass `stream_adk_turn()` to the Mesh backend's producer. The app owns the session, stream scope, and authorization. |
+
+When consuming `IrisLens.run_async()`, use `contextlib.aclosing` if the
+consumer might break out of async iteration before the runner finishes.
+
+### Agent Mesh A2A
+
+The `mesh` extra also provides an A2A app factory for an existing ADK runner:
+
+```python
+from adk_redis.iris.a2a import create_mesh_a2a_app
+
+app = create_mesh_a2a_app(
+    runner=runner,
+    agent_card=agent_card,
+    commands=redis_commands,
+    readers=redis_readers,
+    namespace="support:a2a",
+    auth_backend=auth_backend,
+)
+```
+
+Supply an A2A agent card, separate asynchronous Redis clients for commands
+and blocking readers, and a Starlette authentication backend that supplies a
+stable, unique principal as the user display name. The server authorizes each
+subscription and uses the same identity to scope ADK sessions. Your app owns
+the runner and Redis clients. In a multi-replica deployment, share the ADK
+session backend, Redis database, and namespace. The A2A app exposes resumable
+HTTP+JSON streams. Send `A2A-Version: 1.0` and the last received
+`Last-Event-ID` when reconnecting. See the
+[Agent Mesh A2A guide](https://redis.io/docs/latest/develop/ai/context-engine/agent-mesh/a2a-sdk/)
+for task version, retention, and reconnect behavior.

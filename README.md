@@ -36,6 +36,11 @@
 
 ---
 
+Use `adk-redis[iris]` on Python 3.11+ for Agent Memory, Agent Playbooks,
+Context Gateway, Intent Router, and Lens. The optional `mesh` extra adds
+Agent Mesh's resumable SSE and A2A transports. See the
+[Iris suite quickstart](examples/iris_suite/) for setup and public APIs.
+
 ## Installation
 
 ```bash
